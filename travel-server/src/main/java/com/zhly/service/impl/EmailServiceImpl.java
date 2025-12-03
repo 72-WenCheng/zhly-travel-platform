@@ -54,7 +54,7 @@ public class EmailServiceImpl implements EmailService {
                 System.out.println("未配置真实邮箱服务，使用模拟发送");
                 System.out.println("发件人: " + (username != null ? username : "system@example.com"));
                 System.out.println("收件人: " + email);
-                System.out.println("主题: 智慧生态旅游系统 - 验证码");
+                System.out.println("主题: 智慧生态旅游平台（验证码）");
                 System.out.println("验证码: " + captcha);
                 System.out.println("内容: 您的验证码是: " + captcha + "，5分钟内有效，请勿泄露给他人。");
                 System.out.println("==================");
@@ -62,9 +62,11 @@ public class EmailServiceImpl implements EmailService {
                 return true;
             }
             
-            // 使用系统SMTP配置发送邮件，发件人显示为系统邮箱
-            return sendEmail(email, "智慧生态旅游系统 - 验证码", 
-                "您的验证码是: " + captcha + "\n\n5分钟内有效，请勿泄露给他人。", username);
+            // 使用系统SMTP配置发送邮件
+            // 发件人：系统邮箱（2401554207@qq.com）
+            // 收件人：用户填写的邮箱（email参数）
+            return sendEmail(email, "智慧生态旅游平台（验证码）", 
+                "您的验证码是: " + captcha + "，5分钟内有效，请勿泄露给他人。", username);
                 
         } catch (Exception e) {
             System.err.println("发送验证码邮件失败: " + e.getMessage());
@@ -90,22 +92,24 @@ public class EmailServiceImpl implements EmailService {
                 System.out.println("未配置真实邮箱服务，使用模拟发送");
                 System.out.println("发件人: " + (username != null ? username : "system@example.com"));
                 System.out.println("收件人: " + email);
-                System.out.println("主题: 智慧生态旅游系统 - 重置密码");
+                System.out.println("主题: 智慧生态旅游平台 - 重置密码");
                 System.out.println("内容: 请点击以下链接重置您的密码: " + resetUrl);
-                System.out.println("链接24小时内有效，请勿泄露给他人。");
+                System.out.println("链接1分钟内有效，请勿泄露给他人。");
                 System.out.println("=============================");
                 Thread.sleep(1000);
                 return true;
             }
             
-            // 使用系统SMTP配置发送邮件（HTML格式），发件人显示为系统邮箱
+            // 使用系统SMTP配置发送邮件（HTML格式）
+            // 发件人：系统邮箱（2401554207@qq.com）
+            // 收件人：用户填写的邮箱（重置密码的用户邮箱）
             String htmlContent = "<html><body>" +
                 "<p>请点击以下链接重置您的密码:</p>" +
                 "<p><a href=\"" + resetUrl + "\">" + resetUrl + "</a></p>" +
-                "<p>链接24小时内有效，请勿泄露给他人。</p>" +
+                "<p>链接1分钟内有效，请勿泄露给他人。</p>" +
                 "<p>如果链接无法点击，请复制链接到浏览器地址栏访问。</p>" +
                 "</body></html>";
-            return sendEmail(email, "智慧生态旅游系统 - 重置密码", htmlContent, username);
+            return sendEmail(email, "智慧生态旅游平台（重置密码）", htmlContent, username);
                 
         } catch (Exception e) {
             System.err.println("发送重置密码邮件失败: " + e.getMessage());
@@ -145,14 +149,15 @@ public class EmailServiceImpl implements EmailService {
     
     /**
      * 使用SMTP发送邮件
-     * @param toEmail 收件人邮箱（用户输入的邮箱）
+     * @param toEmail 收件人邮箱（用户填写的邮箱，如重置密码的用户邮箱）
      * @param subject 邮件主题
      * @param content 邮件内容
-     * @param fromEmail 发件人显示地址（系统邮箱）
+     * @param fromEmail 发件人邮箱（系统邮箱：2401554207@qq.com）
      */
     private boolean sendEmail(String toEmail, String subject, String content, String fromEmail) {
         try {
             // 使用系统配置的SMTP服务器（根据系统邮箱域名识别SMTP服务器地址）
+            // 系统邮箱是 2401554207@qq.com，所以会使用 QQ 邮箱的 SMTP 配置
             SmtpConfig smtpConfig = getSmtpConfigByEmail(fromEmail != null ? fromEmail : username);
             
             // 创建Properties对象
@@ -169,20 +174,22 @@ public class EmailServiceImpl implements EmailService {
                 props.put("mail.smtp.socketFactory.fallback", "false");
             }
             
-            // 创建Session对象（始终使用系统配置的邮箱账号和授权码进行SMTP认证）
+            // 创建Session对象（始终使用系统邮箱账号和授权码进行SMTP认证）
+            // 系统邮箱：2401554207@qq.com，用于SMTP服务器认证
             Session session = Session.getInstance(props, new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
-                    // 使用系统配置的邮箱账号和授权码进行SMTP认证
-                    System.out.println("使用系统邮箱配置进行SMTP认证: " + username);
+                    // 使用系统邮箱账号和授权码进行SMTP认证
+                    System.out.println("使用系统邮箱进行SMTP认证: " + username);
                     return new PasswordAuthentication(username, password);
                 }
             });
             
             // 创建MimeMessage对象
             MimeMessage message = new MimeMessage(session);
-            // 发件人显示为系统邮箱
+            // 发件人：系统邮箱（2401554207@qq.com）
             message.setFrom(new InternetAddress(fromEmail));
+            // 收件人：用户填写的邮箱（如重置密码的用户邮箱）
             message.setRecipient(Message.RecipientType.TO, new InternetAddress(toEmail));
             message.setSubject(subject);
             

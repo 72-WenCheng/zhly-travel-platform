@@ -120,6 +120,34 @@
           <div class="field-tips">用户名作为登录凭证，不可修改</div>
         </el-form-item>
 
+        <!-- 出行偏好 -->
+        <el-form-item label="出行偏好" prop="travelPreference">
+          <el-select 
+            v-model="profileForm.travelPreference" 
+            placeholder="请选择出行偏好"
+            clearable
+            style="width: 100%"
+          >
+            <el-option label="个人" :value="1">
+              <span>👤 个人</span>
+            </el-option>
+            <el-option label="情侣" :value="2">
+              <span>💑 情侣</span>
+            </el-option>
+            <el-option label="家庭" :value="3">
+              <span>👨‍👩‍👧‍👦 家庭</span>
+            </el-option>
+            <el-option label="团队" :value="4">
+              <span>👥 团队</span>
+            </el-option>
+            <el-option label="商务" :value="5">
+              <span>💼 商务</span>
+            </el-option>
+            <el-option label="其他" :value="6">
+              <span>🔖 其他</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
 
         <!-- 操作按钮 -->
         <el-form-item>
@@ -167,7 +195,8 @@ const profileForm = reactive({
   gender: 0,
   age: null,
   phone: '',
-  username: ''
+  username: '',
+  travelPreference: null
 })
 
 
@@ -265,6 +294,11 @@ const fillFormFromUserData = (userData) => {
   profileForm.age = userData.age || null
   profileForm.phone = userData.phone || ''
   profileForm.username = userData.username || ''
+  // 出行类型：如果为null、undefined或0，都设置为null（显示为空）
+  // 出行类型：如果为null、undefined、0或无效值，都设置为null（显示为空）
+  // 只有当值在有效范围内（1-6）时才使用
+  const travelPref = userData.travelPreference
+  profileForm.travelPreference = (travelPref !== null && travelPref !== undefined && travelPref >= 1 && travelPref <= 6) ? travelPref : null
 }
 
 // 取消
@@ -297,7 +331,8 @@ const handleSubmit = async () => {
           avatar: profileForm.avatar,
           gender: profileForm.gender,
           age: profileForm.age,
-          phone: profileForm.phone
+          phone: profileForm.phone,
+          travelPreference: profileForm.travelPreference
         }
         
         // 调用后端API保存用户信息

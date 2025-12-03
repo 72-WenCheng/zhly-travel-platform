@@ -25,6 +25,31 @@ public interface UserService extends IService<User> {
     Map<String, Object> login(String username, String password, String loginType);
     
     /**
+     * 手机号登录
+     */
+    Map<String, Object> loginByPhone(String phone, String captcha, String loginType);
+    
+    /**
+     * 手机号注册
+     */
+    boolean registerByPhone(String phone, String captcha, String password, String inviteCode);
+    
+    /**
+     * 发送手机验证码
+     */
+    boolean sendPhoneCaptcha(String phone);
+    
+    /**
+     * 微信登录
+     */
+    Map<String, Object> loginByWechat(String code);
+    
+    /**
+     * QQ登录
+     */
+    Map<String, Object> loginByQQ(String code);
+    
+    /**
      * 用户登出
      */
     boolean logout(Long userId);

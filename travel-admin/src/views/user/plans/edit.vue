@@ -246,7 +246,8 @@
         </el-divider>
         
         <el-form-item label="攻略标签">
-          <div class="tags-container">
+          <div class="tag-container">
+            <!-- 已选标签 -->
             <el-tag
               v-for="tag in planForm.tags"
               :key="tag"
@@ -258,20 +259,20 @@
             >
               {{ tag }}
             </el-tag>
-            <el-input
-              v-if="tagInputVisible"
-              ref="tagInputRef"
-              v-model="tagInputValue"
-              size="small"
-              style="width: 120px;"
-              @keyup.enter="addTag"
-              @blur="addTag"
-            />
-            <el-tooltip v-else content="添加标签" placement="top">
-              <el-button class="icon-btn" text circle @click="showTagInput">
-                <el-icon><Plus /></el-icon>
-              </el-button>
-            </el-tooltip>
+            <!-- 可选标签列表 -->
+            <div class="tag-selector">
+              <el-tag
+                v-for="tag in availableTags"
+                :key="tag"
+                v-if="!planForm.tags.includes(tag)"
+                @click="addTag(tag)"
+                effect="plain"
+                style="margin-right: 10px; margin-bottom: 10px; cursor: pointer;"
+                :class="{ 'tag-available': true }"
+              >
+                {{ tag }}
+              </el-tag>
+            </div>
           </div>
         </el-form-item>
         
@@ -437,10 +438,12 @@ const planRules = {
   ]
 }
 
-// 标签相关
-const tagInputVisible = ref(false)
-const tagInputValue = ref('')
-const tagInputRef = ref()
+// 标签相关 - 标准标签列表（与后端一致）
+const availableTags = ref([
+  '摄影', '美食', '文化', '自然风光', '历史', '建筑',
+  '徒步', '温泉', '博物馆', '夜生活', '夜景', '购物',
+  '度假', '情侣', '亲子', '休闲'
+])
 
 // 上传相关
 const uploadUrl = ref('/api/upload/image')
@@ -591,22 +594,11 @@ const removeCost = (costIndex: number) => {
   }
 }
 
-// 显示标签输入框
-const showTagInput = () => {
-  tagInputVisible.value = true
-  tagInputValue.value = ''
-  nextTick(() => {
-    tagInputRef.value?.focus()
-  })
-}
-
 // 添加标签
-const addTag = () => {
-  if (tagInputValue.value && !planForm.tags.includes(tagInputValue.value)) {
-    planForm.tags.push(tagInputValue.value)
+const addTag = (tag: string) => {
+  if (tag && !planForm.tags.includes(tag)) {
+    planForm.tags.push(tag)
   }
-  tagInputVisible.value = false
-  tagInputValue.value = ''
 }
 
 // 删除标签
@@ -984,10 +976,22 @@ onMounted(() => {
       }
     }
 
-    .tags-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
+    .tag-container {
+      .tag-selector {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed #e4e7ed;
+        
+        .tag-available {
+          transition: all 0.2s;
+          
+          &:hover {
+            background-color: #ecf5ff;
+            border-color: #b3d8ff;
+            color: #409eff;
+          }
+        }
+      }
     }
 
     // 行程安排：与“创建攻略”页面统一的白色扁平样式，去掉紫色渐变
@@ -1130,6 +1134,7 @@ onMounted(() => {
   }
 }
 </style>
+
 
 
 

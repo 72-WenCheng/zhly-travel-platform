@@ -326,9 +326,6 @@
             </h2>
             <p class="section-subtitle">了解等级体系，快速提升你的旅行者等级</p>
           </div>
-          <el-button text type="primary" class="view-all-btn" @click="navigateTo('/home/user/level-guide')">
-            查看详情 <el-icon><ArrowRight /></el-icon>
-          </el-button>
         </div>
         <div class="level-guide-content">
           <!-- 当前等级卡片 -->
@@ -385,9 +382,6 @@
             </h2>
             <p class="section-subtitle">特色文旅项目，体验当地文化</p>
           </div>
-          <el-button text type="primary" class="view-all-btn" @click="navigateTo('/home/user/culture')">
-            查看全部 <el-icon><ArrowRight /></el-icon>
-          </el-button>
         </div>
         
         <div class="culture-grid">
@@ -432,9 +426,6 @@
               基于您的用户画像大数据智能推荐
             </p>
           </div>
-          <el-button text type="primary" class="view-all-btn" @click="navigateTo('/home/user/recommendations')">
-            查看全部 <el-icon><ArrowRight /></el-icon>
-          </el-button>
         </div>
         
         <div class="recommendations-grid">
@@ -494,9 +485,6 @@
           </h2>
           <p class="section-subtitle">达人分享，实用干货</p>
         </div>
-        <el-button text type="primary" class="view-all-btn" @click="navigateTo('/home/user/community')">
-          查看全部 <el-icon><ArrowRight /></el-icon>
-        </el-button>
       </div>
       
       <div class="plans-list">
@@ -1381,22 +1369,37 @@ const loadRecommendations = async () => {
           }
         })
         
-        // 如果有多条数据，根据收藏量和浏览量排序，然后只取前2个
+        // 如果有多条数据，根据收藏量和浏览量排序，然后只取前6个
         if (formattedList.length > 0) {
-          // 按收藏量和浏览量排序（收藏量优先，然后浏览量）
+          // 按收藏量和浏览量排序（哪个多就优先显示）
           const sortedList = formattedList.sort((a, b) => {
-            // 先按收藏量排序（降序）
-            const favoriteDiff = (b.favorites || 0) - (a.favorites || 0)
+            const aViews = a.views || 0
+            const bViews = b.views || 0
+            const aFavorites = a.favorites || 0
+            const bFavorites = b.favorites || 0
+            
+            // 计算总热度（浏览量 + 收藏量）
+            const aTotal = aViews + aFavorites
+            const bTotal = bViews + bFavorites
+            
+            // 先按总热度排序（降序）
+            if (bTotal !== aTotal) {
+              return bTotal - aTotal
+            }
+            
+            // 总热度相同，优先显示收藏量多的
+            const favoriteDiff = bFavorites - aFavorites
             if (favoriteDiff !== 0) {
               return favoriteDiff
             }
-            // 收藏量相同，按浏览量排序（降序）
-            return (b.views || 0) - (a.views || 0)
+            
+            // 收藏量也相同，按浏览量排序（降序）
+            return bViews - aViews
           })
           
-          // 只取前2个
-          recommendations.value = sortedList.slice(0, 2).map(item => formatAttraction(item))
-          console.log('✅ 基于用户画像的智能推荐景点（已排序，显示前2个）:', recommendations.value)
+          // 只取前6个
+          recommendations.value = sortedList.slice(0, 6).map(item => formatAttraction(item))
+          console.log('✅ 基于用户画像的智能推荐景点（已排序，显示前6个）:', recommendations.value)
         } else {
           // 没有推荐数据，使用默认推荐
           await loadDefaultRecommendations()
@@ -1429,27 +1432,37 @@ const loadDefaultRecommendations = async () => {
     if (response.code === 200 && response.data?.list) {
       const list = response.data.list || []
       
-      // 如果有多条数据，根据收藏量和浏览量排序，然后只取前2个
+        // 如果有多条数据，根据收藏量和浏览量排序，然后只取前6个
       if (list.length > 0) {
-        // 按收藏量和浏览量排序（收藏量优先，然后浏览量）
+        // 按收藏量和浏览量排序（哪个多就优先显示）
         const sortedList = list.sort((a, b) => {
-          const aFavorites = a.collectCount || a.favorites || 0
-          const bFavorites = b.collectCount || b.favorites || 0
           const aViews = a.viewCount || a.views || 0
           const bViews = b.viewCount || b.views || 0
+          const aFavorites = a.collectCount || a.favorites || 0
+          const bFavorites = b.collectCount || b.favorites || 0
           
-          // 先按收藏量排序（降序）
+          // 计算总热度（浏览量 + 收藏量）
+          const aTotal = aViews + aFavorites
+          const bTotal = bViews + bFavorites
+          
+          // 先按总热度排序（降序）
+          if (bTotal !== aTotal) {
+            return bTotal - aTotal
+          }
+          
+          // 总热度相同，优先显示收藏量多的
           const favoriteDiff = bFavorites - aFavorites
           if (favoriteDiff !== 0) {
             return favoriteDiff
           }
-          // 收藏量相同，按浏览量排序（降序）
+          
+          // 收藏量也相同，按浏览量排序（降序）
           return bViews - aViews
         })
         
-        // 只取前2个
-        recommendations.value = sortedList.slice(0, 2).map(formatAttraction)
-        console.log('默认推荐景点数据（已排序，显示前2个）:', recommendations.value)
+        // 只取前6个
+        recommendations.value = sortedList.slice(0, 6).map(formatAttraction)
+        console.log('默认推荐景点数据（已排序，显示前6个）:', recommendations.value)
       } else {
         recommendations.value = []
       }
@@ -1460,9 +1473,141 @@ const loadDefaultRecommendations = async () => {
   }
 }
 
-// 加载热门攻略
+// 加载热门攻略（使用推荐算法）
 const loadHotPlans = async () => {
   try {
+    // 获取当前标签页的用户信息
+    const userInfo = getCurrentUserInfo()
+    
+    // 使用推荐API（基于用户画像大数据推荐）
+    if (userInfo && (userInfo.id || userInfo.userId)) {
+      try {
+        const recommendResponse = await request.get('/recommendation/plans', {
+          params: {
+            limit: 10 // 获取更多数据用于排序
+          }
+        })
+        
+        if (recommendResponse.code === 200 && recommendResponse.data) {
+          let plans = recommendResponse.data || []
+          console.log('推荐攻略API返回数据:', plans, '数量:', plans.length)
+          
+          // 如果推荐算法返回的数据大于6个，按浏览量和收藏量排序（哪个多就优先显示）
+          if (plans.length > 6) {
+            plans = plans.sort((a, b) => {
+              const aViews = a.viewCount || a.views || 0
+              const bViews = b.viewCount || b.views || 0
+              const aLikes = a.likeCount || a.likes || 0
+              const bLikes = b.likeCount || b.likes || 0
+              
+              // 计算总热度（浏览量 + 收藏量）
+              const aTotal = aViews + aLikes
+              const bTotal = bViews + bLikes
+              
+              // 先按总热度排序（降序）
+              if (bTotal !== aTotal) {
+                return bTotal - aTotal
+              }
+              
+              // 总热度相同，优先显示收藏量多的
+              const likeDiff = bLikes - aLikes
+              if (likeDiff !== 0) {
+                return likeDiff
+              }
+              
+              // 收藏量也相同，按浏览量排序（降序）
+              return bViews - aViews
+            })
+          }
+          
+          // 只取前6个
+          plans = plans.slice(0, 6)
+          
+          hotPlans.value = plans.map((plan) => {
+            // 处理封面图
+            let cover = plan.coverImage || ''
+            if (!cover && plan.images) {
+              if (typeof plan.images === 'string') {
+                const imageArray = plan.images.split(',').filter(Boolean)
+                if (imageArray.length > 0) {
+                  cover = imageArray[0].trim().replace(/["']/g, '')
+                }
+              } else if (Array.isArray(plan.images) && plan.images.length > 0) {
+                cover = plan.images[0]
+              }
+            }
+            if (!cover) {
+              cover = '/default-cover.jpg'
+            }
+            
+            // 处理作者信息
+            const author = plan.author || plan.username || plan.userName || '匿名用户'
+            const authorAvatar = plan.authorAvatar || plan.userAvatar || ''
+            
+            // 根据作者积分计算等级（统一使用升级指南的计算方式）
+            const authorPoints = plan.authorPoints !== undefined && plan.authorPoints !== null ? plan.authorPoints : 0
+            const authorLevelInfo = getLevelByPoints(authorPoints)
+            
+            const levelName = authorLevelInfo.name
+            const levelColor = authorLevelInfo.color
+            const levelGradient = authorLevelInfo.gradient || { start: authorLevelInfo.color, end: authorLevelInfo.color }
+            
+            // 处理标签（从tags字段解析）
+            let tags = []
+            if (plan.tags) {
+              if (Array.isArray(plan.tags)) {
+                tags = plan.tags
+              } else if (typeof plan.tags === 'string' && plan.tags.trim()) {
+                tags = plan.tags.split(',').filter(Boolean).map(t => t.trim())
+              }
+            }
+            
+            // 根据点赞数和浏览量确定状态标签
+            const likeCount = plan.likeCount || 0
+            const viewCount = plan.viewCount || 0
+            let statusText = '推荐'
+            let statusType = 'info'
+            
+            if (likeCount > 1000 || viewCount > 10000) {
+              statusText = '精品'
+              statusType = 'danger'
+            } else if (likeCount > 500 || viewCount > 5000) {
+              statusText = '推荐'
+              statusType = 'warning'
+            }
+            
+            return {
+              id: plan.id,
+              cover: cover,
+              title: plan.title || '攻略标题',
+              destination: plan.destination || '',
+              description: plan.description 
+                ? (plan.description.length > 80 ? plan.description.substring(0, 80) + '...' : plan.description)
+                : '暂无描述',
+              authorId: plan.authorId || plan.userId || plan.author?.id,
+              author: author,
+              authorAvatar: authorAvatar,
+              levelName: levelName,
+              levelColor: levelColor,
+              levelGradient: levelGradient,
+              statusText: statusText,
+              statusType: statusType,
+              viewCount: plan.viewCount || 0,
+              likeCount: likeCount,
+              commentCount: plan.commentCount || 0,
+              tags: tags
+            }
+          })
+          
+          console.log('✅ 基于用户画像的智能推荐攻略（已排序，显示前6个）:', hotPlans.value)
+          return
+        }
+      } catch (recommendError) {
+        console.warn('推荐攻略API调用失败，降级为默认推荐:', recommendError)
+      }
+    }
+    
+    // 降级方案：使用默认推荐（按浏览量排序）
     const response = await request.get('/travel-plan/list', {
       params: {
         page: 1,
@@ -1474,11 +1619,34 @@ const loadHotPlans = async () => {
     if (response.code === 200 && response.data?.list) {
       let plans = response.data.list || []
       
-      // 过滤已发布状态并排序（按浏览量降序）
+      // 过滤已发布状态并排序（按浏览量和收藏量排序，哪个多就优先显示）
       plans = plans
         .filter((plan) => plan.status === 1)
-        .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
-        .slice(0, 2) // 只取前2个
+        .sort((a, b) => {
+          const aViews = a.viewCount || 0
+          const bViews = b.viewCount || 0
+          const aLikes = a.likeCount || 0
+          const bLikes = b.likeCount || 0
+          
+          // 计算总热度（浏览量 + 收藏量）
+          const aTotal = aViews + aLikes
+          const bTotal = bViews + bLikes
+          
+          // 先按总热度排序（降序）
+          if (bTotal !== aTotal) {
+            return bTotal - aTotal
+          }
+          
+          // 总热度相同，优先显示收藏量多的
+          const likeDiff = bLikes - aLikes
+          if (likeDiff !== 0) {
+            return likeDiff
+          }
+          
+          // 收藏量也相同，按浏览量排序（降序）
+          return bViews - aViews
+        })
+        .slice(0, 6) // 只取前6个
       
       hotPlans.value = plans.map((plan) => {
         // 处理封面图
@@ -4818,31 +4986,33 @@ onMounted(() => {
   
   .recommendations-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+    grid-template-columns: 1fr;
+    gap: 24px;
     
     .recommendation-card {
       background: white;
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
       cursor: pointer;
       transition: box-shadow 0.3s ease;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      display: flex;
+      flex-direction: row;
       
       &:hover {
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
       }
       
       .recommendation-image {
         position: relative;
-        height: 220px;
+        flex: 2;
+        height: 280px;
         overflow: hidden;
         
         img {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: transform 0.5s ease;
         }
         
         .recommendation-overlay {
@@ -4886,21 +5056,26 @@ onMounted(() => {
       }
       
       .recommendation-content {
-        padding: 16px;
+        flex: 1;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 0;
         
         .recommendation-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 8px;
+          margin-bottom: 12px;
           
           .recommendation-title {
             flex: 1;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
             margin: 0;
             color: #303133;
-            line-height: 1.4;
+            line-height: 1.5;
           }
           
           .recommendation-rating {
@@ -4918,28 +5093,28 @@ onMounted(() => {
         .recommendation-location {
           display: flex;
           align-items: center;
-          gap: 4px;
-          font-size: 13px;
+          gap: 6px;
+          font-size: 15px;
           color: #909399;
-          margin-bottom: 12px;
+          margin-bottom: 16px;
         }
         
         .recommendation-tags {
           display: flex;
-          gap: 6px;
-          margin-bottom: 12px;
+          gap: 8px;
+          margin-bottom: 16px;
           flex-wrap: wrap;
           
           .tag {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 4px 12px;
+            padding: 6px 14px;
             background: #f5f5f5;
             color: #606266;
             border: 1px solid #e4e7ed;
-            border-radius: 4px;
-            font-size: 12px;
+            border-radius: 6px;
+            font-size: 13px;
             transition: all 0.2s ease;
             
             .tag-windmill {
@@ -5282,7 +5457,14 @@ onMounted(() => {
   }
   
   .recommendations-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: 1fr !important;
+    
+    .recommendation-card {
+      .recommendation-image {
+        flex: 2;
+        height: 260px;
+      }
+    }
   }
 }
 
@@ -5311,7 +5493,22 @@ onMounted(() => {
   }
   
   .recommendations-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: 1fr !important;
+    
+    .recommendation-card {
+      .recommendation-image {
+        flex: 2;
+        height: 240px;
+      }
+      
+      .recommendation-content {
+        padding: 20px;
+        
+        .recommendation-header .recommendation-title {
+          font-size: 18px;
+        }
+      }
+    }
   }
   
   .culture-grid {
@@ -5394,7 +5591,32 @@ onMounted(() => {
   }
   
   .features-grid,
-  .recommendations-grid,
+  .recommendations-grid {
+    grid-template-columns: 1fr !important;
+    
+    .recommendation-card {
+      flex-direction: column;
+      
+      .recommendation-image {
+        width: 100%;
+        min-width: 100%;
+        height: 220px;
+      }
+      
+      .recommendation-content {
+        padding: 20px;
+        
+        .recommendation-header .recommendation-title {
+          font-size: 18px;
+        }
+        
+        .recommendation-location {
+          font-size: 14px;
+        }
+      }
+    }
+  }
+  
   .culture-grid {
     grid-template-columns: 1fr !important;
   }

@@ -12,12 +12,36 @@
       <div class="register-form">
         <h2>用户注册</h2>
         
-        <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef">
+        <!-- 注册方式切换 -->
+        <div class="register-method-tabs">
+          <div 
+            class="tab-item" 
+            :class="{ active: registerMethod === 'email' }"
+            @click="registerMethod = 'email'"
+          >
+            邮箱注册
+          </div>
+          <div 
+            class="tab-item" 
+            :class="{ active: registerMethod === 'phone' }"
+            @click="registerMethod = 'phone'"
+          >
+            手机注册
+          </div>
+        </div>
+        
+        <!-- 邮箱注册表单 -->
+        <el-form 
+          v-if="registerMethod === 'email'"
+          :model="registerForm" 
+          :rules="registerRules" 
+          ref="registerFormRef"
+        >
           <el-form-item prop="username">
             <el-input 
               v-model="registerForm.username" 
               placeholder="请输入用户名"
-              prefix-icon="User"
+              :prefix-icon="User"
               size="large"
             />
           </el-form-item>
@@ -25,7 +49,7 @@
             <el-input 
               v-model="registerForm.email" 
               placeholder="请输入邮箱"
-              prefix-icon="Message"
+              :prefix-icon="Message"
               size="large"
             />
           </el-form-item>
@@ -34,7 +58,7 @@
               v-model="registerForm.password" 
               type="password" 
               placeholder="请输入密码"
-              prefix-icon="Lock"
+              :prefix-icon="Lock"
               size="large"
             />
           </el-form-item>
@@ -43,7 +67,7 @@
               v-model="registerForm.confirmPassword" 
               type="password" 
               placeholder="请确认密码"
-              prefix-icon="Lock"
+              :prefix-icon="Lock"
               size="large"
             />
           </el-form-item>
@@ -51,7 +75,7 @@
             <el-input 
               v-model="registerForm.phone" 
               placeholder="请输入手机号"
-              prefix-icon="Phone"
+              :prefix-icon="Phone"
               size="large"
             />
           </el-form-item>
@@ -70,6 +94,85 @@
             <el-button 
               type="primary" 
               @click="handleRegister" 
+              :loading="loading"
+              size="large"
+              style="width: 100%;"
+            >
+              {{ loading ? '注册中...' : '立即注册' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <!-- 手机号注册表单 -->
+        <el-form 
+          v-if="registerMethod === 'phone'"
+          :model="phoneRegisterForm" 
+          :rules="phoneRegisterRules" 
+          ref="phoneRegisterFormRef"
+        >
+          <el-form-item prop="phone">
+            <el-input 
+              v-model="phoneRegisterForm.phone" 
+              placeholder="请输入手机号"
+              :prefix-icon="Phone"
+              size="large"
+            />
+          </el-form-item>
+          
+          <el-form-item prop="captcha">
+            <div class="captcha-input-wrapper">
+              <el-input 
+                v-model="phoneRegisterForm.captcha" 
+                placeholder="请输入验证码"
+                :prefix-icon="Message"
+                size="large"
+              />
+              <el-button 
+                :disabled="countdown > 0"
+                @click="handleSendPhoneCaptcha"
+                class="captcha-button"
+              >
+                {{ countdown > 0 ? `${countdown}秒后重发` : '发送验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+          
+          <el-form-item prop="password">
+            <el-input 
+              v-model="phoneRegisterForm.password" 
+              type="password" 
+              placeholder="请输入密码"
+              :prefix-icon="Lock"
+              size="large"
+            />
+          </el-form-item>
+          
+          <el-form-item prop="confirmPassword">
+            <el-input 
+              v-model="phoneRegisterForm.confirmPassword" 
+              type="password" 
+              placeholder="请确认密码"
+              :prefix-icon="Lock"
+              size="large"
+            />
+          </el-form-item>
+          
+          <el-form-item class="agreement-item">
+            <div class="agreement-wrapper">
+              <el-checkbox v-model="agreeTerms" class="agreement-checkbox" />
+              <div class="agreement-text" @click.stop>
+                <span>我已阅读并同意</span>
+                <el-link type="primary" @click.stop.prevent="showUserAgreement">《用户协议》</el-link>
+                <span>和</span>
+                <el-link type="primary" @click.stop.prevent="showPrivacyPolicy">《隐私政策》</el-link>
+              </div>
+            </div>
+          </el-form-item>
+          
+          <el-form-item>
+            <el-button 
+              type="primary" 
+              @click="handlePhoneRegister" 
               :loading="loading"
               size="large"
               style="width: 100%;"
@@ -103,9 +206,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { User, Message, Lock, Phone } from '@element-plus/icons-vue'
 import { authAPI } from '@/api/auth'
 import { getPublicSecurityConfig } from '@/api/systemConfig'
 import AgreementDialog from '@/components/AgreementDialog.vue'
@@ -117,7 +221,10 @@ const route = useRoute()
 const systemStore = useSystemStore()
 const { userPlatformName } = storeToRefs(systemStore)
 
-// 表单数据
+// 注册方式选择（邮箱注册/手机注册）
+const registerMethod = ref('email')
+
+// 邮箱注册表单数据
 const registerForm = reactive({
   username: '',
   email: '',
@@ -126,10 +233,22 @@ const registerForm = reactive({
   phone: ''
 })
 
+// 手机号注册表单数据
+const phoneRegisterForm = reactive({
+  phone: '',
+  captcha: '',
+  password: '',
+  confirmPassword: ''
+})
+
 // 同意条款
 const agreeTerms = ref(false)
 const userAgreementRead = ref(false)
 const privacyAgreementRead = ref(false)
+
+// 验证码倒计时
+const countdown = ref(0)
+let countdownTimer: NodeJS.Timeout | null = null
 
 // 表单验证规则
 const passwordMinLength = ref(6)
@@ -142,7 +261,111 @@ const registerRules = {
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    {
+      validator: (_rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback(new Error('请输入邮箱'))
+        } else {
+          // 基本的邮箱格式验证
+          const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,6}$/
+          
+          if (!emailRegex.test(value)) {
+            callback(new Error('请输入正确的邮箱格式'))
+            return
+          }
+          
+          // 提取用户名和域名部分
+          const parts = value.split('@')
+          const username = parts[0]
+          const domain = parts[1].toLowerCase()
+          
+          // 验证用户名部分：不能全是数字，必须包含至少一个字母
+          if (/^\d+$/.test(username)) {
+            callback(new Error('邮箱用户名不能全是数字，必须包含字母'))
+            return
+          }
+          
+          // 验证域名部分：不能全是数字
+          const domainParts = domain.split('.')
+          const domainName = domainParts[0]
+          if (/^\d+$/.test(domainName)) {
+            callback(new Error('请输入正确的邮箱格式'))
+            return
+          }
+          
+          // 验证必须是各大邮箱服务商的后缀
+          const validEmailDomains = [
+            // 国内邮箱
+            'qq.com', 'foxmail.com', 'vip.qq.com',
+            '163.com', '126.com', 'yeah.net', 'vip.163.com',
+            'sina.com', 'sina.cn', 'vip.sina.com',
+            'sohu.com', 'vip.sohu.com',
+            '139.com',
+            'tom.com',
+            '21cn.com',
+            '188.com',
+            'aliyun.com',
+            '189.cn',
+            'wo.cn',
+            // 国际邮箱
+            'gmail.com',
+            'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+            'yahoo.com', 'yahoo.cn', 'yahoo.com.cn',
+            'icloud.com', 'me.com', 'mac.com',
+            'aol.com',
+            'mail.com',
+            'protonmail.com', 'proton.me',
+            'zoho.com',
+            'yandex.com',
+            'mail.ru',
+            'gmx.com',
+            'rediffmail.com',
+            // 企业邮箱常见后缀
+            'qq.com', '163.com', 'sina.com', 'sohu.com',
+            'gmail.com', 'outlook.com', 'yahoo.com'
+          ]
+          
+          // 检查是否是有效的邮箱服务商域名
+          let isValidDomain = false
+          for (const validDomain of validEmailDomains) {
+            if (domain === validDomain || domain.endsWith('.' + validDomain)) {
+              isValidDomain = true
+              break
+            }
+          }
+          
+          // 如果不在列表中，检查是否是常见的通用域名格式（允许但不推荐）
+          if (!isValidDomain) {
+            // 允许常见的通用顶级域名，但要求域名部分不能全是数字
+            const commonTlds = ['com', 'cn', 'net', 'org', 'edu', 'gov', 'co', 'io', 'me', 'tv', 'cc', 'info', 'biz', 'name', 'mobi', 'asia', 'xyz', 'top', 'wang', 'tech', 'online', 'site', 'store', 'shop', 'app', 'dev', 'cloud', 'email', 'live', 'work', 'fun', 'love', 'life', 'world', 'today', 'city', 'group', 'team', 'company']
+            const tld = domainParts[domainParts.length - 1].toLowerCase()
+            
+            if (commonTlds.includes(tld) && domainParts.length >= 2) {
+              // 允许通用域名，但给出提示
+              isValidDomain = true
+            } else {
+              callback(new Error('请输入正确的邮箱格式，支持QQ、163、Gmail、Outlook等主流邮箱服务商'))
+              return
+            }
+          }
+          
+          // 验证域名长度：域名部分不能过长
+          if (domain.length > 253) {
+            callback(new Error('邮箱域名过长，请输入正确的邮箱格式'))
+            return
+          }
+          
+          // 验证用户名长度：不能过长
+          if (username.length > 64) {
+            callback(new Error('邮箱用户名过长，请输入正确的邮箱格式'))
+            return
+          }
+          
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -182,7 +405,65 @@ const registerRules = {
 
 // 表单引用
 const registerFormRef = ref()
+const phoneRegisterFormRef = ref()
 const loading = ref(false)
+
+// 手机号注册验证规则
+const phoneRegisterRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    {
+      validator: (_rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback(new Error('请输入手机号'))
+        } else {
+          // 简单的手机号格式验证（支持国际格式）
+          const phoneRegex = /^(\+?[1-9]\d{1,14}|1[3-9]\d{9})$/
+          if (!phoneRegex.test(value.replace(/[\s-]/g, ''))) {
+            callback(new Error('请输入正确的手机号格式'))
+          } else {
+            callback()
+          }
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码为6位数字', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    {
+      validator: (_rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback(new Error('请输入密码'))
+        } else if (value.length < passwordMinLength.value || value.length > 20) {
+          callback(new Error(`密码长度在 ${passwordMinLength.value} 到 20 个字符`))
+        } else if (!/^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]+$/.test(value)) {
+          callback(new Error('密码必须包含字母和数字'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (rule: any, value: string, callback: Function) => {
+        if (value !== phoneRegisterForm.password) {
+          callback(new Error('两次输入密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 
 // 对话框显示状态
 const showUserAgreementDialog = ref(false)
@@ -207,61 +488,17 @@ onMounted(async () => {
 
 // 注册处理
 const handleRegister = async () => {
-  try {
-    // 手动验证每个字段
-    if (!registerForm.username || registerForm.username.trim() === '') {
-      ElMessage.error('请输入用户名')
-      return
-    }
-    
-    if (registerForm.username.length < 3 || registerForm.username.length > 20) {
-      ElMessage.error('用户名长度应在3到20个字符之间')
-      return
-    }
-    
-    if (!registerForm.email || registerForm.email.trim() === '') {
-      ElMessage.error('请输入邮箱')
-      return
-    }
-    
-    // 验证邮箱格式
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-    if (!emailRegex.test(registerForm.email)) {
-      ElMessage.error('请输入正确的邮箱格式')
-      return
-    }
-    
-    if (!registerForm.password || registerForm.password.trim() === '') {
-      ElMessage.error('请输入密码')
-      return
-    }
-    
-    if (registerForm.password.length < passwordMinLength.value || registerForm.password.length > 20) {
-      ElMessage.error(`密码长度应在${passwordMinLength.value}到20个字符之间`)
-      return
-    }
-    
-    // 验证密码包含字母和数字
-    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)/
-    if (!passwordRegex.test(registerForm.password)) {
-      ElMessage.error('密码必须包含字母和数字')
-      return
-    }
-    
-    if (registerForm.password !== registerForm.confirmPassword) {
-      ElMessage.error('两次输入密码不一致')
-      return
-    }
-    
-    if (!registerForm.phone || registerForm.phone.trim() === '') {
-      ElMessage.error('请输入手机号')
-      return
-    }
-    
-    // 验证手机号格式
-    const phoneRegex = /^1[3-9]\d{9}$/
-    if (!phoneRegex.test(registerForm.phone)) {
-      ElMessage.error('请输入正确的手机号格式')
+  if (!registerFormRef.value) return
+  
+  await registerFormRef.value.validate(async (valid, fields) => {
+    if (!valid) {
+      // 验证失败，使用 ElMessage 显示第一个错误
+      const firstError = Object.keys(fields || {})[0]
+      if (firstError && fields[firstError] && fields[firstError].length > 0) {
+        ElMessage.error(fields[firstError][0].message)
+      } else {
+        ElMessage.error('请检查输入信息')
+      }
       return
     }
     
@@ -270,78 +507,80 @@ const handleRegister = async () => {
       return
     }
     
-    console.log('开始注册，表单数据:', {
-      username: registerForm.username,
-      email: registerForm.email,
-      phone: registerForm.phone
-    })
-    
-    loading.value = true
-    
-    // 从URL参数获取邀请码
-    const inviteCode = route.query.invite as string || ''
-    
-    // 调用注册API
-    const response = await authAPI.register({
-      username: registerForm.username,
-      email: registerForm.email,
-      password: registerForm.password,
-      phone: registerForm.phone,
-      inviteCode: inviteCode  // 传递邀请码
-    })
-    
-    console.log('注册响应:', response)
-    
-    if (response.code === 200) {
-      ElMessage.success('注册成功！请登录')
-      setTimeout(() => {
-        router.push('/')
-      }, 1500)
-    } else {
-      console.error('注册失败，返回码:', response.code, '错误信息:', response.message)
-      ElMessage.error(response.message || '注册失败')
-    }
-  } catch (error: any) {
-    console.error('注册错误:', error)
-    console.error('错误response:', error.response)
-    console.error('错误response.data:', error.response?.data)
-    
-    // 提取用户友好的错误信息
-    let errorMessage = '注册失败，请重试'
-    
-    // 优先使用后端返回的错误信息
-    // 后端返回格式: { code: 400, message: "错误信息", data: null }
-    if (error.response?.data?.message) {
-      errorMessage = error.response.data.message
-      console.log('使用后端返回的错误信息:', errorMessage)
-    } else if (error.response?.data?.data) {
-      errorMessage = error.response.data.data
-      console.log('使用后端返回的数据信息:', errorMessage)
-    } else if (error.message) {
-      // 过滤掉技术性的错误信息
-      if (error.message.includes('username') && error.message.includes('already exists')) {
-        errorMessage = '用户名已存在，请选择其他用户名'
-      } else if (error.message.includes('email') && error.message.includes('already exists')) {
-        errorMessage = '邮箱已被注册，请使用其他邮箱'
-      } else if (error.message.includes('phone') && error.message.includes('already exists')) {
-        errorMessage = '手机号已被使用，请使用其他手机号'
-      } else if (error.message.includes('Connection') || 
-                 error.message.includes('timeout')) {
-        errorMessage = '网络连接异常，请检查网络后重试'
-      } else if (error.message.includes('500') || 
-                 error.message.includes('Internal Server Error')) {
-        errorMessage = '服务器异常，请稍后重试'
+    try {
+      console.log('开始注册，表单数据:', {
+        username: registerForm.username,
+        email: registerForm.email,
+        phone: registerForm.phone
+      })
+      
+      loading.value = true
+      
+      // 从URL参数获取邀请码
+      const inviteCode = route.query.invite as string || ''
+      
+      // 调用注册API
+      const response = await authAPI.register({
+        username: registerForm.username,
+        email: registerForm.email,
+        password: registerForm.password,
+        phone: registerForm.phone,
+        inviteCode: inviteCode  // 传递邀请码
+      })
+      
+      console.log('注册响应:', response)
+      
+      if (response.code === 200) {
+        ElMessage.success('注册成功！请登录')
+        setTimeout(() => {
+          router.push('/')
+        }, 1500)
       } else {
-        errorMessage = error.message
+        console.error('注册失败，返回码:', response.code, '错误信息:', response.message)
+        ElMessage.error(response.message || '注册失败')
       }
-      console.log('使用错误message:', errorMessage)
+    } catch (error: any) {
+      console.error('注册错误:', error)
+      console.error('错误response:', error.response)
+      console.error('错误response.data:', error.response?.data)
+      
+      // 提取用户友好的错误信息
+      let errorMessage = '注册失败，请重试'
+      
+      // 优先使用后端返回的错误信息
+      // 后端返回格式: { code: 400, message: "错误信息", data: null }
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+        console.log('使用后端返回的错误信息:', errorMessage)
+      } else if (error.response?.data?.data) {
+        errorMessage = error.response.data.data
+        console.log('使用后端返回的数据信息:', errorMessage)
+      } else if (error.message) {
+        // 过滤掉技术性的错误信息
+        if (error.message.includes('username') && error.message.includes('already exists')) {
+          errorMessage = '用户名已存在，请选择其他用户名'
+        } else if (error.message.includes('email') && error.message.includes('already exists')) {
+          errorMessage = '邮箱已被注册，请使用其他邮箱'
+        } else if (error.message.includes('phone') && error.message.includes('already exists')) {
+          errorMessage = '手机号已被使用，请使用其他手机号'
+        } else if (error.message.includes('Connection') || 
+                   error.message.includes('timeout')) {
+          errorMessage = '网络连接异常，请检查网络后重试'
+        } else if (error.message.includes('500') || 
+                   error.message.includes('Internal Server Error')) {
+          errorMessage = '服务器异常，请稍后重试'
+        } else {
+          errorMessage = error.message
+        }
+        console.log('使用错误message:', errorMessage)
+      }
+      
+      console.log('最终错误信息:', errorMessage)
+      ElMessage.error(errorMessage)
+    } finally {
+      loading.value = false
     }
-    
-    console.log('最终错误信息:', errorMessage)
-    ElMessage.error(errorMessage)
-  } finally {
-    loading.value = false
-  }
+  })
 }
 
 // 登录处理
@@ -375,6 +614,134 @@ watch(agreeTerms, (val) => {
     userAgreementRead.value = false
     privacyAgreementRead.value = false
   }
+})
+
+// 发送手机验证码
+const handleSendPhoneCaptcha = async () => {
+  if (!phoneRegisterFormRef.value) return
+  
+  await phoneRegisterFormRef.value.validateField('phone', async (valid: boolean) => {
+    if (!valid) {
+      return
+    }
+    
+    try {
+      loading.value = true
+      const response = await authAPI.sendPhoneCaptcha({ phone: phoneRegisterForm.phone })
+      if (response.code === 200) {
+        ElMessage.success('验证码已发送，请查收')
+        // 开始倒计时
+        startCountdown()
+      } else {
+        ElMessage.error(response.message || '发送验证码失败')
+      }
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || '发送验证码失败')
+    } finally {
+      loading.value = false
+    }
+  })
+}
+
+// 开始倒计时
+const startCountdown = () => {
+  countdown.value = 60
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      if (countdownTimer) {
+        clearInterval(countdownTimer)
+        countdownTimer = null
+      }
+    }
+  }, 1000)
+}
+
+// 手机号注册处理
+const handlePhoneRegister = async () => {
+  if (!phoneRegisterFormRef.value) return
+  
+  await phoneRegisterFormRef.value.validate(async (valid, fields) => {
+    if (!valid) {
+      // 验证失败，使用 ElMessage 显示第一个错误
+      const firstError = Object.keys(fields || {})[0]
+      if (firstError && fields[firstError] && fields[firstError].length > 0) {
+        ElMessage.error(fields[firstError][0].message)
+      } else {
+        ElMessage.error('请检查输入信息')
+      }
+      return
+    }
+    
+    if (!agreeTerms.value) {
+      ElMessage.warning('请先同意用户协议和隐私政策')
+      return
+    }
+    
+    try {
+      loading.value = true
+      
+      // 从URL参数获取邀请码
+      const inviteCode = route.query.invite as string || ''
+      
+      // 调用手机号注册API
+      const response = await authAPI.registerByPhone({
+        phone: phoneRegisterForm.phone,
+        captcha: phoneRegisterForm.captcha,
+        password: phoneRegisterForm.password,
+        inviteCode: inviteCode
+      })
+      
+      if (response.code === 200) {
+        ElMessage.success('注册成功！请登录')
+        setTimeout(() => {
+          router.push('/')
+        }, 1500)
+      } else {
+        ElMessage.error(response.message || '注册失败')
+      }
+    } catch (error: any) {
+      let errorMessage = '注册失败，请重试'
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      ElMessage.error(errorMessage)
+    } finally {
+      loading.value = false
+    }
+  })
+}
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
+
+// 监听注册方式切换，清空表单
+watch(() => registerMethod.value, () => {
+  phoneRegisterForm.phone = ''
+  phoneRegisterForm.captcha = ''
+  phoneRegisterForm.password = ''
+  phoneRegisterForm.confirmPassword = ''
+  registerForm.username = ''
+  registerForm.email = ''
+  registerForm.password = ''
+  registerForm.confirmPassword = ''
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdown.value = 0
 })
 </script>
 
@@ -447,7 +814,7 @@ watch(agreeTerms, (val) => {
     font-size: 22px;
     font-weight: 600;
     color: #ffffff;
-    margin-bottom: 35px;
+    margin-bottom: 25px;
     position: relative;
     
     &::after {
@@ -463,13 +830,73 @@ watch(agreeTerms, (val) => {
     }
   }
 
+  // 注册方式切换标签页
+  .register-method-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+    
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      padding: 10px 20px;
+      color: #888;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      
+      &.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+        font-weight: 600;
+      }
+    }
+  }
+
+  // 验证码输入框容器
+  .captcha-input-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    
+    .el-input {
+      flex: 1;
+    }
+    
+    .captcha-button {
+      white-space: nowrap;
+      min-width: 120px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      
+      &:disabled {
+        color: #666;
+        cursor: not-allowed;
+      }
+    }
+  }
+
   :deep(.el-form-item) {
     margin-bottom: 24px;
     
     .el-form-item__error {
-      font-size: 12px;
-      margin-top: 6px;
-      color: #f87171;
+      display: none; // 隐藏表单下方的错误提示
     }
   }
   
@@ -488,10 +915,62 @@ watch(agreeTerms, (val) => {
     :deep(.el-checkbox) {
       margin-right: 0;
       
-      .el-checkbox__input.is-checked .el-checkbox__inner {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: #ffffff;
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+      .el-checkbox__input {
+        .el-checkbox__inner {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 4px;
+          transition: all 0.3s ease;
+          
+          &:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+          }
+          
+          &::after {
+            border: 2px solid #ffffff;
+            border-left: 0;
+            border-top: 0;
+            height: 10px;
+            left: 5px;
+            top: 4px;
+            width: 5px;
+            transition: all 0.2s ease;
+          }
+        }
+        
+        &.is-checked {
+          .el-checkbox__inner {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 
+              0 0 8px rgba(255, 255, 255, 0.3),
+              inset 0 0 10px rgba(255, 255, 255, 0.1);
+            
+            &:hover {
+              border-color: #ffffff;
+              background: rgba(255, 255, 255, 0.2);
+              box-shadow: 
+                0 0 12px rgba(255, 255, 255, 0.4),
+                inset 0 0 12px rgba(255, 255, 255, 0.15);
+            }
+          }
+        }
+        
+        &.is-focus {
+          .el-checkbox__inner {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+          }
+        }
+      }
+      
+      .el-checkbox__label {
+        color: #888;
+        font-size: 14px;
+        padding-left: 8px;
       }
     }
     

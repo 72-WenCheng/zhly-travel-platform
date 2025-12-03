@@ -118,18 +118,11 @@ public class AdminUserServiceImpl implements AdminUserService {
             if (user.getPhone() != null) {
                 updateWrapper.set(AdminUser::getPhone, user.getPhone());
             }
-            if (user.getUserType() != null) {
-                updateWrapper.set(AdminUser::getUserType, user.getUserType());
-            }
+            // userType 字段已移除，不再更新
             if (user.getTravelPreference() != null) {
                 updateWrapper.set(AdminUser::getTravelPreference, user.getTravelPreference());
             }
-            if (user.getInterestTags() != null) {
-                updateWrapper.set(AdminUser::getInterestTags, user.getInterestTags());
-            }
-            if (user.getFrequentCities() != null) {
-                updateWrapper.set(AdminUser::getFrequentCities, user.getFrequentCities());
-            }
+            // interest_tags 和 frequent_cities 字段已移除，这些数据从用户画像服务获取
             if (user.getAvatar() != null) {
                 updateWrapper.set(AdminUser::getAvatar, user.getAvatar());
             }
@@ -249,7 +242,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 escapeCSV(user.getNickname()),
                 escapeCSV(user.getEmail()),
                 escapeCSV(user.getPhone()),
-                getUserTypeText(user.getUserType()),
+                "", // userType 字段已移除
                 getRoleText(user.getRole()),
                 getTravelPreferenceText(user.getTravelPreference()),
                 user.getPoints() != null ? user.getPoints() : 0,
@@ -277,11 +270,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         return value;
     }
     
-    private String getUserTypeText(Integer userType) {
-        if (userType == null) return "";
-        Map<Integer, String> types = Map.of(1, "个人", 2, "情侣", 3, "家庭", 4, "团队");
-        return types.getOrDefault(userType, "");
-    }
+    // getUserTypeText 方法已移除，userType 字段已删除
     
     private String getRoleText(Integer role) {
         if (role == null) return "";

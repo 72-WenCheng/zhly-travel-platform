@@ -88,6 +88,30 @@ export const authAPI = {
   // 用户登出
   logout: (userId: number) => {
     return api.post('/auth/logout', { userId })
+  },
+
+  // 发送手机验证码
+  sendPhoneCaptcha: (data: { phone: string }) => {
+    return api.post('/auth/send-phone-captcha', data)
+  },
+
+  // 手机号注册
+  registerByPhone: (data: {
+    phone: string
+    captcha: string
+    password: string
+    inviteCode?: string
+  }) => {
+    return api.post('/auth/register/phone', data)
+  },
+
+  // 手机号登录
+  loginByPhone: (data: {
+    phone: string
+    captcha: string
+    loginType?: string
+  }) => {
+    return api.post('/auth/login/phone', data)
   }
 }
 

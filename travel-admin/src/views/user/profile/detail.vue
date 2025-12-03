@@ -112,8 +112,8 @@
                   <span class="info-value">{{ getSafeFieldValue(basicInfo.email) }}</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-label">出行类型</span>
-                  <span class="info-value">{{ basicInfo.userType !== undefined && basicInfo.userType !== null ? getUserTypeText(basicInfo.userType) : '----' }}</span>
+                  <span class="info-label">出行偏好</span>
+                  <span class="info-value">{{ basicInfo.travelPreference !== undefined && basicInfo.travelPreference !== null ? getTravelPreferenceTypeText(basicInfo.travelPreference) : '----' }}</span>
                 </div>
               </div>
             </div>
@@ -166,15 +166,82 @@
               </div>
             </div>
 
-            <!-- 年龄段 -->
+            <!-- 出行偏好 -->
             <div class="portrait-info-card">
               <div class="card-header">
-                <el-icon class="card-icon"><Calendar /></el-icon>
-                <h4 class="card-title">年龄段</h4>
+                <el-icon class="card-icon"><Compass /></el-icon>
+                <h4 class="card-title">出行偏好</h4>
               </div>
               <div class="card-content">
-                <div class="age-badge">
-                  {{ getSafeFieldValue(portraitData.ageGroup) }}
+                <div class="preference-badge">
+                  {{ (basicInfo.travelPreference !== undefined && basicInfo.travelPreference !== null) 
+                      ? getTravelPreferenceTypeText(basicInfo.travelPreference) 
+                      : '----' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 旅游时长偏好 -->
+            <div class="portrait-info-card">
+              <div class="card-header">
+                <el-icon class="card-icon"><Clock /></el-icon>
+                <h4 class="card-title">旅游时长偏好</h4>
+              </div>
+              <div class="card-content">
+                <div class="preference-badge">
+                  {{ getSafeFieldValue(portraitData.tripDuration) || '----' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 季节偏好 -->
+            <div class="portrait-info-card">
+              <div class="card-header">
+                <el-icon class="card-icon"><Sunny /></el-icon>
+                <h4 class="card-title">季节偏好</h4>
+              </div>
+              <div class="card-content">
+                <div class="preference-badge">
+                  {{ getSafeFieldValue(portraitData.seasonPreference) || '----' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 平均消费 -->
+            <div class="portrait-info-card">
+              <div class="card-header">
+                <el-icon class="card-icon"><Wallet /></el-icon>
+                <h4 class="card-title">平均消费</h4>
+              </div>
+              <div class="card-content">
+                <div class="consumption-badge">
+                  {{ portraitData.avgConsumption ? `¥${portraitData.avgConsumption}/天` : '----' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 消费频次 -->
+            <div class="portrait-info-card">
+              <div class="card-header">
+                <el-icon class="card-icon"><TrendCharts /></el-icon>
+                <h4 class="card-title">消费频次</h4>
+              </div>
+              <div class="card-content">
+                <div class="preference-badge">
+                  {{ getSafeFieldValue(portraitData.consumptionFrequency) || '----' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 价格敏感度 -->
+            <div class="portrait-info-card">
+              <div class="card-header">
+                <el-icon class="card-icon"><DataAnalysis /></el-icon>
+                <h4 class="card-title">价格敏感度</h4>
+              </div>
+              <div class="card-content">
+                <div class="preference-badge">
+                  {{ getSafeFieldValue(portraitData.priceSensitivity) || '----' }}
                 </div>
               </div>
             </div>
@@ -311,7 +378,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
   User, Document, Location, View, Star, ChatDotRound, Plus, Edit, ChatLineSquare,
-  CollectionTag, Money, Calendar, LocationFilled, ArrowLeft, ArrowRight
+  CollectionTag, Money, Calendar, LocationFilled, ArrowLeft, ArrowRight,
+  Compass, Clock, Sunny, Wallet, TrendCharts, DataAnalysis
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
@@ -619,7 +687,30 @@ const getGenderText = (gender: number | null | undefined): string => {
   }
 }
 
-// 获取出行类型文本
+// 获取出行偏好类型文本（travelPreference字段：1-个人, 2-情侣, 3-家庭, 4-团队, 5-商务, 6-其他）
+const getTravelPreferenceTypeText = (travelPreference: number | null | undefined): string => {
+  if (travelPreference === null || travelPreference === undefined) {
+    return '----'
+  }
+  switch (travelPreference) {
+    case 1:
+      return '个人'
+    case 2:
+      return '情侣'
+    case 3:
+      return '家庭'
+    case 4:
+      return '团队'
+    case 5:
+      return '商务'
+    case 6:
+      return '其他'
+    default:
+      return '----'
+  }
+}
+
+// 获取出行类型文本（userType字段，保留用于兼容）
 const getUserTypeText = (userType: number | null | undefined): string => {
   if (userType === null || userType === undefined) {
     return '-'
@@ -691,7 +782,7 @@ const loadUserInfo = async () => {
         gender: data.gender,
         phone: data.phone || '',
         email: data.email || '',
-        userType: data.userType,
+        travelPreference: data.travelPreference, // 使用出行偏好字段
         age: data.age // 保存年龄，用于画像总结
       }
     }
@@ -755,10 +846,12 @@ const loadPortraitData = async () => {
       
       // 完整更新画像数据，确保所有字段都从用户画像API获取
       portraitData.value = {
-        // 旅游偏好
+        // 旅游偏好（景点类型偏好，如"自然风光"、"宗教场所"等）
         primaryPreference: data.primaryPreference || '',
-        travelPreference: data.travelPreference || null,
         preferenceDistribution: data.preferenceDistribution || [],
+        
+        // 出行偏好（出行类型，如"个人"、"情侣"、"家庭"等，从basicInfo获取）
+        // travelPreference 字段在 basicInfo 中，不在 portraitData 中
         
         // 兴趣标签（处理可能是对象数组的情况）
         interestTags: (() => {
@@ -786,17 +879,10 @@ const loadPortraitData = async () => {
           return ''
         })(),
         
-        // 年龄段（从用户基本信息或画像数据获取）
-        ageGroup: (() => {
-          if (data.ageGroup) {
-            return data.ageGroup
-          }
-          // 如果没有，尝试从basicInfo获取
-          if (basicInfo.value?.age !== undefined && basicInfo.value?.age !== null) {
-            return `${basicInfo.value.age}岁`
-          }
-          return ''
-        })(),
+        // 消费行为详细数据
+        avgConsumption: data.avgConsumption || 0,
+        consumptionFrequency: data.consumptionFrequency || '',
+        priceSensitivity: data.priceSensitivity || '',
         
         // 常去城市
         frequentDestinations: data.frequentDestinations || '',

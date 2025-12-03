@@ -259,6 +259,89 @@ public class AuthController {
             return Result.error("获取用户统计失败: " + e.getMessage());
         }
     }
+    
+    /**
+     * 手机号登录
+     */
+    @PostMapping("/login/phone")
+    public Result<Map<String, Object>> loginByPhone(@RequestBody Map<String, String> loginRequest) {
+        String phone = loginRequest.get("phone");
+        String captcha = loginRequest.get("captcha");
+        String loginType = loginRequest.get("loginType");
+        try {
+            Map<String, Object> result = userService.loginByPhone(phone, captcha, loginType);
+            return Result.success("登录成功", result);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+    
+    /**
+     * 手机号注册
+     */
+    @PostMapping("/register/phone")
+    public Result<String> registerByPhone(@RequestBody Map<String, Object> registerRequest) {
+        String phone = (String) registerRequest.get("phone");
+        String captcha = (String) registerRequest.get("captcha");
+        String password = (String) registerRequest.get("password");
+        String inviteCode = (String) registerRequest.get("inviteCode");
+        try {
+            boolean success = userService.registerByPhone(phone, captcha, password, inviteCode);
+            if (success) {
+                return Result.success("注册成功");
+            } else {
+                return Result.error("注册失败");
+            }
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+    
+    /**
+     * 发送手机验证码
+     */
+    @PostMapping("/send-phone-captcha")
+    public Result<String> sendPhoneCaptcha(@RequestBody Map<String, String> request) {
+        String phone = request.get("phone");
+        try {
+            boolean success = userService.sendPhoneCaptcha(phone);
+            if (success) {
+                return Result.success("验证码已发送");
+            } else {
+                return Result.error("发送验证码失败");
+            }
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+    
+    /**
+     * 微信登录
+     */
+    @PostMapping("/login/wechat")
+    public Result<Map<String, Object>> loginByWechat(@RequestBody Map<String, String> request) {
+        String code = request.get("code");
+        try {
+            Map<String, Object> result = userService.loginByWechat(code);
+            return Result.success("登录成功", result);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+    
+    /**
+     * QQ登录
+     */
+    @PostMapping("/login/qq")
+    public Result<Map<String, Object>> loginByQQ(@RequestBody Map<String, String> request) {
+        String code = request.get("code");
+        try {
+            Map<String, Object> result = userService.loginByQQ(code);
+            return Result.success("登录成功", result);
+        } catch (Exception e) {
+            throw e;
+        }
+    }
 }
 
 

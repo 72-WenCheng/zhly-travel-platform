@@ -10,7 +10,7 @@
         <result column="nickname" property="nickname" />
         <result column="email" property="email" />
         <result column="phone" property="phone" />
-        <result column="user_type" property="userType" />
+        <!-- user_type 字段已移除，不再映射 -->
         <result column="role" property="role" />
         <result column="travel_preference" property="travelPreference" />
         <result column="status" property="status" />
@@ -19,20 +19,17 @@
         <result column="last_login_ip" property="lastLoginIp" />
         <result column="last_login_time" property="lastLoginTime" />
         <result column="avatar" property="avatar" />
-        <result column="points" property="points" />
-        <result column="level" property="level" />
-        <result column="interest_tags" property="interestTags" />
-        <result column="frequent_cities" property="frequentCities" />
+        <!-- points 和 level 字段已移除，不再映射，从 user_points 表获取 -->
+        <!-- interest_tags 和 frequent_cities 字段已移除，不再映射，从用户画像服务获取 -->
         <result column="deleted" property="deleted" />
     </resultMap>
 
     <!-- 获取用户列表（带分页和搜索） -->
     <select id="selectUserList" resultMap="BaseResultMap">
         SELECT 
-            id, username, password, nickname, email, phone, user_type, role, travel_preference, 
+            id, username, password, nickname, email, phone, role, travel_preference, 
             status, create_time, update_time, last_login_ip, last_login_time, avatar,
-            interest_tags, frequent_cities, deleted,
-            0 as points, 1 as level
+            deleted
         FROM sys_user
         <where>
             deleted = 0
@@ -78,11 +75,7 @@
             COUNT(CASE WHEN status = 1 THEN 1 END) as active,
             COUNT(CASE WHEN status = 0 THEN 1 END) as inactive,
             COUNT(CASE WHEN create_time >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as newUsers,
-            COUNT(CASE WHEN create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as monthlyUsers,
-            COUNT(CASE WHEN user_type = 1 THEN 1 END) as individualUsers,
-            COUNT(CASE WHEN user_type = 2 THEN 1 END) as coupleUsers,
-            COUNT(CASE WHEN user_type = 3 THEN 1 END) as familyUsers,
-            COUNT(CASE WHEN user_type = 4 THEN 1 END) as teamUsers
+            COUNT(CASE WHEN create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as monthlyUsers
         FROM sys_user
         WHERE deleted = 0
     </select>
@@ -90,10 +83,9 @@
     <!-- 获取用户列表（用于导出，不分页） -->
     <select id="selectUserListForExport" resultMap="BaseResultMap">
         SELECT 
-            id, username, password, nickname, email, phone, user_type, role, travel_preference, 
+            id, username, password, nickname, email, phone, role, travel_preference, 
             status, create_time, update_time, last_login_ip, last_login_time, avatar,
-            interest_tags, frequent_cities, deleted,
-            COALESCE(points, 0) as points, COALESCE(level, 1) as level
+            deleted
         FROM sys_user
         <where>
             deleted = 0
@@ -103,9 +95,7 @@
                      OR email LIKE CONCAT('%', #{keyword}, '%')
                      OR phone LIKE CONCAT('%', #{keyword}, '%'))
             </if>
-            <if test="userType != null">
-                AND user_type = #{userType}
-            </if>
+            <!-- user_type 字段已移除，不再支持按 user_type 筛选 -->
             <if test="role != null">
                 AND role = #{role}
             </if>

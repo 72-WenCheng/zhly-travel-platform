@@ -25,7 +25,7 @@ public class AdminUser {
     private String nickname;
     private String email;
     private String phone;
-    private Integer userType;        // 个性化标签类型：1-个人, 2-情侣, 3-家庭, 4-团队
+    // user_type 字段已移除，不再使用
     private Integer role;            // 用户角色：1-管理员, 2-普通用户
     private Integer travelPreference;
     private Integer status;
@@ -36,8 +36,7 @@ public class AdminUser {
     private String avatar;
     private Integer points;          // 积分
     private Integer level;           // 等级
-    private String interestTags;      // 兴趣爱好标签
-    private String frequentCities;   // 常去城市
+    // interest_tags 和 frequent_cities 字段已移除，这些数据从用户画像服务获取
     private Integer deleted;          // 逻辑删除：0-未删除，1-已删除
 }
 

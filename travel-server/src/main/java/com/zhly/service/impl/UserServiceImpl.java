@@ -9,8 +9,11 @@ import com.zhly.service.UserService;
 import com.zhly.service.EmailService;
 import com.zhly.service.CaptchaService;
 import com.zhly.service.UserInviteService;
+import com.zhly.service.CacheService;
+import com.zhly.service.SmsService;
 import com.zhly.util.JwtUtil;
 import com.zhly.util.OnlineUserManager;
+import com.zhly.util.PhoneValidator;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 用户服务实现类
@@ -56,6 +60,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private LoginSecurityService loginSecurityService;
+
+    @Autowired(required = false)
+    private CacheService cacheService;
+
+    @Autowired(required = false)
+    private SmsService smsService;
 
     @Override
     public boolean register(User user, String inviteCode) {
@@ -547,6 +557,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             String resetToken = "reset_token_" + email + "_" + System.currentTimeMillis();
             System.out.println("生成重置密码token: " + resetToken);
 
+            // 存储token到缓存，1分钟过期（测试用）
+            if (cacheService != null) {
+                String tokenKey = "reset_token:" + resetToken;
+                cacheService.set(tokenKey, email, 1, TimeUnit.MINUTES);
+                System.out.println("重置密码token已存储到缓存，1分钟后自动过期");
+            }
+
             // 发送重置密码邮件（使用系统SMTP配置，发件人显示为用户邮箱）
             boolean emailSent = emailService.sendResetPasswordEmail(email, resetToken);
             if (!emailSent) {
@@ -580,16 +597,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 throw new RuntimeException("重置链接已失效，请重新申请");
             }
 
-            // 从token中提取邮箱
-            String[] tokenParts = token.split("_");
-            if (tokenParts.length < 3) {
-                throw new RuntimeException("重置链接格式错误，请重新申请");
+            // 验证token是否存在且有效（从缓存中检查）
+            String tokenKey = "reset_token:" + token;
+            String email = null;
+            
+            if (cacheService != null) {
+                Object cachedEmail = cacheService.get(tokenKey);
+                if (cachedEmail == null) {
+                    throw new RuntimeException("重置链接已失效或已被使用，请重新申请");
+                }
+                email = cachedEmail.toString();
+                System.out.println("从缓存验证token成功，邮箱: " + email);
+            } else {
+                // 如果没有缓存服务，从token中提取邮箱（兼容旧逻辑）
+                String[] tokenParts = token.split("_");
+                if (tokenParts.length < 3) {
+                    throw new RuntimeException("重置链接格式错误，请重新申请");
+                }
+                email = tokenParts[2];
+                System.out.println("未使用缓存服务，从token中提取邮箱: " + email);
             }
 
-            String email = tokenParts[2];
-
             // 重置密码
-            return resetPassword(email, newPassword);
+            boolean success = resetPassword(email, newPassword);
+            
+            // 重置密码成功后，删除token使其失效
+            if (success && cacheService != null) {
+                cacheService.delete(tokenKey);
+                System.out.println("密码重置成功，token已失效");
+            }
+            
+            return success;
         } catch (RuntimeException e) {
             // 重新抛出业务异常，保持用户友好的错误信息
             throw e;
@@ -635,6 +673,218 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         int minLength = Math.max(4, policy.getPasswordMinLength());
         if (password == null || password.length() < minLength) {
             throw new RuntimeException("密码长度不能少于" + minLength + "位");
+        }
+    }
+    
+    @Override
+    public Map<String, Object> loginByPhone(String phone, String captcha, String loginType) {
+        try {
+            // 参数验证
+            if (phone == null || phone.trim().isEmpty()) {
+                throw new RuntimeException("手机号不能为空");
+            }
+            if (captcha == null || captcha.trim().isEmpty()) {
+                throw new RuntimeException("验证码不能为空");
+            }
+            
+            // 验证手机号格式
+            phone = PhoneValidator.format(phone);
+            if (!PhoneValidator.isValid(phone)) {
+                throw new RuntimeException("手机号格式不正确");
+            }
+            
+            // 验证验证码
+            boolean captchaValid = captchaService.verifyCaptcha(phone, captcha);
+            if (!captchaValid) {
+                throw new RuntimeException("验证码错误或已过期，请重新获取");
+            }
+            
+            // 查找用户
+            QueryWrapper<User> wrapper = new QueryWrapper<>();
+            wrapper.eq("phone", phone);
+            User user = userMapper.selectOne(wrapper);
+            
+            if (user == null) {
+                throw new RuntimeException("该手机号未注册，请先注册");
+            }
+            
+            if (user.getStatus() != 1) {
+                throw new RuntimeException("账户已被禁用，请联系管理员");
+            }
+            
+            // 验证登录类型
+            if (loginType != null && !loginType.isEmpty()) {
+                boolean isAdmin = user.getRole() != null && user.getRole() == 1;
+                if ("user".equals(loginType) && isAdmin) {
+                    throw new RuntimeException("该账号为管理员账号，请使用管理端登录");
+                } else if ("admin".equals(loginType) && !isAdmin) {
+                    throw new RuntimeException("该账号为普通用户账号，请使用用户端登录");
+                }
+            }
+            
+            // 更新最后登录信息
+            updateLastLoginInfo(user.getId());
+            
+            // 生成JWT Token
+            SecurityPolicy policy = securityPolicyService.getPolicy();
+            long sessionTimeoutMinutes = policy.getSessionTimeoutMinutes();
+            long sessionTimeoutMillis = sessionTimeoutMinutes * 60_000L;
+            String token = jwtUtil.generateToken(user.getId(), user.getUsername(), sessionTimeoutMillis);
+            
+            // 标记用户在线
+            onlineUserManager.markOnline(user.getId(), user.getRole());
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("user", user);
+            result.put("token", token);
+            result.put("expiresIn", sessionTimeoutMinutes * 60);
+            
+            return result;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("登录服务暂时不可用，请稍后重试");
+        }
+    }
+    
+    @Override
+    public boolean registerByPhone(String phone, String captcha, String password, String inviteCode) {
+        try {
+            // 参数验证
+            if (phone == null || phone.trim().isEmpty()) {
+                throw new RuntimeException("手机号不能为空");
+            }
+            if (captcha == null || captcha.trim().isEmpty()) {
+                throw new RuntimeException("验证码不能为空");
+            }
+            if (password == null || password.trim().isEmpty()) {
+                throw new RuntimeException("密码不能为空");
+            }
+            
+            // 验证手机号格式
+            phone = PhoneValidator.format(phone);
+            if (!PhoneValidator.isValid(phone)) {
+                throw new RuntimeException("手机号格式不正确");
+            }
+            
+            // 验证密码强度
+            validatePasswordStrength(password);
+            
+            // 验证验证码
+            boolean captchaValid = captchaService.verifyCaptcha(phone, captcha);
+            if (!captchaValid) {
+                throw new RuntimeException("验证码错误或已过期，请重新获取");
+            }
+            
+            // 检查手机号是否已注册
+            QueryWrapper<User> wrapper = new QueryWrapper<>();
+            wrapper.eq("phone", phone);
+            User existingUser = userMapper.selectOne(wrapper);
+            if (existingUser != null) {
+                throw new RuntimeException("该手机号已被注册，请直接登录");
+            }
+            
+            // 创建新用户
+            User user = new User();
+            user.setPhone(phone);
+            user.setPassword(passwordEncoder.encode(password));
+            user.setUsername("user_" + phone.substring(phone.length() - 8)); // 使用手机号后8位作为默认用户名
+            user.setNickname("用户" + phone.substring(phone.length() - 4)); // 使用手机号后4位作为默认昵称
+            user.setRole(2); // 默认普通用户
+            user.setStatus(1); // 默认启用
+            user.setCreateTime(LocalDateTime.now());
+            user.setUpdateTime(LocalDateTime.now());
+            
+            // 处理邀请码（如果服务可用）
+            // TODO: 实现邀请码处理逻辑
+            
+            // 保存用户
+            int result = userMapper.insert(user);
+            return result > 0;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("注册服务暂时不可用，请稍后重试");
+        }
+    }
+    
+    @Override
+    public boolean sendPhoneCaptcha(String phone) {
+        try {
+            // 参数验证
+            if (phone == null || phone.trim().isEmpty()) {
+                throw new RuntimeException("手机号不能为空");
+            }
+            
+            // 验证手机号格式
+            phone = PhoneValidator.format(phone);
+            if (!PhoneValidator.isValid(phone)) {
+                throw new RuntimeException("手机号格式不正确");
+            }
+            
+            System.out.println("发送手机验证码请求 - 手机号: " + phone);
+            
+            // 生成6位数字验证码
+            String captcha = String.format("%06d", (int) (Math.random() * 1000000));
+            
+            // 存储验证码（5分钟过期）
+            captchaService.storeCaptcha(phone, captcha, 300);
+            System.out.println("手机验证码已生成并存储，有效期5分钟，验证码: " + captcha);
+            
+            // 发送短信验证码
+            if (smsService != null) {
+                boolean smsSent = smsService.sendCaptchaSms(phone, captcha);
+                if (!smsSent) {
+                    System.out.println("短信发送失败，但验证码已生成，可在控制台查看: " + captcha);
+                }
+            } else {
+                System.out.println("=== 短信服务未配置，使用模拟发送 ===");
+                System.out.println("手机号: " + phone);
+                System.out.println("验证码: " + captcha);
+                System.out.println("提示: 请配置阿里云短信服务以发送真实验证码");
+                System.out.println("================================");
+            }
+            
+            return true;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("发送验证码服务暂时不可用，请稍后重试");
+        }
+    }
+    
+    @Override
+    public Map<String, Object> loginByWechat(String code) {
+        try {
+            // TODO: 实现微信OAuth登录
+            // 1. 使用code换取access_token
+            // 2. 使用access_token获取用户信息
+            // 3. 根据openid查找或创建用户
+            // 4. 生成JWT token返回
+            
+            throw new RuntimeException("微信登录功能暂未实现，请配置微信AppID和AppSecret");
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("微信登录服务暂时不可用，请稍后重试");
+        }
+    }
+    
+    @Override
+    public Map<String, Object> loginByQQ(String code) {
+        try {
+            // TODO: 实现QQ OAuth登录
+            // 1. 使用code换取access_token
+            // 2. 使用access_token获取openid
+            // 3. 使用openid获取用户信息
+            // 4. 根据openid查找或创建用户
+            // 5. 生成JWT token返回
+            
+            throw new RuntimeException("QQ登录功能暂未实现，请配置QQ AppID和AppKey");
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("QQ登录服务暂时不可用，请稍后重试");
         }
     }
 }

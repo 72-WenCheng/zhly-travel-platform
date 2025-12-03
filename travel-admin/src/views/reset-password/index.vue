@@ -21,7 +21,6 @@
               :placeholder="passwordPlaceholder"
               prefix-icon="Lock"
               size="large"
-              show-password
             />
           </el-form-item>
           <el-form-item prop="confirmPassword">
@@ -31,7 +30,6 @@
               placeholder="请再次输入新密码"
               prefix-icon="Lock"
               size="large"
-              show-password
             />
           </el-form-item>
           <el-form-item>
@@ -95,12 +93,15 @@ const validateConfirmPassword = (rule: any, value: any, callback: any) => {
 
 const resetPasswordRules = {
   newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
     {
       validator: (_rule: any, value: string, callback: Function) => {
         if (!value) {
           callback(new Error('请输入新密码'))
-        } else if (value.length < passwordMinLength.value) {
-          callback(new Error(`密码长度至少${passwordMinLength.value}位`))
+        } else if (value.length < passwordMinLength.value || value.length > 20) {
+          callback(new Error(`密码长度在 ${passwordMinLength.value} 到 20 个字符`))
+        } else if (!/^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]+$/.test(value)) {
+          callback(new Error('密码必须包含字母和数字'))
         } else {
           callback()
         }
@@ -151,53 +152,62 @@ onMounted(async () => {
 const handleResetPassword = async () => {
   if (!resetPasswordFormRef.value) return
   
-  await resetPasswordFormRef.value.validate(async (valid) => {
-    if (valid) {
-      if (!resetToken.value) {
-        ElMessage.error('重置链接无效，请重新申请')
-        router.push('/forgot-password')
-        return
+  await resetPasswordFormRef.value.validate(async (valid, fields) => {
+    if (!valid) {
+      // 验证失败，使用 ElMessage 显示第一个错误
+      const firstError = Object.keys(fields || {})[0]
+      if (firstError && fields[firstError] && fields[firstError].length > 0) {
+        ElMessage.error(fields[firstError][0].message)
+      } else {
+        ElMessage.error('请检查输入信息')
+      }
+      return
+    }
+    
+    if (!resetToken.value) {
+      ElMessage.error('重置链接无效，请重新申请')
+      router.push('/forgot-password')
+      return
+    }
+    
+    loading.value = true
+    try {
+      const response = await authAPI.resetPassword({
+        token: resetToken.value,
+        newPassword: resetPasswordForm.newPassword
+      })
+      
+      if (response.code === 200) {
+        ElMessage.success('密码重置成功，请使用新密码登录')
+        
+        // 跳转到登录页面
+        setTimeout(() => {
+          router.push('/')
+        }, 2000)
+      } else {
+        ElMessage.error(response.message || '重置密码失败')
+      }
+    } catch (error: any) {
+      console.error('重置密码错误:', error)
+      
+      // 提取用户友好的错误信息
+      let errorMessage = '重置密码失败，请重试'
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        if (error.message.includes('无效') || error.message.includes('失效')) {
+          errorMessage = '重置链接已失效，请重新申请'
+        } else if (error.message.includes('Connection') || error.message.includes('timeout')) {
+          errorMessage = '网络连接异常，请检查网络后重试'
+        } else {
+          errorMessage = error.message
+        }
       }
       
-      loading.value = true
-      try {
-        const response = await authAPI.resetPassword({
-          token: resetToken.value,
-          newPassword: resetPasswordForm.newPassword
-        })
-        
-        if (response.code === 200) {
-          ElMessage.success('密码重置成功，请使用新密码登录')
-          
-          // 跳转到登录页面
-          setTimeout(() => {
-            router.push('/')
-          }, 2000)
-        } else {
-          ElMessage.error(response.message || '重置密码失败')
-        }
-      } catch (error: any) {
-        console.error('重置密码错误:', error)
-        
-        // 提取用户友好的错误信息
-        let errorMessage = '重置密码失败，请重试'
-        
-        if (error.response?.data?.message) {
-          errorMessage = error.response.data.message
-        } else if (error.message) {
-          if (error.message.includes('无效') || error.message.includes('失效')) {
-            errorMessage = '重置链接已失效，请重新申请'
-          } else if (error.message.includes('Connection') || error.message.includes('timeout')) {
-            errorMessage = '网络连接异常，请检查网络后重试'
-          } else {
-            errorMessage = error.message
-          }
-        }
-        
-        ElMessage.error(errorMessage)
-      } finally {
-        loading.value = false
-      }
+      ElMessage.error(errorMessage)
+    } finally {
+      loading.value = false
     }
   })
 }
@@ -211,7 +221,7 @@ const handleBackLogin = () => {
 <style lang="scss" scoped>
 .reset-password-page {
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,7 +237,7 @@ const handleBackLogin = () => {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
     background-size: 20px 20px;
     animation: float 20s infinite linear;
   }
@@ -239,7 +249,7 @@ const handleBackLogin = () => {
     right: -10%;
     width: 300px;
     height: 300px;
-    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    background: linear-gradient(45deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
     border-radius: 50%;
     animation: float 15s infinite ease-in-out;
   }
@@ -253,15 +263,16 @@ const handleBackLogin = () => {
 .reset-password-container {
   width: 100%;
   max-width: 450px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(20, 20, 20, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 24px;
   padding: 50px 40px;
   box-shadow: 
-    0 25px 50px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.2);
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
   position: relative;
   z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   
   // 添加顶部装饰线
   &::before {
@@ -272,7 +283,7 @@ const handleBackLogin = () => {
     transform: translateX(-50%);
     width: 60px;
     height: 4px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: linear-gradient(90deg, #4a90e2, #5ba3f5);
     border-radius: 0 0 4px 4px;
   }
 }
@@ -286,8 +297,8 @@ const handleBackLogin = () => {
     
     .el-icon {
       font-size: 48px;
-      color: #667eea;
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #4a90e2;
+      background: linear-gradient(135deg, #4a90e2, #5ba3f5);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -297,7 +308,7 @@ const handleBackLogin = () => {
   h1 {
     font-size: 28px;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #4a90e2, #5ba3f5);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -307,7 +318,7 @@ const handleBackLogin = () => {
   
   p {
     font-size: 16px;
-    color: #666;
+    color: #999;
     font-weight: 400;
     opacity: 0.8;
   }
@@ -316,7 +327,7 @@ const handleBackLogin = () => {
 .reset-password-form {
   .form-description {
     text-align: center;
-    color: #666;
+    color: #aaa;
     font-size: 14px;
     margin-bottom: 30px;
     line-height: 1.5;
@@ -326,7 +337,7 @@ const handleBackLogin = () => {
     text-align: center;
     font-size: 22px;
     font-weight: 600;
-    color: #333;
+    color: #fff;
     margin-bottom: 20px;
     position: relative;
     
@@ -338,7 +349,7 @@ const handleBackLogin = () => {
       transform: translateX(-50%);
       width: 40px;
       height: 3px;
-      background: linear-gradient(90deg, #667eea, #764ba2);
+      background: linear-gradient(90deg, #4a90e2, #5ba3f5);
       border-radius: 2px;
     }
   }
@@ -346,28 +357,31 @@ const handleBackLogin = () => {
   :deep(.el-form-item) {
     margin-bottom: 24px;
     
+    .el-form-item__label {
+      color: #ccc;
+    }
+    
     .el-form-item__error {
-      font-size: 12px;
-      margin-top: 6px;
+      display: none; // 隐藏表单下方的错误提示
     }
   }
   
   :deep(.el-input) {
     .el-input__wrapper {
       border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      border: 2px solid transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.1);
       transition: all 0.3s ease;
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(30, 30, 30, 0.8);
       
       &:hover {
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-        border-color: rgba(102, 126, 234, 0.3);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        border-color: rgba(74, 144, 226, 0.5);
       }
       
       &.is-focus {
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
-        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+        border-color: #4a90e2;
       }
     }
     
@@ -375,9 +389,11 @@ const handleBackLogin = () => {
       font-size: 15px;
       padding: 0 16px;
       height: 48px;
+      color: #fff;
+      background: transparent;
       
       &::placeholder {
-        color: #999;
+        color: #666;
         font-weight: 400;
       }
     }
@@ -387,7 +403,7 @@ const handleBackLogin = () => {
       
       .el-icon {
         font-size: 18px;
-        color: #667eea;
+        color: #4a90e2;
       }
     }
   }
@@ -397,44 +413,18 @@ const handleBackLogin = () => {
     font-weight: 600;
     font-size: 16px;
     height: 52px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #4a90e2, #5ba3f5);
     border: none;
     transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s;
-    }
-    
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-      
-      &::before {
-        left: 100%;
-      }
-    }
     
     &:active {
       transform: translateY(0);
     }
     
     &:disabled {
-      background: #ccc;
+      background: #333;
       cursor: not-allowed;
-      
-      &:hover {
-        transform: none;
-        box-shadow: none;
-      }
+      color: #666;
     }
   }
   
@@ -442,7 +432,7 @@ const handleBackLogin = () => {
     text-align: center;
     margin-top: 25px;
     font-size: 14px;
-    color: #666;
+    color: #999;
     
     .link-container {
       display: flex;
@@ -454,9 +444,11 @@ const handleBackLogin = () => {
     .back-login-text {
       font-weight: 500;
       text-decoration: none;
+      color: #4a90e2;
       
       &:hover {
         text-decoration: underline;
+        color: #5ba3f5;
       }
     }
   }

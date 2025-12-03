@@ -60,26 +60,50 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Autowired
     private RecommendationLogMapper recommendationLogMapper;
     
+    @Autowired
+    private com.zhly.mapper.UserMapper userMapper;
+    
+    @Autowired
+    private com.zhly.mapper.UserPointsMapper userPointsMapper;
+    
     @Override
     public List<Map<String, Object>> recommendAttractions(Long userId, String city, Integer limit) {
         try {
             // 1. 获取用户画像数据
             Map<String, Object> portrait = userPortraitService.getUserPortrait(userId);
             
-            // 2. 基于用户画像的智能推荐（只返回符合用户画像的推荐，不降级）
-            List<Map<String, Object>> profileBasedRecommendations = getProfileBasedRecommendations(userId, portrait, city, limit);
+            // 2. 基于用户画像的智能推荐（偏好类型、兴趣标签、偏好分布）
+            List<Map<String, Object>> profileBasedRecommendations = getProfileBasedRecommendations(userId, portrait, city, limit * 2);
             
-            // 3. 记录推荐日志（用于持续学习优化）
-            // 按推荐分数排序
-            List<Map<String, Object>> sortedRecommendations = profileBasedRecommendations.stream()
+            // 3. 基于价格匹配的推荐（消费水平）
+            List<Map<String, Object>> priceBasedRecommendations = getPriceBasedRecommendations(userId, portrait, city, limit);
+            
+            // 4. 基于地理位置的推荐（常去目的地）
+            List<Map<String, Object>> locationRecommendations = getLocationBasedRecommendations(userId, portrait, city, limit);
+            
+            // 5. 基于季节偏好的推荐（出行特征）
+            List<Map<String, Object>> seasonBasedRecommendations = getSeasonBasedAttractionRecommendations(userId, portrait, city, limit);
+            
+            // 6. 基于兴趣标签的推荐（补充推荐）
+            List<Map<String, Object>> tagBasedRecommendations = getTagBasedAttractionRecommendations(userId, portrait, city, limit);
+            
+            // 7. 混合推荐结果（加权：用户画像50%，价格匹配20%，地理位置15%，季节偏好10%，兴趣标签5%）
+            List<Map<String, Object>> finalRecommendations = hybridRecommendationWithWeights5(
+                profileBasedRecommendations, 0.5,
+                priceBasedRecommendations, 0.2,
+                locationRecommendations, 0.15,
+                seasonBasedRecommendations, 0.1,
+                tagBasedRecommendations, 0.05
+            );
+            
+            // 8. 记录推荐日志（用于持续学习优化）
+            List<Map<String, Object>> result = finalRecommendations.stream()
                     .sorted((a, b) -> Double.compare(
                             ((Number) b.getOrDefault("score", 0.0)).doubleValue(),
                             ((Number) a.getOrDefault("score", 0.0)).doubleValue()
                     ))
                     .limit(limit)
                     .collect(Collectors.toList());
-            
-            List<Map<String, Object>> result = sortedRecommendations;
             
             // 异步记录推荐日志，不阻塞主流程
             recordRecommendationLog(userId, result, "attraction");
@@ -99,8 +123,8 @@ public class RecommendationServiceImpl implements RecommendationService {
             // 1. 获取用户画像数据（使用完整的用户画像服务）
             Map<String, Object> portrait = userPortraitService.getUserPortrait(userId);
             
-            // 2. 基于用户画像的智能推荐（偏好类型、兴趣标签等）
-            List<Map<String, Object>> profileBasedRecommendations = getProfileBasedPlanRecommendations(userId, portrait, destination, limit);
+            // 2. 基于用户画像的智能推荐（偏好类型、兴趣标签、偏好分布）
+            List<Map<String, Object>> profileBasedRecommendations = getProfileBasedPlanRecommendations(userId, portrait, destination, limit * 2);
             
             // 3. 基于价格匹配的推荐（消费水平）
             List<Map<String, Object>> priceBasedRecommendations = getPriceBasedPlanRecommendations(userId, portrait, destination, limit);
@@ -108,17 +132,30 @@ public class RecommendationServiceImpl implements RecommendationService {
             // 4. 基于地理位置的推荐（常去目的地）
             List<Map<String, Object>> locationRecommendations = getLocationBasedPlanRecommendations(userId, portrait, destination, limit);
             
-            // 5. 基于协同过滤推荐
+            // 5. 基于出行特征的推荐（出行方式、旅游时长、季节偏好）
+            List<Map<String, Object>> travelFeatureRecommendations = getTravelFeatureBasedPlanRecommendations(userId, portrait, destination, limit);
+            
+            // 6. 基于协同过滤推荐
             List<Map<String, Object>> collaborativeRecommendations = getCollaborativeRecommendations(userId, "plan", destination, limit);
             
-            // 6. 混合推荐结果（加权：用户画像40%，价格匹配25%，地理位置20%，协同过滤10%，热度5%）
+            // 7. 混合推荐结果（加权：用户画像45%，价格匹配20%，地理位置15%，出行特征10%，协同过滤7%，热度3%）
             List<Map<String, Object>> finalRecommendations = hybridRecommendationWithWeights5(
-                profileBasedRecommendations, 0.4,
-                priceBasedRecommendations, 0.25,
-                locationRecommendations, 0.2,
-                collaborativeRecommendations, 0.1,
-                getHotPlansRecommendations(destination, limit), 0.05
+                profileBasedRecommendations, 0.45,
+                priceBasedRecommendations, 0.2,
+                locationRecommendations, 0.15,
+                travelFeatureRecommendations, 0.1,
+                collaborativeRecommendations, 0.07
             );
+            
+            // 如果推荐结果不足，补充热门推荐
+            if (finalRecommendations.size() < limit) {
+                List<Map<String, Object>> hotRecommendations = getHotPlansRecommendations(destination, limit - finalRecommendations.size());
+                // 热门推荐权重较低，直接追加
+                for (Map<String, Object> hot : hotRecommendations) {
+                    hot.put("score", ((Number) hot.getOrDefault("score", 0.5)).doubleValue() * 0.03);
+                    finalRecommendations.add(hot);
+                }
+            }
             
             // 7. 记录推荐日志（用于持续学习优化）
             List<Map<String, Object>> result = finalRecommendations.stream()
@@ -323,10 +360,11 @@ public class RecommendationServiceImpl implements RecommendationService {
             User user = userService.getById(userId);
             if (user != null) {
                 // 更新用户标签和偏好
-                String interestTags = (String) preferences.getOrDefault("interestTags", user.getInterestTags());
+                // interest_tags 字段已移除，从用户画像服务获取
+                String interestTags = (String) preferences.getOrDefault("interestTags", "");
                 Integer travelPreference = (Integer) preferences.getOrDefault("travelPreference", user.getTravelPreference());
                 
-                user.setInterestTags(interestTags);
+                // interest_tags 字段已移除，不再设置
                 user.setTravelPreference(travelPreference);
                 
                 return userService.updateById(user);
@@ -349,11 +387,11 @@ public class RecommendationServiceImpl implements RecommendationService {
             
             Map<String, Object> profile = new HashMap<>();
             profile.put("userId", userId);
-            profile.put("interestTags", user.getInterestTags());
+            // interest_tags 和 frequent_cities 字段已移除，从用户画像服务获取
             profile.put("travelPreference", user.getTravelPreference());
             profile.put("age", user.getAge());
             profile.put("gender", user.getGender());
-            profile.put("location", user.getFrequentCities());
+            // location 从用户画像服务获取
             
             // 分析用户行为
             List<Map<String, Object>> userHistory = getUserHistory(userId, "all");
@@ -1446,8 +1484,9 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
     
     /**
-     * 基于用户画像的攻略推荐
+     * 基于用户画像的攻略推荐（优化版：充分利用偏好类型、偏好分布、兴趣标签）
      */
+    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> getProfileBasedPlanRecommendations(Long userId, Map<String, Object> portrait, String destination, Integer limit) {
         List<Map<String, Object>> recommendations = new ArrayList<>();
         
@@ -1460,34 +1499,98 @@ public class RecommendationServiceImpl implements RecommendationService {
             // 获取用户已浏览和收藏的攻略ID（避免重复推荐）
             Set<Long> viewedPlanIds = getViewedPlanIds(userId);
             
-            // 根据主要偏好类型推荐
+            // 1. 根据主要偏好类型推荐（权重最高）
             if (!primaryPreference.isEmpty()) {
-                QueryWrapper<TravelPlan> wrapper = new QueryWrapper<>();
-                wrapper.eq("status", 1);
-                wrapper.eq("deleted", 0).or().isNull("deleted");
-                wrapper.like("tags", primaryPreference);
+                int primaryLimit = Math.max(1, limit / 2); // 主要偏好类型占一半
+                List<TravelPlan> plans = getPlansByPreference(primaryPreference, destination, primaryLimit * 2);
                 
-                if (destination != null && !destination.isEmpty()) {
-                    // 统一处理城市名称：移除"市"、"省"等后缀，同时支持带"市"和不带"市"的匹配
-                    String cityNameWithoutSuffix = destination.replaceAll("市|省|自治区|特别行政区", "").trim();
-                    String cityNameWithSuffix = cityNameWithoutSuffix + "市";
-                    // 同时支持完全匹配和模糊匹配，确保能匹配到"南宁"和"南宁市"
-                    wrapper.and(w -> w.eq("destination", destination)
-                            .or().eq("destination", cityNameWithoutSuffix)
-                            .or().eq("destination", cityNameWithSuffix)
-                            .or().like("destination", cityNameWithoutSuffix));
-                }
-                
-                wrapper.orderByDesc("view_count", "like_count");
-                wrapper.last("LIMIT " + (limit * 2));
-                
-                List<TravelPlan> plans = travelPlanMapper.selectList(wrapper);
                 for (TravelPlan plan : plans) {
-                    if (!viewedPlanIds.contains(plan.getId())) {
+                    if (!viewedPlanIds.contains(plan.getId()) && 
+                        recommendations.stream().noneMatch(r -> r.get("id").equals(plan.getId()))) {
                         Map<String, Object> item = convertPlanToMap(plan);
                         item.put("score", 0.9);
                         item.put("reason", "基于您的偏好类型：" + primaryPreference);
                         recommendations.add(item);
+                        if (recommendations.size() >= primaryLimit) break;
+                    }
+                }
+            }
+            
+            // 2. 根据偏好分布推荐（推荐百分比>=10%的类型，最多推荐前2个）
+            if (recommendations.size() < limit) {
+                int typeCount = 0;
+                for (Map<String, Object> dist : preferenceDistribution) {
+                    if (typeCount >= 2 || recommendations.size() >= limit) break;
+                    
+                    String typeName = (String) dist.getOrDefault("type", "");
+                    Integer percentage = (Integer) dist.getOrDefault("percentage", 0);
+                    
+                    // 跳过主要偏好类型（已在上面推荐）
+                    if (typeName.equals(primaryPreference)) {
+                        typeCount++;
+                        continue;
+                    }
+                    
+                    // 只推荐百分比>=10%的类型
+                    if (!typeName.isEmpty() && percentage >= 10) {
+                        int remainingSlots = limit - recommendations.size();
+                        int typeLimit = Math.max(1, (int) Math.ceil(remainingSlots * (percentage / 100.0)));
+                        
+                        List<TravelPlan> plans = getPlansByPreference(typeName, destination, typeLimit * 2);
+                        for (TravelPlan plan : plans) {
+                            if (!viewedPlanIds.contains(plan.getId()) && 
+                                recommendations.stream().noneMatch(r -> r.get("id").equals(plan.getId()))) {
+                                Map<String, Object> item = convertPlanToMap(plan);
+                                double baseScore = 0.7 + (percentage / 100.0) * 0.15;
+                                item.put("score", baseScore);
+                                item.put("reason", "基于您的偏好类型：" + typeName + "（" + percentage + "%）");
+                                recommendations.add(item);
+                                if (recommendations.size() >= limit) break;
+                            }
+                        }
+                        typeCount++;
+                    }
+                }
+            }
+            
+            // 3. 根据兴趣标签推荐（补充推荐，取前3个标签）
+            if (recommendations.size() < limit && !interestTags.isEmpty()) {
+                List<String> topTags = interestTags.stream()
+                        .limit(3)
+                        .map(tag -> (String) tag.getOrDefault("name", ""))
+                        .filter(tag -> !tag.isEmpty())
+                        .collect(Collectors.toList());
+                
+                for (String tag : topTags) {
+                    if (recommendations.size() >= limit) break;
+                    
+                    QueryWrapper<TravelPlan> wrapper = new QueryWrapper<>();
+                    wrapper.eq("status", 1);
+                    wrapper.eq("deleted", 0).or().isNull("deleted");
+                    wrapper.like("tags", tag);
+                    
+                    if (destination != null && !destination.isEmpty()) {
+                        String cityNameWithoutSuffix = destination.replaceAll("市|省|自治区|特别行政区", "").trim();
+                        String cityNameWithSuffix = cityNameWithoutSuffix + "市";
+                        wrapper.and(w -> w.eq("destination", destination)
+                                .or().eq("destination", cityNameWithoutSuffix)
+                                .or().eq("destination", cityNameWithSuffix)
+                                .or().like("destination", cityNameWithoutSuffix));
+                    }
+                    
+                    wrapper.orderByDesc("view_count", "like_count");
+                    wrapper.last("LIMIT " + (limit - recommendations.size()));
+                    
+                    List<TravelPlan> plans = travelPlanMapper.selectList(wrapper);
+                    for (TravelPlan plan : plans) {
+                        if (!viewedPlanIds.contains(plan.getId()) && 
+                            recommendations.stream().noneMatch(r -> r.get("id").equals(plan.getId()))) {
+                            Map<String, Object> item = convertPlanToMap(plan);
+                            item.put("score", 0.65);
+                            item.put("reason", "符合您的兴趣标签：" + tag);
+                            recommendations.add(item);
+                            if (recommendations.size() >= limit) break;
+                        }
                     }
                 }
             }
@@ -1498,6 +1601,30 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
         
         return recommendations;
+    }
+    
+    /**
+     * 根据偏好类型获取攻略（辅助方法）
+     */
+    private List<TravelPlan> getPlansByPreference(String preference, String destination, Integer limit) {
+        QueryWrapper<TravelPlan> wrapper = new QueryWrapper<>();
+        wrapper.eq("status", 1);
+        wrapper.eq("deleted", 0).or().isNull("deleted");
+        wrapper.like("tags", preference);
+        
+        if (destination != null && !destination.isEmpty()) {
+            String cityNameWithoutSuffix = destination.replaceAll("市|省|自治区|特别行政区", "").trim();
+            String cityNameWithSuffix = cityNameWithoutSuffix + "市";
+            wrapper.and(w -> w.eq("destination", destination)
+                    .or().eq("destination", cityNameWithoutSuffix)
+                    .or().eq("destination", cityNameWithSuffix)
+                    .or().like("destination", cityNameWithoutSuffix));
+        }
+        
+        wrapper.orderByDesc("view_count", "like_count");
+        wrapper.last("LIMIT " + limit);
+        
+        return travelPlanMapper.selectList(wrapper);
     }
     
     /**
@@ -1667,21 +1794,69 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
     
     /**
-     * 将攻略转换为Map
+     * 将攻略转换为Map（包含完整字段，用于推荐显示）
+     * 如果攻略没有作者信息，会查询并填充
      */
     private Map<String, Object> convertPlanToMap(TravelPlan plan) {
         Map<String, Object> item = new HashMap<>();
         item.put("id", plan.getId());
         item.put("title", plan.getTitle());
+        item.put("description", plan.getDescription());
         item.put("destination", plan.getDestination());
         item.put("budget", plan.getBudget());
         item.put("days", plan.getDays());
-        item.put("coverImage", plan.getCoverImage());
-        item.put("viewCount", plan.getViewCount());
+        
+        // 处理封面图：优先使用coverImage，其次从images提取第一张
+        String coverImage = plan.getCoverImage();
+        if ((coverImage == null || coverImage.isEmpty()) && plan.getImages() != null) {
+            String images = plan.getImages();
+            if (!images.isEmpty()) {
+                String[] imageArray = images.split(",");
+                if (imageArray.length > 0) {
+                    coverImage = imageArray[0].trim();
+                }
+            }
+        }
+        item.put("coverImage", coverImage);
+        item.put("images", plan.getImages()); // 图片列表
+        
+        item.put("viewCount", plan.getViewCount() != null ? plan.getViewCount() : 0);
         item.put("likeCount", plan.getLikeCount() != null ? plan.getLikeCount() : 0);
+        item.put("commentCount", plan.getCommentCount() != null ? plan.getCommentCount() : 0);
         item.put("tags", plan.getTags());
         item.put("authorId", plan.getAuthorId());
         item.put("createTime", plan.getCreateTime());
+        item.put("bestSeason", plan.getBestSeason()); // 最佳季节
+        item.put("travelType", plan.getTravelType()); // 出行方式
+        
+        // 填充作者信息（如果plan中没有，则查询）
+        String author = plan.getAuthor();
+        String authorAvatar = plan.getAuthorAvatar();
+        Integer authorPoints = plan.getAuthorPoints();
+        
+        if ((author == null || author.isEmpty()) && plan.getAuthorId() != null) {
+            try {
+                com.zhly.entity.User user = userMapper.selectById(plan.getAuthorId());
+                if (user != null) {
+                    author = user.getNickname() != null ? user.getNickname() : user.getUsername();
+                    authorAvatar = user.getAvatar();
+                    
+                    // 查询用户积分
+                    com.zhly.entity.UserPoints points = userPointsMapper.getByUserId(plan.getAuthorId());
+                    if (points != null) {
+                        authorPoints = points.getTotalPoints();
+                    }
+                }
+            } catch (Exception e) {
+                // 忽略错误，使用默认值
+                System.err.println("查询作者信息失败: " + e.getMessage());
+            }
+        }
+        
+        item.put("author", author != null ? author : "匿名用户");
+        item.put("authorAvatar", authorAvatar);
+        item.put("authorPoints", authorPoints != null ? authorPoints : 0);
+        
         return item;
     }
     
@@ -2022,5 +2197,337 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
         
         return recommendations;
+    }
+    
+    /**
+     * 基于季节偏好的景点推荐（利用出行特征中的季节偏好）
+     */
+    private List<Map<String, Object>> getSeasonBasedAttractionRecommendations(Long userId, Map<String, Object> portrait, String city, Integer limit) {
+        List<Map<String, Object>> recommendations = new ArrayList<>();
+        
+        try {
+            // 获取用户季节偏好
+            String seasonPreference = (String) portrait.getOrDefault("seasonPreference", "");
+            if (seasonPreference == null || seasonPreference.isEmpty() || seasonPreference.equals("全年")) {
+                return recommendations; // 如果偏好是"全年"或为空，不进行季节匹配
+            }
+            
+            Set<Long> viewedAttractionIds = getViewedAttractionIds(userId);
+            
+            // 解析季节偏好（可能包含多个季节，用"、"分隔）
+            String[] seasons = seasonPreference.split("、");
+            
+            QueryWrapper<Attraction> wrapper = new QueryWrapper<>();
+            wrapper.eq("status", 1);
+            wrapper.eq("deleted", 0).or().isNull("deleted");
+            
+            if (city != null && !city.isEmpty()) {
+                String cityNameWithoutSuffix = city.replaceAll("市|省|自治区|特别行政区", "").trim();
+                String cityNameWithSuffix = cityNameWithoutSuffix + "市";
+                wrapper.and(w -> w.eq("city", city)
+                        .or().eq("city", cityNameWithoutSuffix)
+                        .or().eq("city", cityNameWithSuffix)
+                        .or().like("city", cityNameWithoutSuffix));
+            }
+            
+            // 匹配季节偏好
+            wrapper.and(w -> {
+                for (String season : seasons) {
+                    String cleanSeason = season.trim();
+                    if (!cleanSeason.isEmpty()) {
+                        w.like("best_season", cleanSeason).or();
+                    }
+                }
+            });
+            
+            wrapper.orderByDesc("view_count", "collect_count");
+            wrapper.last("LIMIT " + (limit * 2));
+            
+            List<Attraction> attractions = attractionMapper.selectList(wrapper);
+            for (Attraction attraction : attractions) {
+                if (!viewedAttractionIds.contains(attraction.getId()) && 
+                    recommendations.stream().noneMatch(r -> r.get("id").equals(attraction.getId()))) {
+                    Map<String, Object> item = convertAttractionToMap(attraction, userId);
+                    
+                    // 计算季节匹配度
+                    double seasonMatchScore = calculateSeasonMatchScore(attraction.getBestSeason(), seasonPreference);
+                    item.put("score", seasonMatchScore * 0.8);
+                    item.put("reason", "适合您的季节偏好：" + seasonPreference);
+                    recommendations.add(item);
+                }
+            }
+            
+        } catch (Exception e) {
+            System.err.println("基于季节偏好推荐景点失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return recommendations;
+    }
+    
+    /**
+     * 基于兴趣标签的景点推荐（补充推荐，利用兴趣标签云）
+     */
+    private List<Map<String, Object>> getTagBasedAttractionRecommendations(Long userId, Map<String, Object> portrait, String city, Integer limit) {
+        List<Map<String, Object>> recommendations = new ArrayList<>();
+        
+        try {
+            // 获取用户兴趣标签（取前3个权重最高的标签）
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> interestTags = (List<Map<String, Object>>) portrait.getOrDefault("interestTags", new ArrayList<>());
+            if (interestTags.isEmpty()) {
+                return recommendations;
+            }
+            
+            Set<Long> viewedAttractionIds = getViewedAttractionIds(userId);
+            
+            // 取前3个标签
+            List<String> topTags = interestTags.stream()
+                    .limit(3)
+                    .map(tag -> (String) tag.getOrDefault("name", ""))
+                    .filter(tag -> !tag.isEmpty())
+                    .collect(Collectors.toList());
+            
+            if (topTags.isEmpty()) {
+                return recommendations;
+            }
+            
+            QueryWrapper<Attraction> wrapper = new QueryWrapper<>();
+            wrapper.eq("status", 1);
+            wrapper.eq("deleted", 0).or().isNull("deleted");
+            
+            if (city != null && !city.isEmpty()) {
+                String cityNameWithoutSuffix = city.replaceAll("市|省|自治区|特别行政区", "").trim();
+                String cityNameWithSuffix = cityNameWithoutSuffix + "市";
+                wrapper.and(w -> w.eq("city", city)
+                        .or().eq("city", cityNameWithoutSuffix)
+                        .or().eq("city", cityNameWithSuffix)
+                        .or().like("city", cityNameWithoutSuffix));
+            }
+            
+            // 匹配兴趣标签
+            wrapper.and(w -> {
+                for (String tag : topTags) {
+                    w.like("tags", tag).or();
+                }
+            });
+            
+            wrapper.orderByDesc("view_count", "collect_count");
+            wrapper.last("LIMIT " + limit);
+            
+            List<Attraction> attractions = attractionMapper.selectList(wrapper);
+            for (Attraction attraction : attractions) {
+                if (!viewedAttractionIds.contains(attraction.getId()) && 
+                    recommendations.stream().noneMatch(r -> r.get("id").equals(attraction.getId()))) {
+                    Map<String, Object> item = convertAttractionToMap(attraction, userId);
+                    
+                    // 检查匹配的标签
+                    String matchedTag = findMatchedTag(attraction.getTags(), topTags);
+                    item.put("score", 0.6);
+                    item.put("reason", "符合您的兴趣标签：" + matchedTag);
+                    recommendations.add(item);
+                }
+            }
+            
+        } catch (Exception e) {
+            System.err.println("基于兴趣标签推荐景点失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return recommendations;
+    }
+    
+    /**
+     * 基于出行特征的攻略推荐（出行方式、旅游时长、季节偏好）
+     */
+    private List<Map<String, Object>> getTravelFeatureBasedPlanRecommendations(Long userId, Map<String, Object> portrait, String destination, Integer limit) {
+        List<Map<String, Object>> recommendations = new ArrayList<>();
+        
+        try {
+            // 获取出行特征
+            String travelMode = (String) portrait.getOrDefault("travelMode", "");
+            String tripDuration = (String) portrait.getOrDefault("tripDuration", "");
+            String seasonPreference = (String) portrait.getOrDefault("seasonPreference", "");
+            
+            // 如果没有任何出行特征数据，返回空列表
+            if (travelMode.isEmpty() && tripDuration.isEmpty() && seasonPreference.isEmpty()) {
+                return recommendations;
+            }
+            
+            Set<Long> viewedPlanIds = getViewedPlanIds(userId);
+            
+            QueryWrapper<TravelPlan> wrapper = new QueryWrapper<>();
+            wrapper.eq("status", 1);
+            wrapper.eq("deleted", 0).or().isNull("deleted");
+            
+            if (destination != null && !destination.isEmpty()) {
+                String cityNameWithoutSuffix = destination.replaceAll("市|省|自治区|特别行政区", "").trim();
+                String cityNameWithSuffix = cityNameWithoutSuffix + "市";
+                wrapper.and(w -> w.eq("destination", destination)
+                        .or().eq("destination", cityNameWithoutSuffix)
+                        .or().eq("destination", cityNameWithSuffix)
+                        .or().like("destination", cityNameWithoutSuffix));
+            }
+            
+            // 匹配出行方式
+            if (!travelMode.isEmpty()) {
+                wrapper.and(w -> {
+                    if (travelMode.contains("自由行") || travelMode.contains("自驾")) {
+                        w.like("travel_type", "自由").or().like("travel_type", "自驾").or().eq("travel_type", "1").or().eq("travel_type", "3");
+                    } else if (travelMode.contains("跟团")) {
+                        w.like("travel_type", "跟团").or().eq("travel_type", "2");
+                    }
+                });
+            }
+            
+            // 匹配旅游时长
+            if (!tripDuration.isEmpty()) {
+                wrapper.and(w -> {
+                    if (tripDuration.contains("1-2天")) {
+                        w.le("days", 2);
+                    } else if (tripDuration.contains("3-5天")) {
+                        w.between("days", 3, 5);
+                    } else if (tripDuration.contains("5-7天")) {
+                        w.between("days", 5, 7);
+                    } else if (tripDuration.contains("7天以上")) {
+                        w.ge("days", 7);
+                    }
+                });
+            }
+            
+            // 匹配季节偏好
+            if (!seasonPreference.isEmpty() && !seasonPreference.equals("全年")) {
+                String[] seasons = seasonPreference.split("、");
+                wrapper.and(w -> {
+                    for (String season : seasons) {
+                        String cleanSeason = season.trim();
+                        if (!cleanSeason.isEmpty()) {
+                            w.like("best_season", cleanSeason).or();
+                        }
+                    }
+                });
+            }
+            
+            wrapper.orderByDesc("view_count", "collect_count");
+            wrapper.last("LIMIT " + (limit * 2));
+            
+            List<TravelPlan> plans = travelPlanMapper.selectList(wrapper);
+            for (TravelPlan plan : plans) {
+                if (!viewedPlanIds.contains(plan.getId()) && 
+                    recommendations.stream().noneMatch(r -> r.get("id").equals(plan.getId()))) {
+                    Map<String, Object> item = convertPlanToMap(plan);
+                    
+                    // 计算匹配度
+                    double matchScore = calculateTravelFeatureMatchScore(plan, travelMode, tripDuration, seasonPreference);
+                    item.put("score", matchScore * 0.8);
+                    
+                    // 生成推荐理由
+                    StringBuilder reason = new StringBuilder("符合您的出行特征");
+                    if (!travelMode.isEmpty()) {
+                        reason.append(" · ").append(travelMode);
+                    }
+                    if (!tripDuration.isEmpty()) {
+                        reason.append(" · ").append(tripDuration);
+                    }
+                    if (!seasonPreference.isEmpty() && !seasonPreference.equals("全年")) {
+                        reason.append(" · ").append(seasonPreference);
+                    }
+                    item.put("reason", reason.toString());
+                    recommendations.add(item);
+                }
+            }
+            
+        } catch (Exception e) {
+            System.err.println("基于出行特征推荐攻略失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return recommendations;
+    }
+    
+    /**
+     * 计算季节匹配度（辅助方法）
+     */
+    private double calculateSeasonMatchScore(String attractionSeason, String userSeasonPreference) {
+        if (attractionSeason == null || attractionSeason.isEmpty() || 
+            userSeasonPreference == null || userSeasonPreference.isEmpty()) {
+            return 0.5; // 默认匹配度
+        }
+        
+        if (attractionSeason.contains("全年") || userSeasonPreference.equals("全年")) {
+            return 0.8; // 全年匹配度较高
+        }
+        
+        String[] userSeasons = userSeasonPreference.split("、");
+        for (String userSeason : userSeasons) {
+            if (attractionSeason.contains(userSeason.trim())) {
+                return 1.0; // 完全匹配
+            }
+        }
+        
+        return 0.3; // 不匹配
+    }
+    
+    /**
+     * 查找匹配的标签（辅助方法）
+     */
+    private String findMatchedTag(String attractionTags, List<String> userTags) {
+        if (attractionTags == null || attractionTags.isEmpty()) {
+            return "";
+        }
+        
+        for (String userTag : userTags) {
+            if (attractionTags.contains(userTag)) {
+                return userTag;
+            }
+        }
+        
+        return userTags.get(0); // 返回第一个标签作为默认
+    }
+    
+    /**
+     * 计算出行特征匹配度（辅助方法）
+     */
+    private double calculateTravelFeatureMatchScore(TravelPlan plan, String travelMode, String tripDuration, String seasonPreference) {
+        double score = 0.5; // 基础分数
+        
+        // 出行方式匹配
+        if (!travelMode.isEmpty() && plan.getTravelType() != null) {
+            String planTravelType = plan.getTravelType();
+            if ((travelMode.contains("自由行") || travelMode.contains("自驾")) && 
+                (planTravelType.contains("自由") || planTravelType.contains("自驾") || planTravelType.equals("1") || planTravelType.equals("3"))) {
+                score += 0.2;
+            } else if (travelMode.contains("跟团") && (planTravelType.contains("跟团") || planTravelType.equals("2"))) {
+                score += 0.2;
+            }
+        }
+        
+        // 旅游时长匹配
+        if (!tripDuration.isEmpty() && plan.getDays() != null) {
+            int planDays = plan.getDays();
+            if (tripDuration.contains("1-2天") && planDays <= 2) {
+                score += 0.15;
+            } else if (tripDuration.contains("3-5天") && planDays >= 3 && planDays <= 5) {
+                score += 0.15;
+            } else if (tripDuration.contains("5-7天") && planDays >= 5 && planDays <= 7) {
+                score += 0.15;
+            } else if (tripDuration.contains("7天以上") && planDays >= 7) {
+                score += 0.15;
+            }
+        }
+        
+        // 季节偏好匹配
+        if (!seasonPreference.isEmpty() && !seasonPreference.equals("全年") && plan.getBestSeason() != null) {
+            String planSeason = plan.getBestSeason();
+            String[] userSeasons = seasonPreference.split("、");
+            for (String userSeason : userSeasons) {
+                if (planSeason.contains(userSeason.trim())) {
+                    score += 0.15;
+                    break;
+                }
+            }
+        }
+        
+        return Math.min(1.0, score); // 确保不超过1.0
     }
 }

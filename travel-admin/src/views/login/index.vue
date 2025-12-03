@@ -116,8 +116,32 @@
           </div>
         </div>
         
-        <!-- 登录表单 -->
-        <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="login-form">
+        <!-- 登录方式切换 -->
+        <div class="login-method-tabs">
+          <div 
+            class="tab-item" 
+            :class="{ active: loginMethod === 'account' }"
+            @click="loginMethod = 'account'"
+          >
+            账号登录
+          </div>
+          <div 
+            class="tab-item" 
+            :class="{ active: loginMethod === 'phone' }"
+            @click="loginMethod = 'phone'"
+          >
+            手机登录
+          </div>
+        </div>
+
+        <!-- 账号密码登录表单 -->
+        <el-form 
+          v-if="loginMethod === 'account'"
+          :model="loginForm" 
+          :rules="loginRules" 
+          ref="loginFormRef" 
+          class="login-form"
+        >
           <el-form-item prop="username">
             <el-input 
               v-model="loginForm.username" 
@@ -149,6 +173,55 @@
             <el-button 
               type="primary" 
               @click="handleLogin" 
+              :loading="loading"
+              size="large"
+              class="login-button"
+            >
+              {{ loading ? '登录中...' : '进入控制台' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <!-- 手机号验证码登录表单 -->
+        <el-form 
+          v-if="loginMethod === 'phone'"
+          :model="phoneLoginForm" 
+          :rules="phoneLoginRules" 
+          ref="phoneLoginFormRef" 
+          class="login-form phone-login-form"
+        >
+          <el-form-item prop="phone">
+            <el-input 
+              v-model="phoneLoginForm.phone" 
+              placeholder="请输入手机号"
+              :prefix-icon="Phone"
+              size="large"
+            />
+          </el-form-item>
+          
+          <el-form-item prop="captcha">
+            <div class="captcha-input-wrapper">
+              <el-input 
+                v-model="phoneLoginForm.captcha" 
+                placeholder="请输入验证码"
+                :prefix-icon="Message"
+                size="large"
+                @keyup.enter="handlePhoneLogin"
+              />
+              <el-button 
+                :disabled="countdown > 0"
+                @click="handleSendCaptcha"
+                class="captcha-button"
+              >
+                {{ countdown > 0 ? `${countdown}秒后重发` : '发送验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+          
+          <el-form-item>
+            <el-button 
+              type="primary" 
+              @click="handlePhoneLogin" 
               :loading="loading"
               size="large"
               class="login-button"
@@ -257,29 +330,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { authAPI } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
 import { useSystemStore } from '@/stores/system'
 import { ElMessage } from 'element-plus'
-import { User, Setting } from '@element-plus/icons-vue'
+import { User, Setting, Phone, Message } from '@element-plus/icons-vue'
 import AgreementDialog from '@/components/AgreementDialog.vue'
 
 const router = useRouter()
 const systemStore = useSystemStore()
 
-// 登录类型选择
+// 登录类型选择（用户端/管理端）
 const loginType = ref('user')
 
-// 表单数据
+// 登录方式选择（账号登录/手机登录）
+const loginMethod = ref('account')
+
+// 账号登录表单数据
 const loginForm = reactive({
   username: '',
   password: ''
 })
 
+// 手机号登录表单数据
+const phoneLoginForm = reactive({
+  phone: '',
+  captcha: ''
+})
+
 // 保持会话
 const rememberMe = ref(false)
+
+// 验证码倒计时
+const countdown = ref(0)
+let countdownTimer: NodeJS.Timeout | null = null
 
 // 页面加载时，从localStorage读取保存的账号和密码，并加载系统配置
 onMounted(async () => {
@@ -307,8 +393,36 @@ const loginRules = {
   password: []
 }
 
+// 手机号登录验证规则
+const phoneLoginRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    {
+      validator: (_rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback(new Error('请输入手机号'))
+        } else {
+          // 简单的手机号格式验证（支持国际格式）
+          const phoneRegex = /^(\+?[1-9]\d{1,14}|1[3-9]\d{9})$/
+          if (!phoneRegex.test(value.replace(/[\s-]/g, ''))) {
+            callback(new Error('请输入正确的手机号格式'))
+          } else {
+            callback()
+          }
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码为6位数字', trigger: 'blur' }
+  ]
+}
+
 // 表单引用
 const loginFormRef = ref()
+const phoneLoginFormRef = ref()
 const loading = ref(false)
 
 // 对话框状态
@@ -321,8 +435,141 @@ const showContactDialog = ref(false)
 const handleLoginTypeChange = (value: string) => {
   loginForm.username = ''
   loginForm.password = ''
+  phoneLoginForm.phone = ''
+  phoneLoginForm.captcha = ''
   rememberMe.value = false
 }
+
+// 发送手机验证码
+const handleSendCaptcha = async () => {
+  if (!phoneLoginFormRef.value) return
+  
+  await phoneLoginFormRef.value.validateField('phone', async (valid: boolean) => {
+    if (!valid) {
+      return
+    }
+    
+    try {
+      loading.value = true
+      const response = await authAPI.sendPhoneCaptcha({ phone: phoneLoginForm.phone })
+      if (response.code === 200) {
+        ElMessage.success('验证码已发送，请查收')
+        // 开始倒计时
+        startCountdown()
+      } else {
+        ElMessage.error(response.message || '发送验证码失败')
+      }
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || '发送验证码失败')
+    } finally {
+      loading.value = false
+    }
+  })
+}
+
+// 开始倒计时
+const startCountdown = () => {
+  countdown.value = 60
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      if (countdownTimer) {
+        clearInterval(countdownTimer)
+        countdownTimer = null
+      }
+    }
+  }, 1000)
+}
+
+// 手机号登录
+const handlePhoneLogin = async () => {
+  if (!phoneLoginFormRef.value) return
+  
+  await phoneLoginFormRef.value.validate(async (valid: boolean, fields: any) => {
+    if (!valid) {
+      // 验证失败，使用 ElMessage 显示第一个错误
+      const firstError = Object.keys(fields || {})[0]
+      if (firstError && fields[firstError] && fields[firstError].length > 0) {
+        ElMessage.error(fields[firstError][0].message)
+      } else {
+        ElMessage.error('请检查输入信息')
+      }
+      return
+    }
+    
+    try {
+      loading.value = true
+      const response = await authAPI.loginByPhone({
+        phone: phoneLoginForm.phone,
+        captcha: phoneLoginForm.captcha,
+        loginType: loginType.value
+      })
+      
+      if (response.code === 200) {
+        localStorage.setItem('travel_token', response.data.token)
+        localStorage.setItem('travel_user_info', JSON.stringify(response.data.user))
+        
+        const userStore = useUserStore()
+        userStore.setToken(response.data.token)
+        userStore.setUserInfo(response.data.user)
+        
+        ElMessage.success('登录成功')
+        
+        const user = response.data.user
+        const role = user.role
+        
+        if (role === 1) {
+          router.push('/home/admin/dashboard')
+        } else if (role === 2) {
+          router.push('/home/user/dashboard')
+        } else {
+          router.push('/home/user/dashboard')
+        }
+      } else {
+        ElMessage.error(response.message || '登录失败')
+      }
+    } catch (error: any) {
+      let errorMessage = '登录失败，请重试'
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        if (error.message.includes('未注册')) {
+          errorMessage = '该手机号未注册，请先注册'
+        } else if (error.message.includes('验证码')) {
+          errorMessage = '验证码错误或已过期，请重新获取'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      ElMessage.error(errorMessage)
+    } finally {
+      loading.value = false
+    }
+  })
+}
+
+// 组件卸载时清理定时器
+onMounted(() => {
+  // ... existing code
+})
+
+watch(() => loginMethod.value, () => {
+  // 切换登录方式时清空表单
+  phoneLoginForm.phone = ''
+  phoneLoginForm.captcha = ''
+  loginForm.username = ''
+  loginForm.password = ''
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdown.value = 0
+})
 
 // 登录处理
 const handleLogin = async () => {
@@ -423,6 +670,27 @@ const handleAboutUs = () => {
 const handleContact = () => {
   showContactDialog.value = true
 }
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
+
+// 监听登录方式切换，清空表单
+watch(() => loginMethod.value, () => {
+  phoneLoginForm.phone = ''
+  phoneLoginForm.captcha = ''
+  loginForm.username = ''
+  loginForm.password = ''
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdown.value = 0
+})
 </script>
 
 <style lang="scss" scoped>
@@ -670,6 +938,39 @@ const handleContact = () => {
     }
   }
   
+  // 登录方式切换标签页
+  .login-method-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+    
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      padding: 10px 20px;
+      color: #888;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      
+      &.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+        font-weight: 600;
+      }
+    }
+  }
+
   .login-type-selector {
     margin-bottom: 40px;
     display: flex;
@@ -753,6 +1054,43 @@ const handleContact = () => {
   }
   
   .login-form {
+    // 手机号登录表单：隐藏错误提示
+    &.phone-login-form {
+      :deep(.el-form-item__error) {
+        display: none !important;
+      }
+    }
+    
+    // 验证码输入框容器
+    .captcha-input-wrapper {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      
+      .el-input {
+        flex: 1;
+      }
+      
+      .captcha-button {
+        white-space: nowrap;
+        min-width: 120px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        margin-top: 3px; // 稍微下移一点
+        
+        &:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        &:disabled {
+          color: #666;
+          cursor: not-allowed;
+        }
+      }
+    }
+    
     :deep(.el-input) {
       .el-input__wrapper {
         background: rgba(0, 0, 0, 0.3);
@@ -877,7 +1215,54 @@ const handleContact = () => {
         vertical-align: middle;
         
         .el-checkbox__inner {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 4px;
+          transition: all 0.3s ease;
           vertical-align: middle;
+          
+          &:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+          }
+          
+          &::after {
+            border: 2px solid #ffffff;
+            border-left: 0;
+            border-top: 0;
+            height: 10px;
+            left: 5px;
+            top: 4px;
+            width: 5px;
+            transition: all 0.2s ease;
+          }
+        }
+        
+        &.is-checked {
+          .el-checkbox__inner {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 
+              0 0 8px rgba(255, 255, 255, 0.3),
+              inset 0 0 10px rgba(255, 255, 255, 0.1);
+            
+            &:hover {
+              border-color: #ffffff;
+              background: rgba(255, 255, 255, 0.2);
+              box-shadow: 
+                0 0 12px rgba(255, 255, 255, 0.4),
+                inset 0 0 12px rgba(255, 255, 255, 0.15);
+            }
+          }
+        }
+        
+        &.is-focus {
+          .el-checkbox__inner {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+          }
         }
       }
       
@@ -889,11 +1274,6 @@ const handleContact = () => {
         display: flex;
         align-items: center;
         vertical-align: middle;
-      }
-      
-      .el-checkbox__input.is-checked .el-checkbox__inner {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: #ffffff;
       }
     }
     
@@ -1197,6 +1577,7 @@ const handleContact = () => {
   }
 }
 </style>
+
 
 
 

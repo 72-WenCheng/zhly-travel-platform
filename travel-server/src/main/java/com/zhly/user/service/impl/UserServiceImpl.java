@@ -9,6 +9,7 @@ import com.zhly.util.JwtUtil;
 import com.zhly.entity.UserDeactivateRequest;
 import com.zhly.service.UserDeactivationManager;
 import com.zhly.util.OnlineUserManager;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Arrays;
-import java.util.ArrayList;
 
 /**
  * 用户端用户服务实现类
@@ -252,10 +251,17 @@ public class UserServiceImpl implements UserService {
                                         (user.getAvatar() != null && !user.getAvatar().isEmpty()) &&
                                         (user.getNickname() != null && !user.getNickname().isEmpty());
             
-            // 更新用户信息
-            user.setId(currentUser.getId());
-            user.setUpdateTime(LocalDateTime.now());
-            userMapper.updateById(user);
+            // 更新用户信息（使用UpdateWrapper确保所有字段都能正确更新，包括null值）
+            LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(User::getId, currentUser.getId())
+                    .set(User::getNickname, user.getNickname())
+                    .set(User::getAvatar, user.getAvatar())
+                    .set(User::getGender, user.getGender())
+                    .set(User::getAge, user.getAge())
+                    .set(User::getPhone, user.getPhone())
+                    .set(User::getTravelPreference, user.getTravelPreference()) // 出行偏好字段：允许设置为null（清空）或非null值
+                    .set(User::getUpdateTime, LocalDateTime.now());
+            userMapper.update(null, updateWrapper);
             
             // 首次完善资料给予10积分奖励（行为类型7：完善资料）
             if (isFirstTimeComplete) {
@@ -473,7 +479,8 @@ public class UserServiceImpl implements UserService {
             result.put("phone", user.getPhone());
             result.put("age", user.getAge());
             result.put("gender", user.getGender());
-            result.put("userType", user.getUserType());
+            // userType 字段已移除，不再返回
+            result.put("travelPreference", user.getTravelPreference()); // 添加出行偏好字段
             
             // 从user_points表获取真实的积分（根据升级指南，等级由前端根据积分计算）
             UserPoints userPoints = userPointsMapper.getByUserId(userId);
@@ -488,50 +495,8 @@ public class UserServiceImpl implements UserService {
             // 构建用户画像信息
             Map<String, Object> portrait = new HashMap<>();
             
-            // 从用户表的字段获取画像数据
-            if (user.getInterestTags() != null && !user.getInterestTags().isEmpty()) {
-                String interestTags = user.getInterestTags().trim();
-                List<String> tags = new ArrayList<>();
-                
-                // 如果是JSON数组格式
-                if (interestTags.startsWith("[") && interestTags.endsWith("]")) {
-                    try {
-                        // 尝试解析JSON数组
-                        String jsonContent = interestTags.substring(1, interestTags.length() - 1);
-                        if (!jsonContent.isEmpty()) {
-                            String[] jsonTags = jsonContent.split(",");
-                            for (String tag : jsonTags) {
-                                String cleanedTag = tag.trim().replace("\"", "").replace("'", "");
-                                if (!cleanedTag.isEmpty()) {
-                                    tags.add(cleanedTag);
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        // JSON解析失败，按逗号分隔
-                        String[] parts = interestTags.split("[,，、]");
-                        for (String part : parts) {
-                            String cleaned = part.trim();
-                            if (!cleaned.isEmpty() && !cleaned.equals("[") && !cleaned.equals("]")) {
-                                tags.add(cleaned.replace("\"", "").replace("'", ""));
-                            }
-                        }
-                    }
-                } else {
-                    // 普通逗号或顿号分隔的字符串
-                    String[] parts = interestTags.split("[,，、]");
-                    for (String part : parts) {
-                        String cleaned = part.trim();
-                        if (!cleaned.isEmpty()) {
-                            tags.add(cleaned);
-                        }
-                    }
-                }
-                
-                portrait.put("interestTags", tags);
-            } else {
-                portrait.put("interestTags", new ArrayList<>());
-            }
+            // interest_tags 和 frequent_cities 字段已移除，这些数据从用户画像服务获取
+            // 用户画像服务会从浏览历史、收藏记录等分析生成兴趣标签和常去城市
             
             // 将旅游偏好数字转换为文本
             if (user.getTravelPreference() != null) {
