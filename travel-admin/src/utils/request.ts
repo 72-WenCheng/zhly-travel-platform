@@ -2,8 +2,18 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
+// API 响应结果类型
+export interface ApiResponse<T = any> {
+  code: number
+  message?: string
+  data: T
+}
+
 // 是否已经弹出了登录过期提示，避免重复弹窗
 let isSessionExpired = false
+
+// 请求去重：避免短时间内重复请求同一个接口
+const pendingRequests = new Map<string, Promise<any>>()
 
 // 创建axios实例
 const request: AxiosInstance = axios.create({
@@ -135,7 +145,15 @@ request.interceptors.response.use(
   }
 )
 
-export default request
+// 扩展 request 类型，使其返回 ApiResponse 而不是 AxiosResponse
+const typedRequest = request as unknown as {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+}
+
+export default typedRequest
 
 
 

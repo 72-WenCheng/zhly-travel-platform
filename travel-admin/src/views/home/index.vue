@@ -701,9 +701,26 @@ const handleLogout = async () => {
     // 调用退出登录（会先调用后端API，再清除本地存储）
     await userStore.logout()
     
-    // 跳转到登录页
-    router.push('/')
-    ElMessage.success('已退出登录')
+    // 使用 replace 而不是 push，避免历史记录问题
+    // 添加延迟确保状态已清除
+    await nextTick()
+    
+    // 先尝试路由跳转
+    try {
+      await router.replace('/')
+      // 等待路由组件加载完成
+      await new Promise(resolve => setTimeout(resolve, 200))
+      // 检查登录页面是否已加载（通过检查登录页面的关键元素）
+      const loginPage = document.querySelector('.login-page')
+      const loginForm = document.querySelector('.login-form')
+      if (!loginPage && !loginForm) {
+        // 如果页面没有加载，强制刷新
+        window.location.href = '/'
+      }
+    } catch (error) {
+      // 如果路由跳转失败，直接跳转
+      window.location.href = '/'
+    }
   } catch (error) {
     // 用户取消退出
   }
@@ -778,19 +795,11 @@ onMounted(() => {
     userName.value = userInfo.nickname || userInfo.username
     userAvatar.value = userInfo.avatar || ''
     
-    // 根据用户角色设置系统标题和重定向
+    // 根据用户角色设置系统标题（重定向逻辑已在路由守卫中处理，避免重复重定向）
     if (userInfo.role === 1) {
       systemTitle.value = '管理后台'
-      if (!route.path.startsWith('/home/admin')) {
-        console.log('管理员用户，重定向到管理端')
-        router.push('/home/admin/dashboard')
-      }
     } else if (userInfo.role === 2) {
       systemTitle.value = '用户中心'
-      if (!route.path.startsWith('/home/user')) {
-        console.log('普通用户，重定向到用户端')
-        router.push('/home/user/dashboard')
-      }
     }
   } else if (savedUserInfo) {
     // 如果userStore没有，但从存储中有，解析并设置

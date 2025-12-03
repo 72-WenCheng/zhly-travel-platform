@@ -295,11 +295,21 @@ const formatCurrentTime = () => {
 }
 
 // AI日志
-const aiLogs = ref([])
+interface AiLogItem {
+  id: number
+  userId: number
+  request: string
+  response: string
+  status: number
+  responseTime: number
+  createTime: string
+}
+
+const aiLogs = ref<AiLogItem[]>([])
 const loading = ref(false)
 
 // 选中的日志
-const selectedLogs = ref([])
+const selectedLogs = ref<AiLogItem[]>([])
 
 // 分页
 const pagination = reactive({
@@ -323,7 +333,7 @@ const handlePageJump = () => {
 
 // 获取状态名称
 const getStatusName = (status: number) => {
-  const statusMap = {
+  const statusMap: Record<number, string> = {
     0: '失败',
     1: '成功',
     2: '处理中'
@@ -332,13 +342,13 @@ const getStatusName = (status: number) => {
 }
 
 // 获取状态标签
-const getStatusTag = (status: number) => {
-  const tagMap = {
+const getStatusTag = (status: number): 'primary' | 'success' | 'warning' | 'info' | 'danger' | undefined => {
+  const tagMap: Record<number, 'primary' | 'success' | 'warning' | 'info' | 'danger' | undefined> = {
     0: 'danger',
     1: 'success',
     2: 'warning'
   }
-  return tagMap[status] || ''
+  return tagMap[status] || undefined
 }
 
 // 保存配置
@@ -372,9 +382,9 @@ const testAI = async () => {
     // 调用真实AI API
     const response = await generateContent(userId, testPrompt, 'gpt-3.5-turbo')
     
-    if (response && response.length > 0) {
+    if (response && response.data && response.data.length > 0) {
       ElMessage.success({
-        message: 'AI测试成功！\n回复：' + response.substring(0, 100) + '...',
+        message: 'AI测试成功！\n回复：' + response.data.substring(0, 100) + '...',
         duration: 5000
       })
     } else {
@@ -593,7 +603,7 @@ const clearSelection = () => {
 }
 
 // 获取行类名
-const getRowClassName = ({ row, rowIndex }: { row: any; rowIndex: number }) => {
+const getRowClassName = ({ rowIndex }: { rowIndex: number }) => {
   return rowIndex % 2 === 0 ? 'even-row' : 'odd-row'
 }
 

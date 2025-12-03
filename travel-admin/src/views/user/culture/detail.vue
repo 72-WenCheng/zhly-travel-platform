@@ -394,7 +394,7 @@ const loadExperienceDetail = async () => {
             description: '完成作品可带走'
           }
         ],
-        schedule: data.flow ? (Array.isArray(JSON.parse(data.flow)) ? JSON.parse(data.flow).map((item: any, index: number) => ({
+        schedule: data.flow ? (Array.isArray(JSON.parse(data.flow)) ? JSON.parse(data.flow).map((item, index) => ({
           time: `${9 + index}:00`,
           title: typeof item === 'string' ? item : item.title || `步骤${index + 1}`,
           description: typeof item === 'string' ? item : item.description || ''

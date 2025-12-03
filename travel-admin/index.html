@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智慧旅游生态平台</title>
+    <!-- DNS 预解析，加速资源加载 -->
+    <link rel="dns-prefetch" href="//127.0.0.1" />
+    <!-- 预连接，提前建立连接 -->
+    <link rel="preconnect" href="http://127.0.0.1:8070" crossorigin />
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="/src/main.ts" as="script" />
+    <!-- 优化字体加载（如果有自定义字体） -->
+    <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   </head>
   <body>
     <div id="app"></div>

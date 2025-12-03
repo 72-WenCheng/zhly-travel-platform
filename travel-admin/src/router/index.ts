@@ -429,52 +429,86 @@ const router = createRouter({
   }
 })
 
+// 防止重复导航的标记
+let isNavigating = false
+
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
+  // 如果正在导航中，直接放行，避免重复导航
+  if (isNavigating) {
+    next()
+    return
+  }
+  
   NProgress.start()
   
   const userStore = useUserStore()
   const systemStore = useSystemStore()
 
-  if (!systemStore.loaded) {
-    try {
-      await systemStore.fetchConfig()
-    } catch (error) {
-      console.error('加载系统配置失败:', error)
+  // 优化：对于公开页面，不等待系统配置加载，直接放行
+  const isPublicPage = to.path === '/' || to.path === '/register' || to.path === '/forgot-password' || to.path === '/reset-password' || to.path === '/maintenance'
+  
+  if (isPublicPage) {
+    // 后台异步加载配置，不阻塞路由
+    if (!systemStore.loaded && !systemStore.loading) {
+      systemStore.fetchConfig().catch((error) => {
+        console.error('加载系统配置失败:', error)
+      })
     }
+    next()
+    return
+  }
+
+  // 对于需要权限的页面，异步加载配置但不阻塞
+  if (!systemStore.loaded && !systemStore.loading) {
+    // 不等待配置加载完成，先放行路由
+    systemStore.fetchConfig().catch((error) => {
+      console.error('加载系统配置失败:', error)
+    })
   }
 
   const isUserRoute = to.path.startsWith('/home/user')
   const isMaintenanceRoute = to.name === 'UserMaintenance'
 
-  if (systemStore.maintenanceMode && isUserRoute && !isMaintenanceRoute) {
-    next({ name: 'UserMaintenance' })
-    return
-  }
+  // 如果配置已加载，检查维护模式
+  if (systemStore.loaded) {
+    if (systemStore.maintenanceMode && isUserRoute && !isMaintenanceRoute) {
+      isNavigating = true
+      next({ name: 'UserMaintenance' })
+      setTimeout(() => { isNavigating = false }, 100)
+      return
+    }
 
-  if (!systemStore.maintenanceMode && isMaintenanceRoute) {
-    next('/home/user/dashboard')
-    return
-  }
-  
-  // 如果是登录页面、注册页面、忘记密码页面或重置密码页面，直接放行
-  if (to.path === '/' || to.path === '/register' || to.path === '/forgot-password' || to.path === '/reset-password' || to.path === '/maintenance') {
-    next()
-    return
+    if (!systemStore.maintenanceMode && isMaintenanceRoute) {
+      isNavigating = true
+      next('/home/user/dashboard')
+      setTimeout(() => { isNavigating = false }, 100)
+      return
+    }
   }
   
   // 初始化用户信息（确保刷新时能正确恢复当前标签页的用户身份）
-  if (!userStore.isLoggedIn || !userStore.token) {
-    userStore.initUser()
-  }
-  
-  // 检查是否已登录
-  if (!userStore.token) {
-    // 尝试从sessionStorage获取token
-    const sessionToken = sessionStorage.getItem('travel_token')
-    if (!sessionToken) {
-      next('/')
-      return
+  // 对于公开页面，不需要初始化用户信息
+  if (!isPublicPage) {
+    if (!userStore.isLoggedIn || !userStore.token) {
+      userStore.initUser()
+    }
+    
+    // 检查是否已登录
+    if (!userStore.token) {
+      // 尝试从sessionStorage获取token
+      const sessionToken = sessionStorage.getItem('travel_token')
+      if (!sessionToken) {
+        // 如果是从其他页面跳转到登录页，直接放行
+        if (to.path === '/' || to.path === '/register' || to.path === '/forgot-password' || to.path === '/reset-password') {
+          next()
+          return
+        }
+        isNavigating = true
+        next('/')
+        setTimeout(() => { isNavigating = false }, 100)
+        return
+      }
     }
   }
   
@@ -494,15 +528,29 @@ router.beforeEach(async (to, from, next) => {
       
       // 管理员访问 /home/user/* 路径时，重定向到管理平台
       if (role === 1 && to.path.startsWith('/home/user')) {
+        // 避免重复重定向：如果目标路径已经是正确的，直接放行
+        if (from.path === '/home/admin/dashboard' || to.path === '/home/admin/dashboard') {
+          next()
+          return
+        }
         console.log('管理员尝试访问用户平台，重定向到管理平台')
+        isNavigating = true
         next('/home/admin/dashboard')
+        setTimeout(() => { isNavigating = false }, 100)
         return
       }
       
       // 普通用户访问 /dashboard 或 /home/admin 路径时，重定向到用户平台
       if (role === 2 && (to.path.startsWith('/dashboard') || to.path.startsWith('/home/admin'))) {
+        // 避免重复重定向：如果目标路径已经是正确的，直接放行
+        if (from.path === '/home/user/dashboard' || to.path === '/home/user/dashboard') {
+          next()
+          return
+        }
         console.log('普通用户尝试访问管理平台，重定向到用户平台')
+        isNavigating = true
         next('/home/user/dashboard')
+        setTimeout(() => { isNavigating = false }, 100)
         return
       }
     } catch (error) {
@@ -513,8 +561,88 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-router.afterEach(() => {
+router.afterEach((to) => {
   NProgress.done()
+  
+  // 路由预加载：在空闲时预加载可能访问的页面
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+      preloadNextRoutes(to)
+      prefetchResources(to)
+    }, { timeout: 1000 })
+  } else {
+    // 降级方案：延迟预加载
+    setTimeout(() => {
+      preloadNextRoutes(to)
+      prefetchResources(to)
+    }, 1500)
+  }
 })
+
+// 路由预加载函数
+const preloadedRoutes = new Set<string>()
+
+function preloadNextRoutes(currentRoute: any) {
+  // 避免重复预加载
+  if (preloadedRoutes.has(currentRoute.path)) {
+    return
+  }
+  preloadedRoutes.add(currentRoute.path)
+  
+  const routeMap: Record<string, string[]> = {
+    '/': ['/dashboard', '/home/user/dashboard'],
+    '/dashboard': ['/dashboard/user', '/dashboard/travel-plan'],
+    '/home/user/dashboard': ['/home/user/plans', '/home/user/attractions', '/home/user/collect'],
+    '/home/admin/dashboard': ['/home/admin/users', '/home/admin/plans', '/home/admin/attractions']
+  }
+  
+  const routesToPreload = routeMap[currentRoute.path] || []
+  
+  // 限制同时预加载的路由数量，避免影响当前页面性能
+  const maxPreload = 3
+  routesToPreload.slice(0, maxPreload).forEach((path, index) => {
+    // 错开预加载时间，避免同时发起多个请求
+    setTimeout(() => {
+      const route = router.resolve(path)
+      if (route && route.matched.length > 0) {
+        // 预加载路由组件
+        const matched = route.matched[route.matched.length - 1]
+        if (matched && typeof matched.components?.default === 'function') {
+          matched.components.default().catch(() => {
+            // 静默处理预加载失败
+          })
+        }
+      }
+    }, index * 200) // 每个路由间隔 200ms
+  })
+}
+
+// 资源预加载函数（prefetch）
+function prefetchResources(currentRoute: any) {
+  // 预加载可能需要的 API 资源
+  const apiPrefetchMap: Record<string, string[]> = {
+    '/home/user/dashboard': ['/api/user/info', '/api/statistics/dashboard'],
+    '/home/admin/dashboard': ['/api/admin/statistics', '/api/user/list']
+  }
+  
+  const apisToPrefetch = apiPrefetchMap[currentRoute.path] || []
+  
+  // 使用 link prefetch 预加载 API（如果浏览器支持）
+  apisToPrefetch.forEach(api => {
+    const link = document.createElement('link')
+    link.rel = 'prefetch'
+    link.href = api
+    link.as = 'fetch'
+    link.crossOrigin = 'anonymous'
+    document.head.appendChild(link)
+    
+    // 5秒后移除，避免占用资源
+    setTimeout(() => {
+      if (link.parentNode) {
+        link.parentNode.removeChild(link)
+      }
+    }, 5000)
+  })
+}
 
 export default router

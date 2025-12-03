@@ -111,10 +111,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSystemStore } from '@/stores/system'
 import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
 import { 
   Fold, Expand, Setting, Odometer, User, Document, Location, 
-  MagicStick, Shop, ArrowDown, SwitchButton, Sunny
+  MagicStick, Shop, ArrowDown, SwitchButton
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -126,21 +126,9 @@ const { adminPlatformName } = storeToRefs(systemStore)
 // 侧边栏折叠状态
 const isCollapse = ref(false)
 
-// 当前页面标题
-const currentPageTitle = computed(() => {
-  return route.meta?.title || '未知页面'
-})
-
 // 当前激活的菜单
 const activeMenu = computed(() => {
   return route.path
-})
-
-// 天气信息
-const weatherInfo = ref({
-  temperature: 25,
-  weather: '晴天',
-  location: '重庆'
 })
 
 // 切换侧边栏折叠状态
@@ -168,8 +156,22 @@ const handleCommand = async (command: string) => {
         })
         // 调用退出登录（会先调用后端API，再清除本地存储）
         await userStore.logout()
-        router.push('/login')
-        ElMessage.success('退出登录成功')
+        // 使用 replace 跳转到登录页
+        await nextTick()
+        try {
+          await router.replace('/')
+          // 等待路由组件加载完成
+          await new Promise(resolve => setTimeout(resolve, 200))
+          // 检查登录页面是否已加载
+          const loginPage = document.querySelector('.login-page')
+          const loginForm = document.querySelector('.login-form')
+          if (!loginPage && !loginForm) {
+            // 如果页面没有加载，强制刷新
+            window.location.href = '/'
+          }
+        } catch {
+          window.location.href = '/'
+        }
       } catch {
         // 用户取消
       }
@@ -177,35 +179,8 @@ const handleCommand = async (command: string) => {
   }
 }
 
-// 获取天气类型
-const getWeatherType = (weather: string) => {
-  if (weather.includes('雨')) return 'danger'
-  if (weather.includes('雪')) return 'info'
-  if (weather.includes('晴')) return 'success'
-  return 'warning'
-}
-
-// 获取天气建议
-const getWeatherAdvice = (weather: string) => {
-  if (weather.includes('雨')) return '建议室内活动'
-  if (weather.includes('雪')) return '注意保暖'
-  if (weather.includes('晴')) return '适合出行'
-  return '注意天气变化'
-}
-
-// 获取天气信息
-const getWeatherInfo = async () => {
-  try {
-    // TODO: 调用天气API
-    // const response = await weatherApi.getCurrentWeather()
-    // weatherInfo.value = response.data
-  } catch (error) {
-    console.error('获取天气信息失败:', error)
-  }
-}
-
 onMounted(() => {
-  getWeatherInfo()
+  // 组件挂载时的初始化逻辑
 })
 
 watch(
@@ -495,85 +470,84 @@ watch(
   }
 }
 
-  .header {
-    background: #ffffff;
-    border-bottom: 1px solid #f0f0f0;
+.header {
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 64px;
+  
+  .header-left {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    height: 64px;
+    gap: 24px;
     
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 24px;
+    .collapse-btn {
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      color: #606266;
+      transition: all 0.2s;
+      font-size: 20px;
       
-      .collapse-btn {
-        cursor: pointer;
-        padding: 8px;
-        border-radius: 6px;
-        color: #606266;
-        transition: all 0.2s;
-        font-size: 20px;
-        
-        &:hover {
-          background: #f5f7fa;
-          color: #667eea;
-        }
-      }
-      
-      .system-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        
-        .title-icon {
-          font-size: 24px;
-          color: #667eea;
-        }
-        
-        .title-text {
-          font-size: 18px;
-          font-weight: 600;
-          color: #303133;
-        }
+      &:hover {
+        background: #f5f7fa;
+        color: #667eea;
       }
     }
     
-    .header-right {
+    .system-title {
       display: flex;
       align-items: center;
+      gap: 10px;
       
-      .user-dropdown-trigger {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 6px 12px;
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.2s;
-        
-        &:hover {
-          background: #f5f7fa;
-        }
-        
-        .user-name {
-          font-size: 14px;
-          color: #303133;
-          font-weight: 500;
-        }
-        
-        .dropdown-icon {
-          font-size: 12px;
-          color: #909399;
-          transition: transform 0.2s;
-        }
+      .title-icon {
+        font-size: 24px;
+        color: #667eea;
       }
       
-      .el-dropdown:hover .dropdown-icon {
-        transform: rotate(180deg);
+      .title-text {
+        font-size: 18px;
+        font-weight: 600;
+        color: #303133;
       }
+    }
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    
+    .user-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:hover {
+        background: #f5f7fa;
+      }
+      
+      .user-name {
+        font-size: 14px;
+        color: #303133;
+        font-weight: 500;
+      }
+      
+      .dropdown-icon {
+        font-size: 12px;
+        color: #909399;
+        transition: transform 0.2s;
+      }
+    }
+    
+    .el-dropdown:hover .dropdown-icon {
+      transform: rotate(180deg);
     }
   }
 }

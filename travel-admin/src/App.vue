@@ -1,6 +1,10 @@
 <template>
   <div id="app">
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
 
     <el-dialog
       v-model="maintenanceModalVisible"
@@ -74,7 +78,12 @@ const forceLogoutForMaintenance = async () => {
     await userStore.logout()
   }
   ElMessage.warning('系统维护中，已自动退出')
-  router.push('/maintenance')
+  await nextTick()
+  router.replace('/maintenance').then(() => {
+    // 确保页面正确加载
+  }).catch(() => {
+    window.location.href = '/maintenance'
+  })
 }
 
 // 标记是否已经发送过退出请求（避免重复发送）
@@ -136,11 +145,28 @@ const handleVisibilityChange = () => {
 onMounted(() => {
   // 初始化用户信息
   userStore.initUser()
-  // 预加载系统配置，供全局使用
-  systemStore.fetchConfig().catch((error) => {
-    console.error('预加载系统配置失败:', error)
-  })
-  systemStore.startAutoRefresh()
+  
+  // 优化：延迟加载系统配置，不阻塞页面渲染
+  // 使用 requestIdleCallback 在浏览器空闲时加载
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+      systemStore.fetchConfig().catch((error) => {
+        console.error('预加载系统配置失败:', error)
+      })
+    }, { timeout: 2000 })
+  } else {
+    // 降级方案：延迟加载
+    setTimeout(() => {
+      systemStore.fetchConfig().catch((error) => {
+        console.error('预加载系统配置失败:', error)
+      })
+    }, 100)
+  }
+  
+  // 延迟启动自动刷新，避免影响首次加载
+  setTimeout(() => {
+    systemStore.startAutoRefresh()
+  }, 3000)
   
   // 监听窗口关闭事件
   window.addEventListener('beforeunload', handleBeforeUnload)
@@ -179,6 +205,17 @@ watch(
 #app {
   height: 100vh;
   width: 100vw;
+}
+
+/* 路由过渡动画优化 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 .maintenance-countdown-dialog .el-dialog__header {
   display: none;

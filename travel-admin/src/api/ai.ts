@@ -32,6 +32,7 @@ export interface AiStatistics {
   successRequests: number
   failedRequests: number
   successRate: number
+  avgResponseTime?: number
   totalTokensUsed: number
   activeUsers: number
 }

@@ -193,6 +193,10 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       // 无论API调用成功与否，都清除本地存储
       clearUser()
+      
+      // 强制清除路由缓存，确保退出后能正确跳转
+      // 使用 nextTick 确保清除操作完成后再进行路由跳转
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
   }
 

@@ -363,7 +363,7 @@
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  Star, Plus, Download, Refresh, Search, Check, Warning, 
+  Star, Plus, Download, Refresh, Search, Check,
   View, User, Edit, Delete, CircleClose, CircleCheck, Select, CloseBold
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -572,7 +572,7 @@ const handleReset = () => {
 }
 
 // 监听筛选条件变化，自动触发搜索（使用防抖）
-let searchTimeout: NodeJS.Timeout | null = null
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 watch(
   () => [
     searchForm.title,
@@ -664,11 +664,11 @@ const getActivityTypeText = (type: number) => {
   return types[type] || '未知'
 }
 
-const getActivityTypeTag = (type: number) => {
-  const tags: Record<number, string> = {
-    1: 'danger', 2: 'success', 3: 'warning', 4: 'info', 5: ''
+const getActivityTypeTag = (type: number): 'primary' | 'success' | 'warning' | 'info' | 'danger' | undefined => {
+  const tags: Record<number, 'primary' | 'success' | 'warning' | 'info' | 'danger' | undefined> = {
+    1: 'danger', 2: 'success', 3: 'warning', 4: 'info', 5: undefined
   }
-  return tags[type] || ''
+  return tags[type] || undefined
 }
 
 const getStatusText = (status: number) => {
@@ -678,11 +678,11 @@ const getStatusText = (status: number) => {
   return statuses[status] || '未知'
 }
 
-const getStatusType = (status: number) => {
-  const types: Record<number, string> = {
+const getStatusType = (status: number): 'primary' | 'success' | 'warning' | 'info' | 'danger' | undefined => {
+  const types: Record<number, 'primary' | 'success' | 'warning' | 'info' | 'danger' | undefined> = {
     0: 'info', 1: 'success', 2: 'warning', 3: 'danger'
   }
-  return types[status] || ''
+  return types[status] || undefined
 }
 
 const formatDate = (date: string) => {

@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // 状态文本映射
-const statusTextMap = {
+const statusTextMap: Record<string, Record<number, string>> = {
   user: {
     0: '禁用',
     1: '正常',
@@ -50,7 +50,7 @@ const statusTextMap = {
 }
 
 // 状态标签类型映射
-const tagTypeMap = {
+const tagTypeMap: Record<string, Record<number, 'primary' | 'success' | 'warning' | 'info' | 'danger'>> = {
   user: {
     0: 'danger',
     1: 'success',
@@ -86,7 +86,7 @@ const statusText = computed(() => {
 })
 
 // 标签类型
-const tagType = computed(() => {
+const tagType = computed((): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
   return tagTypeMap[props.type]?.[props.status] || 'info'
 })
 </script>
