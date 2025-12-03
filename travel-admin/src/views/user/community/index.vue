@@ -1,0 +1,3215 @@
+ <template>
+  <div class="community-page">
+    <!-- 返回按钮 -->
+    <BackButton />
+    
+    <!-- 页面头部 -->
+    <div class="page-header" ref="pageHeaderRef">
+      <div class="header-content">
+        <div class="header-icon">
+          <el-icon :size="48"><ChatDotRound /></el-icon>
+        </div>
+        <div class="header-text">
+          <h2>攻略社区</h2>
+          <p class="page-desc">分享旅行经验，发现精彩攻略，与旅行达人交流心得</p>
+        </div>
+      </div>
+      <div class="last-update">
+        <el-icon><TrendCharts /></el-icon>
+        <span>汇聚优质旅行攻略，助您规划完美行程</span>
+      </div>
+    </div>
+
+    <!-- 主要内容区域：三栏布局 -->
+    <div class="main-content-layout">
+      <!-- 左侧导航栏 -->
+      <div class="left-nav-sidebar">
+        <el-card class="nav-card" shadow="never">
+          <div class="nav-menu">
+            <div 
+              class="nav-item"
+              :class="{ 'active': activeCategory === 'hot' }"
+              @click="switchCategory('hot')"
+            >
+              <el-icon><Star /></el-icon>
+              <span>推荐</span>
+            </div>
+            <div 
+              class="nav-item"
+              :class="{ 'active': activeCategory === 'latest' }"
+              @click="switchCategory('latest')"
+            >
+              <el-icon><Compass /></el-icon>
+              <span>发现</span>
+            </div>
+            <div 
+              class="nav-item"
+              :class="{ 'active': activeCategory === 'featured' }"
+              @click="switchCategory('featured')"
+            >
+              <el-icon><Medal /></el-icon>
+              <span>精华</span>
+            </div>
+            <div 
+              class="nav-item"
+              :class="{ 'active': activeCategory === 'followed' }"
+              @click="switchCategory('followed')"
+            >
+              <el-icon><StarFilled /></el-icon>
+              <span>关注</span>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-item" @click="router.push('/home/user/plans')">
+              <el-icon><Document /></el-icon>
+              <span>我的攻略</span>
+            </div>
+            <div class="nav-item" @click="router.push('/home/user/plans/create')">
+              <el-icon><Edit /></el-icon>
+              <span>写攻略</span>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 热门标签 -->
+        <el-card class="tags-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <el-icon><PriceTag /></el-icon>
+              <span>热门标签</span>
+            </div>
+          </template>
+          <div class="hot-tags-list">
+            <div 
+              v-for="(tag, index) in hotTopics.slice(0, 12)" 
+              :key="tag.id || index"
+              class="tag-item"
+              @click="searchByTopic(tag.name)"
+            >
+              <span class="tag-prefix">#</span>
+              <span class="tag-name">{{ tag.name }}</span>
+              <span class="tag-count">{{ tag.count || 0 }}</span>
+            </div>
+            <div v-if="hotTopics.length === 0" class="empty-tags">
+              <el-empty description="暂无标签" :image-size="60" />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 热门目的地 -->
+        <el-card class="destinations-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <el-icon><Location /></el-icon>
+              <span>热门目的地</span>
+            </div>
+          </template>
+          <div class="destinations-list">
+            <div 
+              v-for="(dest, index) in hotDestinations" 
+              :key="index"
+              class="destination-item"
+              @click="searchByDestination(dest.name)"
+            >
+              <el-icon><LocationFilled /></el-icon>
+              <span>{{ dest.name }}</span>
+              <span class="dest-count">{{ dest.count }}篇</span>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 中间：主内容区 -->
+      <div class="content-center">
+        <!-- 热门话题链接 -->
+        <div class="hot-topic-links" ref="hotTopicLinksRef">
+          <div class="topics-left">
+            <span class="link-label">热门话题：</span>
+            <a
+              v-for="(link, index) in hotTopicLinks"
+              :key="index"
+              class="topic-link"
+              @click.prevent="searchByTopic(link.topic)"
+            >
+              {{ link.label }}
+            </a>
+          </div>
+          <div class="search-right">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索攻略标题、目的地、作者..."
+              size="default"
+              @keyup.enter="handleSearch"
+              class="inline-search"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+              <template #suffix>
+                <div class="suffix-actions">
+                  <el-button 
+                    type="text"
+                    :icon="Close"
+                    circle
+                    size="small"
+                    class="clear-btn"
+                    :class="{ 'is-visible': searchKeyword }"
+                    @click="searchKeyword = ''"
+                  />
+                  <el-button 
+                    type="primary" 
+                    :icon="Search" 
+                    circle 
+                    size="small"
+                    @click="handleSearch"
+                  />
+                </div>
+              </template>
+            </el-input>
+          </div>
+        </div>
+
+        <!-- 资讯头条（热门攻略大卡片） -->
+        <div v-if="featuredPlans.length > 0 && activeCategory === 'hot'" class="featured-plans-section">
+          <div class="featured-plans-grid">
+            <div 
+              v-for="(plan, index) in featuredPlans.slice(0, 4)" 
+              :key="plan.id"
+              class="featured-plan-card"
+              :class="`featured-${index + 1}`"
+              @click="viewDetail(plan)"
+            >
+              <div class="featured-image">
+                <img :src="plan.coverImage || '/default-cover.jpg'" :alt="plan.title" />
+                <div class="featured-overlay"></div>
+                <div class="featured-badge" v-if="index === 0">
+                  <el-icon><Trophy /></el-icon>
+                  <span>最热</span>
+                </div>
+              </div>
+              <div class="featured-content">
+                <h3 class="featured-title">{{ plan.title }}</h3>
+                <div class="featured-meta">
+                  <span class="featured-author">
+                    <el-avatar :size="20" :src="plan.authorAvatar">{{ plan.authorName?.charAt(0) }}</el-avatar>
+                    {{ plan.authorName }}
+                  </span>
+                  <span class="featured-stats">
+                    <el-icon><View /></el-icon>
+                    {{ formatNumber(plan.viewCount) }}
+                  </span>
+                  <span class="featured-stats">
+                    <el-icon><ChatDotRound /></el-icon>
+                    {{ formatNumber(plan.commentCount) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 攻略列表 -->
+        <div 
+          v-infinite-scroll="loadMore"
+          :infinite-scroll-disabled="loading || noMore"
+          :infinite-scroll-distance="100"
+          class="plans-list"
+        >
+      <div 
+        v-for="plan in plans" 
+        :key="plan.id" 
+        class="plan-card"
+        @click="viewDetail(plan)"
+      >
+        <!-- 封面图 -->
+        <div class="card-cover" :style="{ height: plan.imageHeight + 'px' }">
+          <img :src="plan.coverImage" :alt="plan.title" />
+          <div class="card-gradient"></div>
+          
+          <!-- 精华标签 -->
+          <div v-if="plan.isFeatured" class="featured-badge">
+            <el-icon><Medal /></el-icon>
+            <span>精华</span>
+          </div>
+          
+          <!-- 天数标签 -->
+          <div class="days-badge">
+            <el-icon><Calendar /></el-icon>
+            <span>{{ plan.days }}天</span>
+          </div>
+        </div>
+        
+        <!-- 信息层 -->
+        <div class="card-info">
+          <h3 class="card-title">{{ plan.title }}</h3>
+          
+          <div class="card-destination">
+            <el-icon><Location /></el-icon>
+            <span>{{ plan.destination }}</span>
+          </div>
+          
+          <p class="card-desc">{{ plan.description }}</p>
+          
+          <!-- 作者信息 -->
+          <div class="author-info">
+            <el-avatar 
+              :size="32" 
+              :src="plan.authorAvatar"
+              class="author-avatar"
+              @click.stop="viewUserProfile(plan.authorId)"
+              style="cursor: pointer;"
+            >
+              {{ plan.authorName?.charAt(0) }}
+            </el-avatar>
+            <div class="author-details">
+              <div class="author-name-row">
+                <span 
+                  class="author-name"
+                  @click.stop="viewUserProfile(plan.authorId)"
+                  style="cursor: pointer;"
+                >{{ plan.authorName }}</span>
+                <span 
+                  v-if="plan.levelName"
+                  class="author-level" 
+                  :style="{ 
+                    '--level-color-start': plan.levelGradient?.start || plan.levelColor, 
+                    '--level-color-end': plan.levelGradient?.end || plan.levelColor 
+                  }"
+                >
+                  {{ plan.levelName }}
+                </span>
+                <span 
+                  v-for="(tag, tagIndex) in plan.tags" 
+                  :key="tag" 
+                  class="plan-tag"
+                  :class="`tag-color-${tagIndex % 6}`"
+                  style="margin-left: 8px;"
+                >
+                  #{{ tag }}
+                </span>
+              </div>
+              <span class="publish-time">{{ formatTime(plan.createTime) }}</span>
+            </div>
+          </div>
+          
+          <div class="card-meta">
+            <div class="meta-stats">
+              <div class="stat-item">
+                <el-icon><View /></el-icon>
+                <span>{{ formatNumber(plan.viewCount) }}</span>
+              </div>
+              <div class="stat-item">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>{{ formatNumber(plan.commentCount) }}</span>
+              </div>
+              <div 
+                class="stat-item like-action"
+                :class="{ 'is-liked': plan.isLiked }"
+                @click.stop="toggleLike(plan)"
+              >
+                <el-icon v-if="plan.isLiked"><StarFilled /></el-icon>
+                <el-icon v-else><Star /></el-icon>
+                <span>{{ formatNumber(plan.likeCount) }}</span>
+              </div>
+            </div>
+            
+            <div class="card-budget">
+              <span class="budget-label">预算</span>
+              <span class="budget-value">¥{{ plan.budget }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-container">
+      <el-icon class="is-loading"><Loading /></el-icon>
+      <span>加载中...</span>
+    </div>
+    <div v-if="noMore && plans.length > 0" class="no-more">
+      <el-divider>已经到底了</el-divider>
+    </div>
+
+        <el-empty v-if="plans.length === 0 && !loading" description="暂无攻略" />
+      </div>
+
+      <!-- 右侧：社区侧边栏 -->
+      <div class="sidebar-right">
+        <!-- 社区数据统计 -->
+        <el-card class="sidebar-card stats-card" shadow="never">
+          <div class="stats-content">
+            <div class="stats-tabs">
+              <div 
+                class="stats-tab"
+                :class="{ 'active': statsPeriod === 'week' }"
+                @click="statsPeriod = 'week'"
+              >
+                最近7天
+              </div>
+              <div 
+                class="stats-tab"
+                :class="{ 'active': statsPeriod === 'all' }"
+                @click="statsPeriod = 'all'"
+              >
+                全部
+              </div>
+            </div>
+            <div class="stats-items">
+              <div class="stat-item">
+                <div class="stat-label">攻略总数</div>
+                <div class="stat-value">{{ communityStats.totalPlans || '--' }}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">活跃用户</div>
+                <div class="stat-value">{{ communityStats.activeUsers || '--' }}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">总浏览量</div>
+                <div class="stat-value">{{ formatNumber(communityStats.totalViews || 0) }}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">总评论数</div>
+                <div class="stat-value">{{ formatNumber(communityStats.totalComments || 0) }}</div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 热门文章 -->
+        <el-card class="sidebar-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <el-icon><Trophy /></el-icon>
+              <span>热门文章</span>
+            </div>
+          </template>
+          <div class="hot-articles-tabs">
+            <div 
+              class="article-tab"
+              :class="{ 'active': hotArticlePeriod === 'today' }"
+              @click="hotArticlePeriod = 'today'"
+            >
+              今天
+            </div>
+            <div 
+              class="article-tab"
+              :class="{ 'active': hotArticlePeriod === 'week' }"
+              @click="hotArticlePeriod = 'week'"
+            >
+              近一周
+            </div>
+            <div 
+              class="article-tab"
+              :class="{ 'active': hotArticlePeriod === 'month' }"
+              @click="hotArticlePeriod = 'month'"
+            >
+              近一月
+            </div>
+          </div>
+          <div class="hot-articles-list">
+            <div 
+              v-for="(article, index) in hotArticles" 
+              :key="article.id"
+              class="article-item"
+              @click="viewDetail(article)"
+            >
+              <div class="article-rank">{{ index + 1 }}</div>
+              <div class="article-content">
+                <div class="article-title">{{ article.title }}</div>
+                <div class="article-author">{{ article.authorName }}</div>
+              </div>
+            </div>
+            <div v-if="hotArticles.length === 0" class="empty-articles">
+              <el-empty description="暂无文章" :image-size="80" />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 热门作者排行榜 -->
+        <el-card class="sidebar-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <el-icon><UserFilled /></el-icon>
+              <span>热门作者</span>
+            </div>
+          </template>
+          <div class="author-ranking">
+            <div 
+              v-for="(author, index) in topAuthors.slice(0, 8)" 
+              :key="author.id"
+              class="ranking-item"
+              @click="viewUserProfile(author.id)"
+            >
+              <div class="rank-number" :class="`rank-${index + 1}`">
+                {{ index + 1 }}
+              </div>
+              <el-avatar :size="36" :src="author.avatar" class="author-avatar">
+                {{ author.name?.charAt(0) }}
+              </el-avatar>
+              <div class="author-info">
+                <div class="author-name">{{ author.name }}</div>
+                <div class="author-stats">
+                  <span>{{ author.planCount || 0 }}篇</span>
+                  <span>·</span>
+                  <span>{{ formatNumber(author.totalLikes || 0) }}赞</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="topAuthors.length === 0" class="empty-ranking">
+              <el-empty description="暂无数据" :image-size="80" />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 推荐社区 -->
+        <el-card class="sidebar-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <el-icon><Connection /></el-icon>
+              <span>推荐社区</span>
+            </div>
+          </template>
+          <div class="recommended-communities">
+            <div 
+              v-for="community in recommendedCommunities" 
+              :key="community.id"
+              class="community-item"
+              @click="viewCommunity(community.id)"
+            >
+              <el-avatar :size="32" :src="community.avatar" class="community-avatar">
+                {{ community.icon || community.name?.charAt(0) }}
+              </el-avatar>
+              <div class="community-info">
+                <div class="community-name">{{ community.name }}</div>
+                <div class="community-desc">
+                  {{ community.description }}
+                  <span v-if="community.planCount" class="plan-count">({{ community.planCount }}篇)</span>
+                </div>
+              </div>
+              <el-icon class="arrow-icon"><ArrowRight /></el-icon>
+            </div>
+            <div v-if="recommendedCommunities.length === 0" class="empty-communities">
+              <el-empty description="暂无社区" :image-size="80" />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 最新评论 -->
+        <el-card class="sidebar-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>最新互动</span>
+            </div>
+          </template>
+          <div class="latest-comments">
+            <div 
+              v-for="comment in latestComments" 
+              :key="comment.id"
+              class="comment-item"
+            >
+              <el-avatar :size="36" :src="comment.avatar" class="comment-avatar">
+                {{ comment.username?.charAt(0) }}
+              </el-avatar>
+              <div class="comment-content">
+                <div class="comment-header">
+                  <span class="comment-user">{{ comment.username }}</span>
+                  <span class="comment-time">{{ formatTime(comment.createdTime) }}</span>
+                </div>
+                <div class="comment-text" :title="comment.content">{{ comment.content }}</div>
+                <div class="comment-footer">
+                  <span 
+                    class="comment-plan-link" 
+                    @click="viewPlanDetail(comment.contentId)"
+                  >
+                    {{ comment.planTitle }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-if="latestComments.length === 0" class="empty-comments">
+              <el-empty description="暂无评论" :image-size="80" />
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onActivated, watch, nextTick, onBeforeUnmount } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import BackButton from '@/components/BackButton.vue'
+import request from '@/utils/request'
+import { getLevelByPoints } from '@/utils/level'
+import {
+  Search, Location, Calendar, View, ChatDotRound, Star, StarFilled,
+  Loading, TrendCharts, Medal, Money, Trophy, ArrowUp, ArrowDown,
+  UserFilled, Plus, Document, Compass, Edit, PriceTag, LocationFilled,
+  Clock, DataAnalysis, Connection, ArrowRight, Close
+} from '@element-plus/icons-vue'
+
+const router = useRouter()
+const route = useRoute()
+
+// 页面头部引用，用于计算左右固定栏位置
+const pageHeaderRef = ref<HTMLElement | null>(null)
+const hotTopicLinksRef = ref<HTMLElement | null>(null)
+const sidebarTop = ref('200px')
+
+// 存储滚动监听器引用，以便清理
+let scrollHandler: (() => void) | null = null
+
+// 获取滚动容器
+const getScrollContainer = (): HTMLElement | null => {
+  // 优先查找 .main-content（主内容滚动容器）
+  const mainContent = document.querySelector('.main-content') as HTMLElement
+  if (mainContent) return mainContent
+  
+  // 其次查找 .el-scrollbar__wrap（Element Plus 滚动容器）
+  const scrollbarWrap = document.querySelector('.el-scrollbar__wrap') as HTMLElement
+  if (scrollbarWrap) return scrollbarWrap
+  
+  // 最后使用 window
+  return null
+}
+
+// 计算侧边栏位置的函数
+const updateSidebarPosition = () => {
+  const scrollContainer = getScrollContainer()
+  
+  // 确保滚动容器在顶部
+  if (scrollContainer) {
+    scrollContainer.scrollTop = 0
+  } else {
+    // 如果没有找到滚动容器，使用 window
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }
+  
+  nextTick(() => {
+    // 使用 requestAnimationFrame 确保在下一帧渲染后计算
+    requestAnimationFrame(() => {
+      // 再次确保滚动位置
+      if (scrollContainer) {
+        if (scrollContainer.scrollTop !== 0) {
+          scrollContainer.scrollTop = 0
+        }
+      } else {
+        if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0) {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+          document.documentElement.scrollTop = 0
+          document.body.scrollTop = 0
+        }
+      }
+      
+      // 等待一帧后计算位置
+      requestAnimationFrame(() => {
+        // 再次检查并确保在顶部
+        if (scrollContainer && scrollContainer.scrollTop !== 0) {
+          scrollContainer.scrollTop = 0
+        } else if (!scrollContainer && window.scrollY !== 0) {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+        }
+        
+        // 再等待一帧，确保滚动完成
+        requestAnimationFrame(() => {
+          if (hotTopicLinksRef.value) {
+            // 获取热门话题组件相对于视口的实际位置
+            const hotTopicRect = hotTopicLinksRef.value.getBoundingClientRect()
+            // 直接使用热门话题组件的 top 位置，让左右侧边栏与其对齐
+            sidebarTop.value = `${hotTopicRect.top}px`
+          } else if (pageHeaderRef.value) {
+            // 如果热门话题组件不存在，则使用页面头部计算（降级方案）
+            const headerRect = pageHeaderRef.value.getBoundingClientRect()
+            const headerHeight = pageHeaderRef.value.offsetHeight
+            const headerMarginBottom = 24
+            sidebarTop.value = `${headerRect.top + headerHeight + headerMarginBottom}px`
+          }
+        })
+      })
+    })
+  })
+}
+
+// 搜索和筛选
+const searchKeyword = ref('')
+const activeCategory = ref('hot')
+const selectedDestination = ref('')
+const selectedDays = ref('')
+const selectedBudget = ref('')
+
+// 分类
+const categories = ref([
+  { value: 'hot', label: '热门', icon: '🔥' },
+  { value: 'latest', label: '最新', icon: '🆕' },
+  { value: 'featured', label: '精华', icon: '⭐' },
+  { value: 'followed', label: '关注', icon: '❤️' }
+])
+
+// 目的地列表
+// 目的地城市列表（国内外所有主要城市）
+const destinations = ref([
+  // 国内城市
+  '北京', '上海', '重庆', '天津',
+  '杭州', '苏州', '南京', '厦门', '青岛', '宁波', '无锡', '扬州', '绍兴', '济南', '烟台', '威海', '合肥', '黄山', '福州', '泉州',
+  '广州', '深圳', '三亚', '桂林', '珠海', '东莞', '佛山', '中山', '南宁', '海口', '北海', '阳朔',
+  '成都', '昆明', '丽江', '大理', '拉萨', '贵阳', '九寨沟', '乐山', '峨眉山', '香格里拉', '西双版纳',
+  '西安', '兰州', '银川', '乌鲁木齐', '西宁', '敦煌', '吐鲁番', '喀什',
+  '郑州', '太原', '石家庄', '保定', '大同', '洛阳', '开封', '呼和浩特',
+  '哈尔滨', '大连', '沈阳', '长春', '吉林', '牡丹江', '齐齐哈尔',
+  '武汉', '长沙', '张家界', '南昌', '宜昌', '景德镇', '凤凰',
+  '香港', '澳门', '台北', '高雄', '台中', '台南', '花莲',
+  
+  // 国际城市
+  // 东亚
+  '东京', '大阪', '京都', '横滨', '名古屋', '福冈', '札幌', '奈良', '首尔', '釜山', '济州岛', '平壤',
+  
+  // 东南亚
+  '曼谷', '普吉岛', '清迈', '芭提雅', '新加坡', '巴厘岛', '雅加达', '河内', '胡志明市', '岘港', '吉隆坡', '槟城', '马尼拉', '长滩岛', '仰光', '金边', '吴哥窟',
+  
+  // 南亚
+  '迪拜', '阿布扎比', '马尔代夫', '孟买', '新德里', '阿格拉', '斋浦尔', '加德满都', '科伦坡',
+  
+  // 欧洲
+  '巴黎', '伦敦', '罗马', '巴塞罗那', '马德里', '阿姆斯特丹', '威尼斯', '佛罗伦萨', '米兰', '布拉格', '维也纳', '柏林', '慕尼黑', '苏黎世', '日内瓦', '雅典', '圣托里尼', '伊斯坦布尔', '莫斯科', '圣彼得堡', '哥本哈根', '斯德哥尔摩', '奥斯陆', '赫尔辛基', '雷克雅未克', '都柏林', '爱丁堡', '里斯本', '布达佩斯', '华沙', '克拉科夫',
+  
+  // 北美洲
+  '纽约', '洛杉矶', '旧金山', '拉斯维加斯', '迈阿密', '芝加哥', '波士顿', '华盛顿', '西雅图', '奥兰多', '夏威夷', '温哥华', '多伦多', '蒙特利尔', '魁北克', '墨西哥城', '坎昆',
+  
+  // 大洋洲
+  '悉尼', '墨尔本', '布里斯班', '珀斯', '黄金海岸', '凯恩斯', '奥克兰', '皇后镇', '惠灵顿', '基督城', '斐济', '大溪地',
+  
+  // 南美洲
+  '里约热内卢', '布宜诺斯艾利斯', '圣保罗', '利马', '马丘比丘', '圣地亚哥', '波哥大', '卡塔赫纳',
+  
+  // 非洲
+  '开罗', '马拉喀什', '开普敦', '约翰内斯堡', '内罗毕', '桑给巴尔', '维多利亚', '毛里求斯'
+])
+
+// 攻略列表
+const plans = ref<any[]>([])
+const loading = ref(false)
+const noMore = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+
+// 社区侧边栏数据
+const topAuthors = ref<any[]>([])
+const hotTopics = ref<any[]>([])
+const latestComments = ref<any[]>([])
+const featuredPlans = ref<any[]>([])
+const hotArticles = ref<any[]>([])
+const hotDestinations = ref<any[]>([])
+const recommendedCommunities = ref<any[]>([])
+const communityStats = ref({
+  totalPlans: 0,
+  activeUsers: 0,
+  totalViews: 0,
+  totalComments: 0
+})
+const statsPeriod = ref('week')
+const hotArticlePeriod = ref('today')
+
+// 热门话题链接
+const hotTopicLinks = ref([
+  { label: '海岛度假', topic: '海岛' },
+  { label: '徒步探险', topic: '徒步' },
+  { label: '美食之旅', topic: '美食' },
+  { label: '文化体验', topic: '文化' },
+  { label: '亲子游', topic: '亲子' },
+  { label: '自驾游', topic: '自驾' },
+  { label: '摄影之旅', topic: '摄影' },
+  { label: '温泉养生', topic: '温泉' },
+  { label: '古镇漫游', topic: '古镇' },
+  { label: '户外露营', topic: '露营' }
+])
+
+// 切换分类
+const switchCategory = function(category) {
+  activeCategory.value = category
+  resetAndLoad()
+}
+
+// 筛选变化
+const handleFilterChange = () => {
+  resetAndLoad()
+}
+
+// 搜索
+const handleSearch = () => {
+  resetAndLoad()
+}
+
+// 重置并加载
+const resetAndLoad = () => {
+  currentPage.value = 1
+  plans.value = []
+  noMore.value = false
+  loadPlans()
+}
+
+// 加载更多
+const loadMore = () => {
+  if (!loading.value && !noMore.value) {
+    currentPage.value++
+    loadPlans()
+  }
+}
+
+// 加载攻略列表
+const loadPlans = async () => {
+  loading.value = true
+  try {
+    let response
+    
+    // 根据不同分类调用不同的接口
+    // 重要：只查询已发布状态(status=1)的攻略，不判断审核状态
+    if (activeCategory.value === 'hot') {
+      // 推荐攻略：按浏览量和收藏量综合排序
+      const params = {
+        page: currentPage.value,
+        size: pageSize.value,
+        status: 1, // 严格要求：只查询已发布状态
+        keyword: searchKeyword.value || undefined,
+        destination: selectedDestination.value || undefined
+      }
+      response = await request.get('/travel-plan/list', { params })
+      
+      // 前端排序：按浏览量和收藏量综合得分降序
+      // 综合得分 = 浏览量 * 0.6 + 收藏量 * 0.4
+      if (response.code === 200 && response.data?.list) {
+        response.data.list = response.data.list.sort(function(a, b) {
+          const aViewCount = a.viewCount || 0
+          const aCollectCount = a.collectCount || 0
+          const bViewCount = b.viewCount || 0
+          const bCollectCount = b.collectCount || 0
+          
+          // 计算综合得分
+          const aScore = aViewCount * 0.6 + aCollectCount * 0.4
+          const bScore = bViewCount * 0.6 + bCollectCount * 0.4
+          
+          return bScore - aScore
+        })
+      }
+    } else if (activeCategory.value === 'latest') {
+      // 最新攻略：按创建时间排序
+      const params = {
+        page: currentPage.value,
+        size: pageSize.value,
+        status: 1, // 严格要求：只查询已发布状态
+        keyword: searchKeyword.value || undefined,
+        destination: selectedDestination.value || undefined
+      }
+      response = await request.get('/travel-plan/list', { params })
+    } else if (activeCategory.value === 'featured') {
+      // 精华攻略：按点赞数排序
+      const params = {
+        page: currentPage.value,
+        size: pageSize.value,
+        status: 1, // 严格要求：只查询已发布状态
+        keyword: searchKeyword.value || undefined,
+        destination: selectedDestination.value || undefined
+      }
+      response = await request.get('/travel-plan/list', { params })
+      
+      // 前端筛选：优先显示点赞数高的（作为精华）
+      if (response.code === 200 && response.data?.list) {
+        response.data.list = response.data.list.sort(function(a, b) {
+          return (b.likeCount || 0) - (a.likeCount || 0)
+        })
+      }
+    } else if (activeCategory.value === 'followed') {
+      // 关注动态：暂时使用最新排序（需要后端支持关注关系）
+      const params = {
+        page: currentPage.value,
+        size: pageSize.value,
+        status: 1, // 严格要求：只查询已发布状态
+        keyword: searchKeyword.value || undefined,
+        destination: selectedDestination.value || undefined
+      }
+      response = await request.get('/travel-plan/list', { params })
+    }
+    
+    if (response && response.code === 200 && response.data) {
+      const planList = response.data.list || []
+      
+      // 严格过滤：只显示已发布状态(status=1)的攻略，不判断审核状态
+      const filteredPlans = planList.filter(function(plan) {
+        // 只判断发布状态：status === 1
+        return plan.status === 1
+      })
+      
+      // 前端筛选：出行天数和预算范围
+      let finalFilteredPlans = filteredPlans
+      
+      // 筛选出行天数
+      if (selectedDays.value) {
+        const daysNum = parseInt(selectedDays.value)
+        if (!isNaN(daysNum) && daysNum > 0) {
+          finalFilteredPlans = finalFilteredPlans.filter(function(plan) {
+            const planDays = plan.days || 1
+            // 允许±1天的误差
+            return planDays >= daysNum - 1 && planDays <= daysNum + 1
+          })
+        }
+      }
+      
+      // 筛选预算范围
+      if (selectedBudget.value) {
+        const budgetStr = selectedBudget.value.trim()
+        // 支持格式：纯数字、"1000-5000"、"1000+"、"<5000"等
+        if (budgetStr.includes('-')) {
+          // 范围格式：1000-5000
+          const parts = budgetStr.split('-')
+          const minStr = parts[0].trim()
+          const maxStr = parts[1] ? parts[1].trim() : ''
+          const min = parseInt(minStr) || 0
+          const max = maxStr ? parseInt(maxStr) || Infinity : Infinity
+          finalFilteredPlans = finalFilteredPlans.filter(function(plan) {
+            const planBudget = plan.budget || 0
+            return planBudget >= min && planBudget <= max
+          })
+        } else if (budgetStr.endsWith('+')) {
+          // 最小值格式：1000+
+          const min = parseInt(budgetStr.replace('+', '')) || 0
+          finalFilteredPlans = finalFilteredPlans.filter(function(plan) {
+            const planBudget = plan.budget || 0
+            return planBudget >= min
+          })
+        } else if (budgetStr.startsWith('<')) {
+          // 最大值格式：<5000
+          const max = parseInt(budgetStr.replace('<', '')) || Infinity
+          finalFilteredPlans = finalFilteredPlans.filter(function(plan) {
+            const planBudget = plan.budget || 0
+            return planBudget <= max
+          })
+        } else {
+          // 纯数字：精确匹配（允许±20%误差）
+          const target = parseInt(budgetStr) || 0
+          if (target > 0) {
+            finalFilteredPlans = finalFilteredPlans.filter(function(plan) {
+              const planBudget = plan.budget || 0
+              const tolerance = target * 0.2
+              return planBudget >= target - tolerance && planBudget <= target + tolerance
+            })
+          }
+        }
+      }
+      
+      // 处理数据格式，确保coverImage正确显示
+      const formattedPlans = finalFilteredPlans.map(function(plan) {
+        // 如果没有coverImage，从images字段提取第一张
+        let coverImage = plan.coverImage
+        if (!coverImage && plan.images) {
+          const imageList = typeof plan.images === 'string' 
+            ? plan.images.split(',').filter(function(img) { return img.trim() })
+            : plan.images
+          if (imageList && imageList.length > 0) {
+            coverImage = imageList[0]
+          }
+        }
+        
+        // 处理标签（从tags字段解析）
+        let tags = []
+        if (plan.tags) {
+          if (Array.isArray(plan.tags)) {
+            tags = plan.tags
+          } else if (typeof plan.tags === 'string' && plan.tags.trim()) {
+            tags = plan.tags.split(',').filter(Boolean).map(function(t) { return t.trim() })
+          }
+        }
+        
+        // 根据作者积分计算等级（统一使用升级指南的计算方式）
+        const authorPoints = plan.authorPoints !== undefined && plan.authorPoints !== null ? plan.authorPoints : 0
+        const authorLevelInfo = getLevelByPoints(authorPoints)
+        
+        const levelName = authorLevelInfo.name
+        const levelColor = authorLevelInfo.color
+        const levelGradient = authorLevelInfo.gradient || { start: authorLevelInfo.color, end: authorLevelInfo.color }
+        
+        return {
+          id: plan.id,
+          title: plan.title,
+          destination: plan.destination,
+          description: plan.description || '',
+          coverImage: coverImage || '',
+          days: plan.days || 1,
+          budget: plan.budget || 0,
+          authorId: plan.authorId || plan.userId || plan.author?.id,
+          authorName: plan.author || plan.authorName || '匿名用户',
+          authorAvatar: plan.authorAvatar || '',
+          viewCount: plan.viewCount || 0,
+          commentCount: plan.commentCount || 0,
+          likeCount: plan.likeCount || 0,
+          collectCount: plan.collectCount || 0,
+          isLiked: false, // 需要后端支持
+          isFeatured: false, // 需要后端支持
+          createTime: plan.createTime || plan.publishTime || new Date().toISOString(),
+          imageHeight: 240 + Math.floor(Math.random() * 80), // 瀑布流需要，保留随机高度
+          tags: tags,
+          levelName: levelName,
+          levelColor: levelColor,
+          levelGradient: levelGradient
+        }
+      })
+      
+      if (currentPage.value === 1) {
+        plans.value = formattedPlans
+      } else {
+        plans.value.push(...formattedPlans)
+      }
+      
+      // 判断是否还有更多数据
+      if (formattedPlans.length < pageSize.value) {
+        noMore.value = true
+      } else {
+        noMore.value = false
+      }
+    } else {
+      throw new Error(response?.message || '加载失败')
+    }
+  } catch (error) {
+    console.error('加载攻略失败:', error)
+    ElMessage.error(error?.message || '加载失败，请稍后重试')
+    
+    // 如果API失败，可以选择使用模拟数据作为降级方案
+    // const mockData = generateMockPlans()
+    // if (currentPage.value === 1) {
+    //   plans.value = mockData
+    // } else {
+    //   plans.value.push(...mockData)
+    // }
+  } finally {
+    loading.value = false
+  }
+}
+
+// 生成模拟数据
+const generateMockPlans = () => {
+  const mockPlans = []
+  const titles = [
+    '重庆三日游完美攻略',
+    '成都美食之旅',
+    '西安古都文化体验',
+    '云南大理洱海骑行',
+    '青海湖环湖游',
+    '西藏拉萨朝圣之旅',
+    '新疆独库公路自驾',
+    '内蒙古草原深度游',
+    '海南三亚度假攻略',
+    '杭州西湖诗意之旅'
+  ]
+  
+  const destinations = ['重庆', '成都', '西安', '大理', '青海', '西藏', '新疆', '内蒙古', '三亚', '杭州']
+  const descriptions = [
+    '探索山城魅力，品尝正宗火锅，欣赏绝美夜景',
+    '慢生活体验，寻找最地道的川味小吃',
+    '穿越千年历史，感受古都文化魅力',
+    '骑行洱海，邂逅诗和远方',
+    '环湖骑行，感受高原湖泊之美',
+    '朝圣之旅，感受信仰的力量',
+    '自驾天路，穿越最美风景',
+    '草原深度游，体验蒙古族风情',
+    '海岛度假，享受阳光沙滩',
+    '西湖漫步，品味江南水乡'
+  ]
+  
+  const authors = ['旅行达人小王', '摄影师老李', '背包客小张', '美食探索者', '自驾游爱好者']
+  
+  for (let i = 0; i < 10; i++) {
+    const randomIndex = Math.floor(Math.random() * titles.length)
+    mockPlans.push({
+      id: currentPage.value * 100 + i,
+      title: titles[randomIndex],
+      destination: destinations[randomIndex],
+      description: descriptions[randomIndex],
+      coverImage: `https://picsum.photos/400/${240 + Math.floor(Math.random() * 80)}?random=${currentPage.value * 10 + i}`,
+      imageHeight: 240 + Math.floor(Math.random() * 80),
+      days: Math.floor(Math.random() * 7) + 1,
+      budget: Math.floor(Math.random() * 5000) + 500,
+      authorName: authors[Math.floor(Math.random() * authors.length)],
+      authorAvatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
+      viewCount: Math.floor(Math.random() * 10000),
+      commentCount: Math.floor(Math.random() * 500),
+      likeCount: Math.floor(Math.random() * 1000),
+      isLiked: false,
+      isFeatured: Math.random() > 0.7,
+      createTime: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+    })
+  }
+  
+  return mockPlans
+}
+
+// 查看详情
+const viewDetail = function(plan) {
+  router.push(`/home/user/plans/detail/${plan.id}`)
+}
+
+// 查看用户主页
+const viewUserProfile = function(userId) {
+  if (!userId) {
+    ElMessage.warning('用户ID不存在')
+    return
+  }
+  router.push(`/home/user/profile/${userId}`)
+}
+
+// 点赞
+const toggleLike = async function(plan) {
+  try {
+    // TODO: 调用API
+    plan.isLiked = !plan.isLiked
+    plan.likeCount += plan.isLiked ? 1 : -1
+    ElMessage.success(plan.isLiked ? '点赞成功' : '已取消点赞')
+  } catch (error) {
+    console.error('点赞失败:', error)
+    ElMessage.error('操作失败')
+  }
+}
+
+// 格式化数字
+const formatNumber = function(num) {
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1) + 'w'
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k'
+  }
+  return num.toString()
+}
+
+// 格式化时间
+const formatTime = function(time) {
+  const date = new Date(time)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  
+  if (minutes < 60) {
+    return `${minutes}分钟前`
+  } else if (hours < 24) {
+    return `${hours}小时前`
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString()
+  }
+}
+
+// 加载热门作者
+const loadTopAuthors = async () => {
+  try {
+    const response = await request.get('/community/top-authors', {
+      params: {
+        limit: 10
+      }
+    })
+    if (response.code === 200 && response.data) {
+      topAuthors.value = (response.data || []).map((author: any) => ({
+        id: author.id,
+        name: author.name || '匿名用户',
+        avatar: author.avatar || '',
+        planCount: author.planCount || 0,
+        totalLikes: author.totalLikes || 0,
+        points: 0
+      }))
+    }
+  } catch (error) {
+    console.error('加载热门作者失败:', error)
+    topAuthors.value = []
+  }
+}
+
+// 加载热门话题（从攻略标签中提取）
+const loadHotTopics = async () => {
+  try {
+    // 获取攻略列表，提取标签统计
+    const response = await request.get('/travel-plan/list', {
+      params: {
+        page: 1,
+        size: 100,
+        status: 1
+      }
+    })
+    if (response.code === 200 && response.data?.list) {
+      const tagMap = new Map<string, number>()
+      const plans = response.data.list || []
+      
+      plans.forEach((plan: any) => {
+        let tags: string[] = []
+        if (plan.tags) {
+          if (Array.isArray(plan.tags)) {
+            tags = plan.tags
+          } else if (typeof plan.tags === 'string') {
+            tags = plan.tags.split(',').filter(Boolean).map((t: string) => t.trim())
+          }
+        }
+        tags.forEach((tag: string) => {
+          tagMap.set(tag, (tagMap.get(tag) || 0) + 1)
+        })
+      })
+      
+      hotTopics.value = Array.from(tagMap.entries())
+        .map(([name, count]) => ({
+          id: name,
+          name,
+          count,
+          trend: Math.random() > 0.5 ? 'up' : 'down'
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
+    }
+  } catch (error) {
+    console.error('加载热门话题失败:', error)
+    hotTopics.value = []
+  }
+}
+
+// 加载最新评论
+const loadLatestComments = async () => {
+  try {
+    const response = await request.get('/community/latest-comments', {
+      params: {
+        limit: 10
+      }
+    })
+    if (response.code === 200 && response.data) {
+      latestComments.value = (response.data || []).map((comment: any) => ({
+        id: comment.id,
+        username: comment.username || '匿名用户',
+        avatar: comment.avatar || '',
+        content: comment.content || '', // 显示完整内容，由CSS处理溢出
+        createdTime: comment.createdTime,
+        contentId: comment.contentId,
+        planTitle: comment.planTitle || '攻略'
+      }))
+    }
+  } catch (error) {
+    console.error('加载最新评论失败:', error)
+    latestComments.value = []
+  }
+}
+
+
+// 加载精选攻略（用于资讯头条）
+const loadFeaturedPlans = async () => {
+  try {
+    const response = await request.get('/travel-plan/list', {
+      params: {
+        page: 1,
+        size: 20,
+        status: 1
+      }
+    })
+    if (response.code === 200 && response.data?.list) {
+      featuredPlans.value = (response.data.list || [])
+        .sort((a: any, b: any) => {
+          // 按浏览量和收藏量综合排序（与推荐排序逻辑一致）
+          const aViewCount = a.viewCount || 0
+          const aCollectCount = a.collectCount || 0
+          const bViewCount = b.viewCount || 0
+          const bCollectCount = b.collectCount || 0
+          
+          // 计算综合得分
+          const aScore = aViewCount * 0.6 + aCollectCount * 0.4
+          const bScore = bViewCount * 0.6 + bCollectCount * 0.4
+          
+          return bScore - aScore
+        })
+        .slice(0, 4)
+        .map((plan: any) => {
+          let coverImage = plan.coverImage
+          if (!coverImage && plan.images) {
+            const imageList = typeof plan.images === 'string' 
+              ? plan.images.split(',').filter((img: string) => img.trim())
+              : plan.images
+            if (imageList && imageList.length > 0) {
+              coverImage = imageList[0]
+            }
+          }
+          return {
+            id: plan.id,
+            title: plan.title,
+            coverImage: coverImage || '',
+            authorName: plan.author || plan.authorName || '匿名用户',
+            authorAvatar: plan.authorAvatar || '',
+            viewCount: plan.viewCount || 0,
+            commentCount: plan.commentCount || 0
+          }
+        })
+    }
+  } catch (error) {
+    console.error('加载精选攻略失败:', error)
+    featuredPlans.value = []
+  }
+}
+
+// 加载热门文章
+const loadHotArticles = async () => {
+  try {
+    // 根据时间段映射
+    let period = 'today'
+    if (hotArticlePeriod.value === 'week') {
+      period = 'week'
+    } else if (hotArticlePeriod.value === 'month') {
+      period = 'month'
+    }
+    
+    const response = await request.get('/community/hot-articles', {
+      params: {
+        period: period,
+        limit: 10
+      }
+    })
+    if (response.code === 200 && response.data) {
+      hotArticles.value = (response.data || []).map((article: any) => ({
+        id: article.id,
+        title: article.title?.substring(0, 40) + (article.title?.length > 40 ? '...' : ''),
+        authorName: article.authorName || '匿名用户',
+        viewCount: article.viewCount || 0
+      }))
+    }
+  } catch (error) {
+    console.error('加载热门文章失败:', error)
+    hotArticles.value = []
+  }
+}
+
+// 加载热门目的地
+const loadHotDestinations = async () => {
+  try {
+    const response = await request.get('/travel-plan/list', {
+      params: {
+        page: 1,
+        size: 100,
+        status: 1
+      }
+    })
+    if (response.code === 200 && response.data?.list) {
+      const destMap = new Map<string, number>()
+      const plans = response.data.list || []
+      
+      plans.forEach((plan: any) => {
+        const dest = plan.destination
+        if (dest) {
+          destMap.set(dest, (destMap.get(dest) || 0) + 1)
+        }
+      })
+      
+      hotDestinations.value = Array.from(destMap.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
+    }
+  } catch (error) {
+    console.error('加载热门目的地失败:', error)
+    hotDestinations.value = []
+  }
+}
+
+// 加载社区统计数据
+const loadCommunityStats = async () => {
+  try {
+    const period = statsPeriod.value === 'week' ? 'week' : 'all'
+    const response = await request.get('/statistics/community', {
+      params: {
+        period: period
+      }
+    })
+    if (response.code === 200 && response.data) {
+      communityStats.value = {
+        totalPlans: response.data.totalPlans || 0,
+        activeUsers: response.data.activeUsers || 0,
+        totalViews: response.data.totalViews || 0,
+        totalComments: response.data.totalComments || 0
+      }
+    }
+  } catch (error) {
+    console.error('加载社区统计失败:', error)
+    // 失败时保持默认值
+    communityStats.value = {
+      totalPlans: 0,
+      activeUsers: 0,
+      totalViews: 0,
+      totalComments: 0
+    }
+  }
+}
+
+// 标签到社区信息的映射
+const tagToCommunityMap: Record<string, { name: string; desc: string; icon: string }> = {
+  '海岛': { name: '海岛度假', desc: '分享海岛旅行经验', icon: '🏝️' },
+  '徒步': { name: '徒步探险', desc: '徒步旅行攻略分享', icon: '🥾' },
+  '美食': { name: '美食探索', desc: '发现各地美食', icon: '🍜' },
+  '文化': { name: '文化体验', desc: '深度文化之旅', icon: '🏛️' },
+  '亲子': { name: '亲子游', desc: '亲子旅行攻略', icon: '👨‍👩‍👧' },
+  '自驾': { name: '自驾游联盟', desc: '自驾游攻略', icon: '🚗' },
+  '摄影': { name: '摄影爱好者', desc: '旅行摄影技巧', icon: '📷' },
+  '温泉': { name: '温泉养生', desc: '温泉度假推荐', icon: '♨️' },
+  '古镇': { name: '古镇漫游', desc: '古镇文化探索', icon: '🏮' },
+  '露营': { name: '户外露营', desc: '露营旅行分享', icon: '⛺' },
+  '旅行': { name: '旅行达人社区', desc: '分享旅行经验', icon: '旅' },
+  '度假': { name: '度假休闲', desc: '休闲度假攻略', icon: '🏖️' },
+  '探险': { name: '探险之旅', desc: '探险旅行分享', icon: '🗺️' }
+}
+
+// 加载推荐社区（从攻略标签中自动统计）
+const loadRecommendedCommunities = async () => {
+  try {
+    // 获取所有攻略，统计标签
+    const response = await request.get('/travel-plan/list', {
+      params: {
+        page: 1,
+        size: 500, // 获取足够多的数据以统计所有分类
+        status: 1
+      }
+    })
+    
+    if (response.code === 200 && response.data?.list) {
+      const tagMap = new Map<string, number>()
+      const plans = response.data.list || []
+      
+      // 统计每个标签的攻略数量
+      plans.forEach((plan: any) => {
+        let tags: string[] = []
+        if (plan.tags) {
+          if (Array.isArray(plan.tags)) {
+            tags = plan.tags
+          } else if (typeof plan.tags === 'string') {
+            tags = plan.tags.split(',').filter(Boolean).map((t: string) => t.trim())
+          }
+        }
+        tags.forEach((tag: string) => {
+          if (tag) {
+            tagMap.set(tag, (tagMap.get(tag) || 0) + 1)
+          }
+        })
+      })
+      
+      // 转换为社区列表
+      recommendedCommunities.value = Array.from(tagMap.entries())
+        .map(([tag, count]) => {
+          // 查找标签对应的社区信息，如果没有则使用默认值
+          const communityInfo = tagToCommunityMap[tag] || {
+            name: tag,
+            desc: `关于${tag}的攻略分享`,
+            icon: tag.charAt(0)
+          }
+          
+          return {
+            id: tag, // 使用标签作为ID
+            name: communityInfo.name,
+            description: communityInfo.desc,
+            icon: communityInfo.icon,
+            tag: tag,
+            planCount: count,
+            avatar: ''
+          }
+        })
+        .sort((a, b) => b.planCount - a.planCount) // 按攻略数量降序
+        .slice(0, 8) // 只显示前8个
+    } else {
+      recommendedCommunities.value = []
+    }
+  } catch (error) {
+    console.error('加载推荐社区失败:', error)
+    recommendedCommunities.value = []
+  }
+}
+
+// 按目的地搜索
+const searchByDestination = (destName: string) => {
+  selectedDestination.value = destName
+  resetAndLoad()
+}
+
+// 查看社区（按标签筛选攻略）
+const viewCommunity = (communityId: string | number) => {
+  const community = recommendedCommunities.value.find(c => c.id === communityId || c.tag === communityId)
+  if (community && community.tag) {
+    // 按社区对应的标签筛选攻略
+    searchKeyword.value = community.tag
+    resetAndLoad()
+    // 滚动到顶部
+    const scrollContainer = getScrollContainer()
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  } else {
+    ElMessage.warning('社区信息不存在')
+  }
+}
+
+
+// 按话题搜索
+const searchByTopic = (topicName: string) => {
+  searchKeyword.value = topicName
+  resetAndLoad()
+}
+
+// 查看攻略详情
+const viewPlanDetail = (planId: number) => {
+  router.push(`/home/user/plans/detail/${planId}`)
+}
+
+
+// 初始化函数
+const initializePage = () => {
+  // 获取滚动容器并滚动到顶部
+  const scrollContainer = getScrollContainer()
+  
+  if (scrollContainer) {
+    scrollContainer.scrollTop = 0
+  } else {
+    // 如果没有找到滚动容器，使用 window
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }
+  
+  // 加载数据
+  loadPlans()
+  loadTopAuthors()
+  loadHotTopics()
+  loadLatestComments()
+  loadFeaturedPlans()
+  loadHotArticles()
+  loadHotDestinations()
+  loadCommunityStats()
+  loadRecommendedCommunities()
+  
+  // 计算左右固定栏的 top 位置（与热门话题组件对齐）
+  // 使用多重延迟确保 DOM 完全渲染
+  nextTick(() => {
+    setTimeout(() => {
+      updateSidebarPosition()
+    }, 400)
+  })
+}
+
+onMounted(() => {
+  initializePage()
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', updateSidebarPosition)
+  
+  // 监听滚动事件，如果页面回到顶部，重新计算
+  scrollHandler = () => {
+    const scrollContainer = getScrollContainer()
+    let isAtTop = false
+    
+    if (scrollContainer) {
+      isAtTop = scrollContainer.scrollTop === 0
+    } else {
+      isAtTop = window.scrollY === 0 || document.documentElement.scrollTop === 0
+    }
+    
+    if (isAtTop) {
+      updateSidebarPosition()
+    }
+  }
+  
+  // 监听正确的滚动容器
+  const scrollContainer = getScrollContainer()
+  if (scrollContainer) {
+    scrollContainer.addEventListener('scroll', scrollHandler, { passive: true })
+  } else {
+    window.addEventListener('scroll', scrollHandler, { passive: true })
+  }
+})
+
+// 如果使用了 keep-alive，组件激活时也需要处理
+onActivated(() => {
+  initializePage()
+})
+
+onBeforeUnmount(() => {
+  // 清理事件监听
+  window.removeEventListener('resize', updateSidebarPosition)
+  if (scrollHandler) {
+    const scrollContainer = getScrollContainer()
+    if (scrollContainer) {
+      scrollContainer.removeEventListener('scroll', scrollHandler)
+    } else {
+      window.removeEventListener('scroll', scrollHandler)
+    }
+  }
+})
+
+// 监听路由变化，重新计算位置
+watch(() => route.path, (newPath, oldPath) => {
+  // 只有在路由真正变化时才处理
+  if (newPath === oldPath) return
+  
+  // 路由变化时先滚动到顶部
+  const scrollContainer = getScrollContainer()
+  if (scrollContainer) {
+    scrollContainer.scrollTop = 0
+  } else {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }
+  
+  nextTick(() => {
+    setTimeout(() => {
+      updateSidebarPosition()
+    }, 400)
+  })
+}, { immediate: false })
+
+// 监听数据加载完成，重新计算位置（数据加载可能影响 DOM 高度）
+watch([plans, hotTopics], () => {
+  nextTick(() => {
+    setTimeout(() => {
+      updateSidebarPosition()
+    }, 100)
+  })
+}, { deep: true })
+
+// 监听热门文章周期变化
+watch(hotArticlePeriod, () => {
+  loadHotArticles()
+})
+
+// 监听统计周期变化
+watch(statsPeriod, () => {
+  loadCommunityStats()
+})
+</script>
+
+<style lang="scss" scoped>
+.community-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  position: relative;
+  padding: 24px;
+  padding-bottom: 40px;
+  overflow: hidden;
+
+  // 全局卡片标题样式
+  :deep(.card-header) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-weight: 600;
+    font-size: 15px;
+    color: #303133;
+
+    .el-icon {
+      color: #909399;
+      font-size: 16px;
+    }
+  }
+
+  // 页面头部
+  .page-header {
+    margin-bottom: 24px;
+    padding: 32px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      
+      .header-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #606266;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      
+      .header-text {
+        h2 {
+          margin: 0 0 8px 0;
+          font-size: 32px;
+          font-weight: 700;
+          color: #303133;
+        }
+        
+        .page-desc {
+          margin: 0;
+          color: #909399;
+          font-size: 15px;
+          line-height: 1.6;
+        }
+      }
+    }
+    
+    .last-update {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #f5f5f5;
+      border: 1px solid #e4e7ed;
+      border-radius: 30px;
+      color: #606266;
+      font-size: 14px;
+      
+      .el-icon {
+        font-size: 16px;
+        color: #909399;
+      }
+    }
+  }
+  
+  // 响应式设计
+
+  @media (max-width: 768px) {
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 24px;
+      
+      .header-content {
+        .header-icon {
+          width: 60px;
+          height: 60px;
+          
+          :deep(.el-icon) {
+            font-size: 36px;
+          }
+        }
+        
+        .header-text {
+          h2 {
+            font-size: 24px;
+          }
+          
+          .page-desc {
+            font-size: 14px;
+          }
+        }
+      }
+      
+      .last-update {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+
+
+
+  // 内容提示
+  .content-tip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    margin-bottom: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-left: 3px solid #667eea;
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+    
+    .tip-icon {
+      font-size: 16px;
+    }
+  }
+
+  // 攻略列表（改为列表布局）
+  .plans-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .plan-card {
+      margin-bottom: 0;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s;
+      border: 1px solid #f0f0f0;
+      
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      }
+      
+      .card-cover {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #f0f0f0, #e8e8e8);
+        
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.3s ease;
+        }
+        
+        .featured-badge {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 12px;
+          background: #ffd700;
+          color: #8B4513;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        
+        .days-badge {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 12px;
+          background: white;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #667eea;
+        }
+      }
+      
+      .card-info {
+        padding: 20px;
+        
+        .card-title {
+          margin: 0 0 12px;
+          font-size: 18px;
+          font-weight: 700;
+          color: #303133;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .card-destination {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 12px;
+          font-size: 14px;
+          color: #667eea;
+          font-weight: 600;
+          
+          .el-icon {
+            font-size: 16px;
+          }
+        }
+        
+        .card-desc {
+          margin: 0 0 16px;
+          font-size: 14px;
+          color: #606266;
+          line-height: 1.6;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .author-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 0;
+          border-top: 2px solid #f5f5f5;
+          border-bottom: 2px solid #f5f5f5;
+          margin-bottom: 12px;
+          
+          .author-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            
+            .author-name-row {
+              display: flex;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 8px;
+            }
+            
+            .author-name {
+              font-size: 14px;
+              font-weight: 600;
+              color: #303133;
+            }
+            
+            .author-level {
+              font-size: 11px;
+              font-weight: 600;
+              padding: 3px 10px;
+              border-radius: 12px;
+              background: linear-gradient(135deg, var(--level-color-start, #409eff), var(--level-color-end, #66b1ff));
+              color: white;
+              box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+              white-space: nowrap;
+            }
+            
+            .plan-tag {
+              font-size: 12px;
+              font-weight: 500;
+              padding: 2px 6px;
+              border-radius: 4px;
+              
+              &.tag-color-0 {
+                color: #667eea;
+                background: rgba(102, 126, 234, 0.1);
+              }
+              
+              &.tag-color-1 {
+                color: #f093fb;
+                background: rgba(240, 147, 251, 0.1);
+              }
+              
+              &.tag-color-2 {
+                color: #4facfe;
+                background: rgba(79, 172, 254, 0.1);
+              }
+              
+              &.tag-color-3 {
+                color: #43e97b;
+                background: rgba(67, 233, 123, 0.1);
+              }
+              
+              &.tag-color-4 {
+                color: #fa709a;
+                background: rgba(250, 112, 154, 0.1);
+              }
+              
+              &.tag-color-5 {
+                color: #f57c00;
+                background: rgba(254, 225, 64, 0.15);
+              }
+            }
+            
+            .publish-time {
+              font-size: 12px;
+              color: #909399;
+            }
+          }
+        }
+        
+        .card-meta {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          
+          .meta-stats {
+            display: flex;
+            gap: 16px;
+            
+            .stat-item {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 13px;
+              color: #909399;
+              cursor: pointer;
+              transition: all 0.3s;
+              padding: 4px 8px;
+              border-radius: 8px;
+              
+              .el-icon {
+                font-size: 16px;
+              }
+              
+              &:hover {
+                background: rgba(102, 126, 234, 0.1);
+                color: #667eea;
+              }
+              
+              &.like-action.is-liked {
+                color: #f56c6c;
+                
+                .el-icon {
+                  animation: heartBeat 0.6s ease-out;
+                }
+              }
+            }
+          }
+          
+          .card-budget {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            
+            .budget-label {
+              font-size: 12px;
+              color: #909399;
+            }
+            
+            .budget-value {
+              font-size: 16px;
+              font-weight: 700;
+              background: linear-gradient(135deg, #67c23a, #85ce61);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              background-clip: text;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 加载状态
+  .loading-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 60px 20px;
+    
+    .el-icon {
+      font-size: 48px;
+      color: white;
+      filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.3));
+    }
+    
+    span {
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .no-more {
+    padding: 30px 20px;
+    
+    :deep(.el-divider) {
+      .el-divider__text {
+        background: transparent;
+        color: #909399;
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 1px;
+        padding: 0 20px;
+      }
+      
+      .el-divider__line {
+        background: #e4e7ed;
+      }
+    }
+  }
+
+  :deep(.el-empty) {
+    padding: 100px 20px;
+    
+    .el-empty__image {
+      width: 200px;
+      height: 200px;
+      
+      svg {
+        fill: rgba(255, 255, 255, 0.6);
+      }
+    }
+    
+    .el-empty__description {
+      p {
+        color: white;
+        font-size: 18px;
+        font-weight: 600;
+      }
+    }
+  }
+
+  // 主要内容布局 - 三栏布局
+  .main-content-layout {
+    display: block;
+    position: relative;
+
+    .left-nav-sidebar {
+      width: 200px;
+      position: fixed;
+      left: 24px;
+      // top 值由 JavaScript 动态计算
+      top: v-bind(sidebarTop);
+      max-height: calc(100vh - v-bind(sidebarTop) - 24px);
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .content-center {
+      // 左侧栏: left 24px + width 200px = 224px, gap 20px, 所以从 244px 开始
+      // 页面 padding 24px，所以 margin-left: 244 - 24 = 220px
+      margin-left: 220px;
+      // 右侧栏: right 24px + width 300px = 324px, gap 20px, 所以右边需要 344px
+      margin-right: 344px;
+      min-width: 0;
+      width: calc(100% - 220px - 344px); // 确保宽度正确
+    }
+
+    .sidebar-right {
+      width: 300px;
+      position: fixed;
+      right: 24px;
+      // top 值由 JavaScript 动态计算
+      top: v-bind(sidebarTop);
+      max-height: calc(100vh - v-bind(sidebarTop) - 24px);
+      overflow-y: auto;
+      z-index: 100;
+    }
+  }
+
+  // 左侧导航栏
+  .left-nav-sidebar {
+    .nav-card, .tags-card, .destinations-card {
+      margin-bottom: 16px;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+
+      :deep(.el-card__body) {
+        padding: 16px;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 600;
+        font-size: 15px;
+        color: #303133;
+
+        .el-icon {
+          color: #909399;
+          font-size: 16px;
+        }
+      }
+    }
+
+    .nav-menu {
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-bottom: 4px;
+        color: #606266;
+        font-size: 14px;
+        border: 1px solid transparent;
+        box-sizing: border-box;
+
+        .el-icon {
+          font-size: 18px;
+        }
+
+        &.active {
+          background: #f5f5f5;
+          color: #303133;
+          font-weight: 600;
+          border-color: #909399;
+        }
+        
+        &:hover {
+          background: #f5f7fa;
+        }
+      }
+
+      .nav-divider {
+        height: 1px;
+        background: #f0f0f0;
+        margin: 12px 0;
+      }
+    }
+
+    .hot-tags-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .tag-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 13px;
+
+        .tag-prefix {
+          color: #606266;
+          font-weight: 600;
+        }
+        
+        &:hover {
+          background: #f5f7fa;
+        }
+
+        .tag-name {
+          flex: 1;
+          color: #303133;
+        }
+
+        .tag-count {
+          color: #909399;
+          font-size: 12px;
+        }
+      }
+    }
+
+    .destinations-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .destination-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 13px;
+
+        .el-icon {
+          color: #909399;
+        }
+        
+        &:hover {
+          background: #f5f7fa;
+        }
+
+        span {
+          flex: 1;
+          color: #303133;
+        }
+
+        .dest-count {
+          color: #909399;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
+  // 中间内容区
+  .content-center {
+    .hot-topic-links {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+      .topics-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex: 1;
+        flex-wrap: wrap;
+        min-width: 0;
+
+        .link-label {
+          font-weight: 600;
+          color: #303133;
+          font-size: 15px;
+          flex-shrink: 0;
+          margin-right: 4px;
+        }
+
+        .topic-link {
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          padding: 6px 14px;
+          border-radius: 6px;
+          text-decoration: none;
+          white-space: nowrap;
+          display: inline-block;
+          font-weight: 500;
+
+          // 为每个标签设置不同的颜色
+          &:nth-child(1) {
+            color: #409eff;
+            background: rgba(64, 158, 255, 0.1);
+            &:hover {
+              background: rgba(64, 158, 255, 0.2);
+              color: #409eff;
+            }
+          }
+
+          &:nth-child(2) {
+            color: #67c23a;
+            background: rgba(103, 194, 58, 0.1);
+            &:hover {
+              background: rgba(103, 194, 58, 0.2);
+              color: #67c23a;
+            }
+          }
+
+          &:nth-child(3) {
+            color: #e6a23c;
+            background: rgba(230, 162, 60, 0.1);
+            &:hover {
+              background: rgba(230, 162, 60, 0.2);
+              color: #e6a23c;
+            }
+          }
+
+          &:nth-child(4) {
+            color: #f56c6c;
+            background: rgba(245, 108, 108, 0.1);
+            &:hover {
+              background: rgba(245, 108, 108, 0.2);
+              color: #f56c6c;
+            }
+          }
+
+          &:nth-child(5) {
+            color: #909399;
+            background: rgba(144, 147, 153, 0.1);
+            &:hover {
+              background: rgba(144, 147, 153, 0.2);
+              color: #909399;
+            }
+          }
+
+          &:nth-child(6) {
+            color: #409eff;
+            background: rgba(64, 158, 255, 0.1);
+            &:hover {
+              background: rgba(64, 158, 255, 0.2);
+              color: #409eff;
+            }
+          }
+
+          &:nth-child(7) {
+            color: #67c23a;
+            background: rgba(103, 194, 58, 0.1);
+            &:hover {
+              background: rgba(103, 194, 58, 0.2);
+              color: #67c23a;
+            }
+          }
+
+          &:nth-child(8) {
+            color: #e6a23c;
+            background: rgba(230, 162, 60, 0.1);
+            &:hover {
+              background: rgba(230, 162, 60, 0.2);
+              color: #e6a23c;
+            }
+          }
+
+          &:nth-child(9) {
+            color: #f56c6c;
+            background: rgba(245, 108, 108, 0.1);
+            &:hover {
+              background: rgba(245, 108, 108, 0.2);
+              color: #f56c6c;
+            }
+          }
+
+          &:nth-child(10) {
+            color: #909399;
+            background: rgba(144, 147, 153, 0.1);
+            &:hover {
+              background: rgba(144, 147, 153, 0.2);
+              color: #909399;
+            }
+          }
+        }
+      }
+
+      .search-right {
+        flex-shrink: 0;
+        min-width: 300px;
+        max-width: 400px;
+
+        .inline-search {
+          :deep(.el-input__wrapper) {
+            border-radius: 8px;
+            border: 1px solid #e4e7ed;
+            background-color: #ffffff;
+            box-shadow: 0 0 0 0 rgba(144, 147, 153, 0);
+            transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s;
+
+            &:hover {
+              border-color: #dcdfe6;
+              background-color: #fafafa;
+            }
+
+            &.is-focus {
+              border-color: #909399;
+              background-color: #ffffff;
+              box-shadow: 0 0 0 2px rgba(144, 147, 153, 0.1);
+            }
+          }
+
+          :deep(.el-input__inner) {
+            color: #303133;
+            font-size: 14px;
+            
+            &::placeholder {
+              color: #c0c4cc;
+            }
+          }
+
+          :deep(.el-input__prefix) {
+            color: #909399;
+            padding-left: 12px;
+          }
+
+          :deep(.el-input__suffix) {
+            padding-right: 8px;
+            min-width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+          }
+
+          .suffix-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            
+            .clear-btn {
+              width: 24px;
+              height: 24px;
+              padding: 0;
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 0.3s;
+              
+              &.is-visible {
+                opacity: 1;
+                pointer-events: auto;
+              }
+            }
+          }
+
+          :deep(.el-button) {
+            background-color: #909399;
+            border: none;
+            color: white;
+            transition: background-color 0.3s;
+            flex-shrink: 0;
+
+            &:hover {
+              background-color: #a6a9ad;
+            }
+
+            &:active {
+              background-color: #82848a;
+            }
+          }
+        }
+      }
+
+      @media (max-width: 1200px) {
+        flex-direction: column;
+        align-items: stretch;
+
+        .topics-left {
+          width: 100%;
+        }
+
+        .search-right {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+      }
+    }
+
+    .featured-plans-section {
+      margin-bottom: 24px;
+
+      .featured-plans-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+
+        .featured-plan-card {
+          position: relative;
+          border-radius: 12px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
+          &:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          }
+
+          &.featured-1 {
+            grid-column: 1 / -1;
+            height: 280px;
+          }
+
+          &:not(.featured-1) {
+            height: 200px;
+          }
+
+          .featured-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+
+            img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+
+            .featured-overlay {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 60%;
+              background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            }
+
+            .featured-badge {
+              position: absolute;
+              top: 12px;
+              left: 12px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              padding: 6px 12px;
+              background: linear-gradient(135deg, #ffd700, #ffed4e);
+              color: #8B4513;
+              border-radius: 20px;
+              font-size: 12px;
+              font-weight: 600;
+              z-index: 2;
+            }
+          }
+
+          .featured-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            z-index: 1;
+
+            .featured-title {
+              margin: 0 0 12px 0;
+              font-size: 18px;
+              font-weight: 700;
+              color: white;
+              line-height: 1.4;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+            }
+
+            .featured-meta {
+              display: flex;
+              align-items: center;
+              gap: 16px;
+              font-size: 13px;
+              color: rgba(255, 255, 255, 0.9);
+
+              .featured-author {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              }
+
+              .featured-stats {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 侧边栏卡片
+  .sidebar-card {
+    margin-bottom: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+
+    // 移除 Element Plus 默认的蓝色外框
+    :deep(.el-card) {
+      border: none;
+      box-shadow: none;
+      
+      &:hover {
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    // 移除蓝色外框，添加新的悬停效果
+    :deep(.el-card__body) {
+      transition: background-color 0.3s ease;
+    }
+
+    &:hover {
+      border-color: #e4e7ed;
+      background-color: #fafafa;
+      
+      :deep(.el-card__body) {
+        background-color: #fafafa;
+      }
+      
+      // 确保没有蓝色外框
+      :deep(.el-card) {
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+      font-size: 15px;
+      color: #303133;
+
+      .el-icon {
+        color: #909399;
+        font-size: 16px;
+      }
+    }
+
+    &.stats-card {
+      // 禁用整个卡片的 hover 放大效果，但保留背景色变化
+      transform: none !important;
+      background: white !important;
+      background-image: none !important;
+      background-color: white !important;
+      overflow: visible !important;
+
+      // 移除全局样式中定义的紫色渐变顶部边框
+      &::before {
+        display: none !important;
+        content: none !important;
+        height: 0 !important;
+        width: 0 !important;
+        background: none !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: -1 !important;
+        animation: none !important;
+        background-size: auto !important;
+      }
+
+      // 隐藏header区域并移除所有背景
+      :deep(.el-card__header) {
+        display: none !important;
+        padding: 0 !important;
+        background: none !important;
+        background-color: transparent !important;
+        border: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+      }
+
+      &:hover {
+        transform: none !important;
+        scale: 1 !important;
+        border-color: #e4e7ed;
+        background-color: #fafafa !important;
+      }
+
+      :deep(.el-card__body) {
+        transform: none !important;
+        transition: background-color 0.3s ease;
+        padding-top: 16px !important;
+        background: white !important;
+        background-color: white !important;
+
+        &:hover {
+          background-color: #fafafa !important;
+        }
+      }
+
+      // 确保卡片本身没有渐变背景
+      :deep(.el-card) {
+        background: white !important;
+        background-color: white !important;
+        background-image: none !important;
+      }
+
+      .stats-content {
+        .stats-tabs {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 16px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f0f0f0;
+
+          .stats-tab {
+            flex: 1;
+            text-align: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #606266;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+            box-sizing: border-box;
+
+            &:hover {
+              background: #f5f7fa;
+            }
+
+            &.active {
+              background: #f5f5f5;
+              color: #303133;
+              font-weight: 600;
+              border-color: #909399;
+            }
+          }
+        }
+
+        .stats-items {
+          .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            .stat-label {
+              font-size: 13px;
+              color: #909399;
+            }
+
+            .stat-value {
+              font-size: 16px;
+              font-weight: 600;
+              color: #303133;
+            }
+          }
+        }
+      }
+    }
+
+    .hot-articles-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+
+      .article-tab {
+        flex: 1;
+        text-align: center;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        color: #606266;
+        transition: all 0.3s;
+        border: 1px solid transparent;
+        box-sizing: border-box;
+
+        &:hover {
+          background: #f5f7fa;
+        }
+
+        &.active {
+          background: #f5f5f5;
+          color: #303133;
+          font-weight: 600;
+          border-color: #909399;
+        }
+      }
+    }
+
+    .hot-articles-list {
+      .article-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f5f5f5;
+        cursor: pointer;
+        transition: all 0.3s;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .article-rank {
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f5f5f5;
+          border: 1px solid #e4e7ed;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #606266;
+          flex-shrink: 0;
+        }
+        
+        &:hover {
+          background: #f5f7fa;
+        }
+
+        .article-content {
+          flex: 1;
+          min-width: 0;
+
+          .article-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #303133;
+            line-height: 1.5;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+
+          .article-author {
+            font-size: 12px;
+            color: #909399;
+          }
+        }
+      }
+    }
+
+    .recommended-communities {
+      .community-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-bottom: 8px;
+
+        .community-avatar {
+          flex-shrink: 0;
+        }
+
+        .community-info {
+          flex: 1;
+          min-width: 0;
+
+          .community-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 4px;
+          }
+
+          .community-desc {
+            font-size: 12px;
+            color: #909399;
+            
+            .plan-count {
+              color: #606266;
+              font-weight: 500;
+              margin-left: 4px;
+            }
+          }
+        }
+
+        .arrow-icon {
+          color: #c0c4cc;
+          font-size: 16px;
+        }
+      }
+
+      .empty-communities {
+        padding: 20px;
+      }
+    }
+  }
+
+  // 热门作者排行榜
+  .author-ranking {
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 8px;
+      
+      &:hover {
+        background: #f5f7fa;
+      }
+
+      .rank-number {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 12px;
+        flex-shrink: 0;
+
+        &.rank-1 {
+          background: linear-gradient(135deg, #ffd700, #ffed4e);
+          color: #8B4513;
+        }
+
+        &.rank-2 {
+          background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+          color: #606266;
+        }
+
+        &.rank-3 {
+          background: linear-gradient(135deg, #cd7f32, #e6a857);
+          color: white;
+        }
+
+        &:not(.rank-1):not(.rank-2):not(.rank-3) {
+          background: #f0f0f0;
+          color: #909399;
+        }
+      }
+
+      .author-avatar {
+        flex-shrink: 0;
+      }
+
+      .author-info {
+        flex: 1;
+        min-width: 0;
+
+        .author-name {
+          font-weight: 600;
+          font-size: 14px;
+          color: #303133;
+          margin-bottom: 4px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .author-stats {
+          display: flex;
+          gap: 12px;
+          font-size: 12px;
+          color: #909399;
+
+          .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+
+            .el-icon {
+              font-size: 12px;
+            }
+          }
+        }
+      }
+    }
+
+    .empty-ranking {
+      padding: 20px;
+    }
+  }
+
+  // 热门话题
+  .hot-topics {
+    .topic-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 8px;
+
+      &:hover {
+        background: #f5f7fa;
+      }
+
+      .topic-rank {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+
+      .topic-content {
+        flex: 1;
+        min-width: 0;
+
+        .topic-name {
+          font-weight: 600;
+          font-size: 14px;
+          color: #667eea;
+          margin-bottom: 4px;
+        }
+
+        .topic-count {
+          font-size: 12px;
+          color: #909399;
+        }
+      }
+
+      .trend-up {
+        color: #f56c6c;
+        font-size: 16px;
+      }
+
+      .trend-down {
+        color: #67c23a;
+        font-size: 16px;
+      }
+    }
+
+    .empty-topics {
+      padding: 20px;
+    }
+  }
+
+  // 最新评论
+  .latest-comments {
+    .comment-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f5f5f5;
+      transition: background-color 0.2s;
+      min-width: 0; // 防止flex子元素溢出
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .comment-avatar {
+        flex-shrink: 0;
+      }
+
+      .comment-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        .comment-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+
+          .comment-user {
+            font-weight: 600;
+            font-size: 13px;
+            color: #303133;
+            flex-shrink: 0;
+          }
+
+          .comment-time {
+            font-size: 12px;
+            color: #909399;
+            flex-shrink: 0;
+            white-space: nowrap;
+          }
+        }
+
+        .comment-text {
+          font-size: 13px;
+          color: #606266;
+          line-height: 1.5;
+          word-break: break-word;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          line-clamp: 2;
+        }
+
+        .comment-footer {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          .comment-plan-link {
+            font-size: 12px;
+            color: #606266;
+            cursor: pointer;
+            transition: color 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            text-decoration: none;
+
+            &:hover {
+              color: #303133;
+              text-decoration: underline;
+            }
+          }
+        }
+      }
+    }
+
+    .empty-comments {
+      padding: 20px;
+    }
+  }
+
+
+  // 响应式设计
+  @media (max-width: 1400px) {
+    .main-content-layout {
+      .left-nav-sidebar {
+        width: 180px;
+        left: 20px;
+        top: v-bind(sidebarTop);
+        max-height: calc(100vh - v-bind(sidebarTop) - 20px);
+      }
+      .sidebar-right {
+        width: 280px;
+        right: 20px;
+        top: v-bind(sidebarTop);
+        max-height: calc(100vh - v-bind(sidebarTop) - 20px);
+      }
+      .content-center {
+        // 左侧栏: left 20px + width 180px = 200px, gap 20px, 所以从 220px 开始
+        // 中间内容区在 padding 20px 内，所以需要 margin-left: 220 - 20 = 200px
+        margin-left: 200px;
+        // 右侧栏: right 20px + width 280px, gap 20px
+        // 中间内容区需要 margin-right: 20 + 280 + 20 = 320px
+        margin-right: 320px;
+      }
+    }
+  }
+
+  @media (max-width: 1200px) {
+    .main-content-layout {
+      flex-wrap: wrap;
+
+      .left-nav-sidebar {
+        width: 100%;
+        position: static;
+        left: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        max-height: none;
+      }
+
+      .content-center {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .sidebar-right {
+        width: 100%;
+        position: static;
+        right: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+        max-height: none;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .main-content-layout {
+      .left-nav-sidebar {
+        grid-template-columns: 1fr;
+      }
+      .sidebar-right {
+        grid-template-columns: 1fr;
+      }
+      .content-center {
+        .featured-plans-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    }
+  }
+}
+</style>
+
+

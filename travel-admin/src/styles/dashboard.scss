@@ -1,0 +1,224 @@
+/**
+ * Dashboard 统一设计系统样式
+ * 用于用户端和管理端的所有页面
+ */
+
+// 统一的背景渐变
+.dashboard-background {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  min-height: calc(100vh - 60px);
+  padding: 24px;
+}
+
+// 统一卡片样式
+.dashboard-card {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+  
+  .el-card__header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 18px;
+    color: #303133;
+  }
+  
+  .el-card__body {
+    padding: 24px;
+  }
+}
+
+// 统计卡片样式 - 强烈美化版本
+.stats-card {
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  
+  // 顶部渐变边框
+  &::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 4px !important;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+    background-size: 200% 100% !important;
+    animation: gradientFlow 3s ease infinite !important;
+    z-index: 10 !important;
+  }
+  
+  &:hover {
+    transform: translateY(-8px) scale(1.02) !important;
+    box-shadow: 0 16px 48px rgba(102, 126, 234, 0.2) !important;
+  }
+  
+  .stats-icon {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 40px !important;
+    color: #fff !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  .stats-number {
+    font-size: 42px !important;
+    font-weight: 800 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+    background-size: 200% 200% !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    animation: gradientShift 3s ease infinite !important;
+    filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.2)) !important;
+  }
+  
+  &:hover .stats-icon {
+    transform: scale(1.15) rotate(5deg) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+// 功能卡片样式
+.function-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 100%;
+  background: white;
+  
+  &:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+  }
+  
+  .function-icon {
+    font-size: 64px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 4px 8px rgba(102, 126, 234, 0.2));
+    transition: all 0.3s ease;
+  }
+  
+  &:hover .function-icon {
+    transform: scale(1.1);
+  }
+}
+
+// 活动列表样式
+.activity-list {
+  .activity-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    &:hover {
+      background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), transparent);
+      padding-left: 12px;
+      border-radius: 8px;
+    }
+    
+    .activity-icon {
+      font-size: 32px;
+      margin-right: 20px;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      border-radius: 12px;
+      color: #667eea;
+    }
+  }
+}
+
+// 卡片头部样式
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 18px;
+  color: #303133;
+  
+  .el-button {
+    color: #667eea;
+    font-weight: 500;
+    
+    &:hover {
+      color: #764ba2;
+    }
+  }
+}
+
+// 渐变背景卡片
+.gradient-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+// 标签样式
+.dashboard-tag {
+  border-radius: 20px;
+  padding: 4px 16px;
+  font-weight: 500;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border: none;
+  color: #667eea;
+}
+
+// 按钮样式
+.dashboard-button {
+  border-radius: 25px;
+  font-weight: 600;
+  padding: 12px 32px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+}
+
+// 响应式间距
+.dashboard-spacing {
+  .row {
+    margin-bottom: 24px;
+  }
+  
+  .card {
+    margin-bottom: 24px;
+  }
+}
+

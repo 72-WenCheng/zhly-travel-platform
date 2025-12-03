@@ -1,0 +1,74 @@
+# =========================
+# 后端 Java / Maven / Gradle
+# =========================
+target/
+build/
+out/
+
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+**/build/
+
+# =========================
+# Node / 前端（admin + uniapp）
+# =========================
+node_modules/
+dist/
+unpackage/
+
+# Vite/打包缓存
+*.log
+
+# =========================
+# IDE & 编辑器
+# =========================
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# =========================
+# 环境变量文件
+# =========================
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+
+# =========================
+# 系统文件（Windows / macOS）
+# =========================
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# =========================
+# 日志 / 临时文件
+# =========================
+*.tmp
+*.swp
+*.swo
+
+# =========================
+# 打包产物 / 构建输出
+# =========================
+*.class
+*.jar
+*.war
+*.ear
