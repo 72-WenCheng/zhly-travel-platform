@@ -157,4 +157,3 @@ third-party:
     api:
       url: https://kyfw.12306.cn
   timeout: 20000  # 增加到20秒，给天气API更多响应时间
-
