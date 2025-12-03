@@ -333,7 +333,7 @@ const handleBooking = async () => {
     } else {
       ElMessage.error(res.message || '预订失败')
     }
-  } catch (error: any) {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('预订失败: ' + (error.message || '未知错误'))
     }
@@ -415,7 +415,7 @@ const loadExperienceDetail = async () => {
       ElMessage.error(res.message || '加载体验详情失败')
       router.back()
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('加载体验详情失败:', error)
     ElMessage.error('加载体验详情失败')
     router.back()
