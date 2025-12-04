@@ -29,3 +29,4 @@ CREATE TABLE IF NOT EXISTS `user_coupon` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户优惠券表';
 
 
+

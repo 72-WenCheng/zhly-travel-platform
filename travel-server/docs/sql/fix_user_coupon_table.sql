@@ -76,3 +76,4 @@ CREATE TABLE IF NOT EXISTS `user_coupon` (
 -- SHOW CREATE TABLE `user_coupon`;
 
 
+

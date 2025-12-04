@@ -33,3 +33,4 @@ DROP COLUMN frequent_cities;
 -- SHOW COLUMNS FROM sys_user;
 
 
+

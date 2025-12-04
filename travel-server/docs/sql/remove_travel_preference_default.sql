@@ -12,3 +12,4 @@ MODIFY COLUMN travel_preference INT NULL COMMENT '出行偏好：1-个人, 2-情
 -- DESC sys_user;
 
 
+
