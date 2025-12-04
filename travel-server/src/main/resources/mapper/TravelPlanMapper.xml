@@ -207,13 +207,13 @@
                 </otherwise>
             </choose>
             
-            <!-- 标题关键词筛选（包括标题、描述、目的地、标签） -->
             <if test="keyword != null and keyword != ''">
                 AND (tp.title LIKE CONCAT('%', #{keyword}, '%')
                      OR tp.description LIKE CONCAT('%', #{keyword}, '%')
                      OR tp.destination LIKE CONCAT('%', #{keyword}, '%')
                      OR tp.tags LIKE CONCAT('%', #{keyword}, '%'))
             </if>
+            <!-- 标题关键词筛选（包括标题、描述、目的地、标签） -->
             <!-- 目的地筛选 -->
             <if test="destination != null and destination != ''">
                 AND tp.destination LIKE CONCAT('%', #{destination}, '%')

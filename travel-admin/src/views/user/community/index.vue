@@ -124,21 +124,24 @@
         <div class="hot-topic-links" ref="hotTopicLinksRef">
           <div class="topics-left">
             <span class="link-label">热门话题：</span>
-            <a
-              v-for="(link, index) in hotTopicLinks"
-              :key="index"
-              class="topic-link"
-              @click.prevent="searchByTopic(link.topic)"
-            >
-              {{ link.label }}
-            </a>
+            <div class="topic-row">
+              <a
+                v-for="(link, index) in hotTopicLinks"
+                :key="index"
+                class="topic-link"
+                :style="getTopicStyle(link.topic)"
+                @click.prevent="searchByTopic(link.topic)"
+              >
+                <span class="topic-label">{{ link.label }}</span>
+              </a>
+            </div>
           </div>
           <div class="search-right">
             <el-input
               v-model="searchKeyword"
-              placeholder="搜索攻略标题、目的地、作者..."
+              placeholder="搜索标题 / 目的地 / 标签 / 作者..."
               size="default"
-              @keyup.enter="handleSearch"
+              @input="handleSearchInput"
               class="inline-search"
             >
               <template #prefix>
@@ -153,14 +156,7 @@
                     size="small"
                     class="clear-btn"
                     :class="{ 'is-visible': searchKeyword }"
-                    @click="searchKeyword = ''"
-                  />
-                  <el-button 
-                    type="primary" 
-                    :icon="Search" 
-                    circle 
-                    size="small"
-                    @click="handleSearch"
+                    @click="clearSearchKeyword"
                   />
                 </div>
               </template>
@@ -230,12 +226,6 @@
             <el-icon><Medal /></el-icon>
             <span>精华</span>
           </div>
-          
-          <!-- 天数标签 -->
-          <div class="days-badge">
-            <el-icon><Calendar /></el-icon>
-            <span>{{ plan.days }}天</span>
-          </div>
         </div>
         
         <!-- 信息层 -->
@@ -248,6 +238,33 @@
           </div>
           
           <p class="card-desc">{{ plan.description }}</p>
+        
+        <div class="card-quick-info">
+          <div class="info-chip" v-if="plan.days">
+            <el-icon><Calendar /></el-icon>
+            <span>{{ plan.days }}天行程</span>
+          </div>
+          <div class="info-chip" v-if="plan.bestSeason">
+            <el-icon><Sunny /></el-icon>
+            <span>{{ plan.bestSeason }}</span>
+          </div>
+          <div class="info-chip" v-if="plan.travelTypeLabel">
+            <el-icon><Compass /></el-icon>
+            <span>{{ plan.travelTypeLabel }}</span>
+          </div>
+          <div class="info-chip" v-if="plan.suitableFor">
+            <el-icon><Connection /></el-icon>
+            <span>{{ plan.suitableFor }}</span>
+          </div>
+          <div class="info-chip" v-if="plan.people">
+            <el-icon><UserFilled /></el-icon>
+            <span>{{ plan.people }}人同行</span>
+          </div>
+          <div class="info-chip" v-if="plan.difficultyLabel">
+            <el-icon><TrendCharts /></el-icon>
+            <span>{{ plan.difficultyLabel }}</span>
+          </div>
+        </div>
           
           <!-- 作者信息 -->
           <div class="author-info">
@@ -461,39 +478,6 @@
           </div>
         </el-card>
 
-        <!-- 推荐社区 -->
-        <el-card class="sidebar-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <el-icon><Connection /></el-icon>
-              <span>推荐社区</span>
-            </div>
-          </template>
-          <div class="recommended-communities">
-            <div 
-              v-for="community in recommendedCommunities" 
-              :key="community.id"
-              class="community-item"
-              @click="viewCommunity(community.id)"
-            >
-              <el-avatar :size="32" :src="community.avatar" class="community-avatar">
-                {{ community.icon || community.name?.charAt(0) }}
-              </el-avatar>
-              <div class="community-info">
-                <div class="community-name">{{ community.name }}</div>
-                <div class="community-desc">
-                  {{ community.description }}
-                  <span v-if="community.planCount" class="plan-count">({{ community.planCount }}篇)</span>
-                </div>
-              </div>
-              <el-icon class="arrow-icon"><ArrowRight /></el-icon>
-            </div>
-            <div v-if="recommendedCommunities.length === 0" class="empty-communities">
-              <el-empty description="暂无社区" :image-size="80" />
-            </div>
-          </div>
-        </el-card>
-
         <!-- 最新评论 -->
         <el-card class="sidebar-card" shadow="never">
           <template #header>
@@ -544,96 +528,20 @@ import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
 import { getLevelByPoints } from '@/utils/level'
+import { planTagOptions, planTagPalette } from '@/constants/tags'
 import {
   Search, Location, Calendar, View, ChatDotRound, Star, StarFilled,
   Loading, TrendCharts, Medal, Money, Trophy, ArrowUp, ArrowDown,
   UserFilled, Plus, Document, Compass, Edit, PriceTag, LocationFilled,
-  Clock, DataAnalysis, Connection, ArrowRight, Close
+  Clock, DataAnalysis, Connection, Close, Sunny
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 
-// 页面头部引用，用于计算左右固定栏位置
+// 页面头部引用（保留，后续如需扩展可用）
 const pageHeaderRef = ref<HTMLElement | null>(null)
 const hotTopicLinksRef = ref<HTMLElement | null>(null)
-const sidebarTop = ref('200px')
-
-// 存储滚动监听器引用，以便清理
-let scrollHandler: (() => void) | null = null
-
-// 获取滚动容器
-const getScrollContainer = (): HTMLElement | null => {
-  // 优先查找 .main-content（主内容滚动容器）
-  const mainContent = document.querySelector('.main-content') as HTMLElement
-  if (mainContent) return mainContent
-  
-  // 其次查找 .el-scrollbar__wrap（Element Plus 滚动容器）
-  const scrollbarWrap = document.querySelector('.el-scrollbar__wrap') as HTMLElement
-  if (scrollbarWrap) return scrollbarWrap
-  
-  // 最后使用 window
-  return null
-}
-
-// 计算侧边栏位置的函数
-const updateSidebarPosition = () => {
-  const scrollContainer = getScrollContainer()
-  
-  // 确保滚动容器在顶部
-  if (scrollContainer) {
-    scrollContainer.scrollTop = 0
-  } else {
-    // 如果没有找到滚动容器，使用 window
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
-  }
-  
-  nextTick(() => {
-    // 使用 requestAnimationFrame 确保在下一帧渲染后计算
-    requestAnimationFrame(() => {
-      // 再次确保滚动位置
-      if (scrollContainer) {
-        if (scrollContainer.scrollTop !== 0) {
-          scrollContainer.scrollTop = 0
-        }
-      } else {
-        if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0) {
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-          document.documentElement.scrollTop = 0
-          document.body.scrollTop = 0
-        }
-      }
-      
-      // 等待一帧后计算位置
-      requestAnimationFrame(() => {
-        // 再次检查并确保在顶部
-        if (scrollContainer && scrollContainer.scrollTop !== 0) {
-          scrollContainer.scrollTop = 0
-        } else if (!scrollContainer && window.scrollY !== 0) {
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-        }
-        
-        // 再等待一帧，确保滚动完成
-        requestAnimationFrame(() => {
-          if (hotTopicLinksRef.value) {
-            // 获取热门话题组件相对于视口的实际位置
-            const hotTopicRect = hotTopicLinksRef.value.getBoundingClientRect()
-            // 直接使用热门话题组件的 top 位置，让左右侧边栏与其对齐
-            sidebarTop.value = `${hotTopicRect.top}px`
-          } else if (pageHeaderRef.value) {
-            // 如果热门话题组件不存在，则使用页面头部计算（降级方案）
-            const headerRect = pageHeaderRef.value.getBoundingClientRect()
-            const headerHeight = pageHeaderRef.value.offsetHeight
-            const headerMarginBottom = 24
-            sidebarTop.value = `${headerRect.top + headerHeight + headerMarginBottom}px`
-          }
-        })
-      })
-    })
-  })
-}
 
 // 搜索和筛选
 const searchKeyword = ref('')
@@ -704,7 +612,6 @@ const latestComments = ref<any[]>([])
 const featuredPlans = ref<any[]>([])
 const hotArticles = ref<any[]>([])
 const hotDestinations = ref<any[]>([])
-const recommendedCommunities = ref<any[]>([])
 const communityStats = ref({
   totalPlans: 0,
   activeUsers: 0,
@@ -714,19 +621,106 @@ const communityStats = ref({
 const statsPeriod = ref('week')
 const hotArticlePeriod = ref('today')
 
-// 热门话题链接
-const hotTopicLinks = ref([
-  { label: '海岛度假', topic: '海岛' },
-  { label: '徒步探险', topic: '徒步' },
-  { label: '美食之旅', topic: '美食' },
-  { label: '文化体验', topic: '文化' },
-  { label: '亲子游', topic: '亲子' },
-  { label: '自驾游', topic: '自驾' },
-  { label: '摄影之旅', topic: '摄影' },
-  { label: '温泉养生', topic: '温泉' },
-  { label: '古镇漫游', topic: '古镇' },
-  { label: '户外露营', topic: '露营' }
-])
+// 热门话题链接：与攻略标签保持一致
+const hotTopicLinks = ref(
+  planTagOptions.map(tag => ({
+    label: tag,
+    topic: tag
+  }))
+)
+
+const defaultTopicPalette = {
+  text: '#409eff',
+  bg: 'linear-gradient(120deg, rgba(64,158,255,0.08), rgba(64,158,255,0.16))',
+  hoverBg: 'linear-gradient(120deg, rgba(64,158,255,0.16), rgba(64,158,255,0.28))',
+  border: 'rgba(64,158,255,0.3)',
+  shadow: '0 6px 16px rgba(64,158,255,0.12)',
+  hoverShadow: '0 12px 24px rgba(64,158,255,0.18)'
+}
+
+const getTopicStyle = (tag: string) => {
+  const palette = planTagPalette[tag] || defaultTopicPalette
+  return {
+    '--topic-color': palette.text,
+    '--topic-bg': palette.bg,
+    '--topic-hover-bg': palette.hoverBg,
+    '--topic-border-color': palette.border,
+    '--topic-shadow': palette.shadow,
+    '--topic-hover-shadow': palette.hoverShadow
+  }
+}
+
+// ======== 推荐算法辅助函数 ========
+const getHoursSince = (time) => {
+  if (!time) {
+    return 9999
+  }
+  const date = new Date(time)
+  const now = new Date()
+  return Math.max(1, (now.getTime() - date.getTime()) / 3600000)
+}
+
+const calculateFreshnessScore = (time) => {
+  const hours = getHoursSince(time)
+  // 0-1之间，越新越接近1
+  return 1 / Math.pow(hours + 2, 0.35)
+}
+
+const calculateEngagementScore = (plan) => {
+  const views = plan.viewCount || 0
+  const likes = plan.likeCount || 0
+  const comments = plan.commentCount || 0
+  const collects = plan.collectCount || 0
+  return views * 0.001 + likes * 1.2 + comments * 1.5 + collects * 0.8
+}
+
+const calculateDiscoveryScore = (plan) => {
+  const freshness = calculateFreshnessScore(plan.createTime || plan.publishTime)
+  const engagement = calculateEngagementScore(plan)
+  // 强调最新，同时兼顾互动
+  return freshness * 80 + engagement
+}
+
+const meetsFeaturedCriteria = (plan) => {
+  const likes = plan.likeCount || 0
+  const views = plan.viewCount || 0
+  const comments = plan.commentCount || 0
+  // 优先尊重后端标记，其次使用阈值判定
+  return !!plan.isFeatured ||
+    (likes >= 200 && comments >= 15) ||
+    (likes >= 120 && views >= 8000) ||
+    (comments >= 30 && views >= 5000)
+}
+
+const calculateFeaturedScore = (plan) => {
+  const engagement = calculateEngagementScore(plan)
+  const freshness = calculateFreshnessScore(plan.createTime || plan.publishTime)
+  return engagement * 0.85 + freshness * 40
+}
+
+const difficultyLabels = ['非常简单', '简单', '一般', '有挑战', '困难']
+const getDifficultyLabel = (level) => {
+  if (!level || level <= 0) {
+    return ''
+  }
+  const index = Math.min(level, difficultyLabels.length) - 1
+  return difficultyLabels[index] || ''
+}
+
+const travelTypeMap = {
+  1: '自由行',
+  2: '跟团游',
+  3: '自驾游',
+  4: '背包客',
+  5: '定制游'
+}
+
+const getTravelTypeLabel = (type) => {
+  if (type == null) {
+    return ''
+  }
+  return travelTypeMap[type] || ''
+}
 
 // 切换分类
 const switchCategory = function(category) {
@@ -739,8 +733,25 @@ const handleFilterChange = () => {
   resetAndLoad()
 }
 
-// 搜索
-const handleSearch = () => {
+// 搜索关键字与话题
+const activeTopic = ref('')
+let searchDebounceTimer: any = null
+
+// 输入框搜索（自动检索，带简单防抖）
+const handleSearchInput = () => {
+  // 手动输入时，清除话题筛选，仅按关键字搜索
+  activeTopic.value = ''
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    resetAndLoad()
+  }, 400)
+}
+
+const clearSearchKeyword = () => {
+  searchKeyword.value = ''
+  activeTopic.value = ''
   resetAndLoad()
 }
 
@@ -768,13 +779,18 @@ const loadPlans = async () => {
     
     // 根据不同分类调用不同的接口
     // 重要：只查询已发布状态(status=1)的攻略，不判断审核状态
+    const keywordParam = (() => {
+      const k = (activeTopic.value || searchKeyword.value || '').trim()
+      return k ? k : undefined
+    })()
+
     if (activeCategory.value === 'hot') {
       // 推荐攻略：按浏览量和收藏量综合排序
       const params = {
         page: currentPage.value,
         size: pageSize.value,
         status: 1, // 严格要求：只查询已发布状态
-        keyword: searchKeyword.value || undefined,
+        keyword: keywordParam,
         destination: selectedDestination.value || undefined
       }
       response = await request.get('/travel-plan/list', { params })
@@ -801,26 +817,50 @@ const loadPlans = async () => {
         page: currentPage.value,
         size: pageSize.value,
         status: 1, // 严格要求：只查询已发布状态
-        keyword: searchKeyword.value || undefined,
+        keyword: keywordParam,
         destination: selectedDestination.value || undefined
       }
       response = await request.get('/travel-plan/list', { params })
+      
+      if (response.code === 200 && response.data?.list) {
+        response.data.list = response.data.list.sort(function(a, b) {
+          return calculateDiscoveryScore(b) - calculateDiscoveryScore(a)
+        })
+      }
     } else if (activeCategory.value === 'featured') {
       // 精华攻略：按点赞数排序
       const params = {
         page: currentPage.value,
         size: pageSize.value,
         status: 1, // 严格要求：只查询已发布状态
-        keyword: searchKeyword.value || undefined,
+        keyword: keywordParam,
         destination: selectedDestination.value || undefined
       }
       response = await request.get('/travel-plan/list', { params })
       
-      // 前端筛选：优先显示点赞数高的（作为精华）
+      // 前端筛选：优先显示符合加精标准的攻略
       if (response.code === 200 && response.data?.list) {
-        response.data.list = response.data.list.sort(function(a, b) {
-          return (b.likeCount || 0) - (a.likeCount || 0)
-        })
+        const fetchedList = response.data.list
+        const featuredList = fetchedList
+          .filter(function(plan) {
+            return meetsFeaturedCriteria(plan)
+          })
+          .sort(function(a, b) {
+            return calculateFeaturedScore(b) - calculateFeaturedScore(a)
+          })
+        
+        if (featuredList.length < pageSize.value) {
+          const remainingPlans = fetchedList
+            .filter(function(plan) {
+              return !meetsFeaturedCriteria(plan)
+            })
+            .sort(function(a, b) {
+              return calculateFeaturedScore(b) - calculateFeaturedScore(a)
+            })
+          featuredList.push(...remainingPlans.slice(0, pageSize.value - featuredList.length))
+        }
+        
+        response.data.list = featuredList
       }
     } else if (activeCategory.value === 'followed') {
       // 关注动态：暂时使用最新排序（需要后端支持关注关系）
@@ -828,7 +868,7 @@ const loadPlans = async () => {
         page: currentPage.value,
         size: pageSize.value,
         status: 1, // 严格要求：只查询已发布状态
-        keyword: searchKeyword.value || undefined,
+        keyword: keywordParam,
         destination: selectedDestination.value || undefined
       }
       response = await request.get('/travel-plan/list', { params })
@@ -930,6 +970,9 @@ const loadPlans = async () => {
         const levelName = authorLevelInfo.name
         const levelColor = authorLevelInfo.color
         const levelGradient = authorLevelInfo.gradient || { start: authorLevelInfo.color, end: authorLevelInfo.color }
+        const derivedFeatured = meetsFeaturedCriteria(plan)
+        const difficultyLabel = getDifficultyLabel(plan.difficultyLevel)
+        const travelTypeLabel = getTravelTypeLabel(plan.type ?? plan.travelType)
         
         return {
           id: plan.id,
@@ -947,13 +990,20 @@ const loadPlans = async () => {
           likeCount: plan.likeCount || 0,
           collectCount: plan.collectCount || 0,
           isLiked: false, // 需要后端支持
-          isFeatured: false, // 需要后端支持
+          isFeatured: derivedFeatured,
           createTime: plan.createTime || plan.publishTime || new Date().toISOString(),
-          imageHeight: 240 + Math.floor(Math.random() * 80), // 瀑布流需要，保留随机高度
+          imageHeight: 200 + Math.floor(Math.random() * 60), // 卡片更紧凑
           tags: tags,
           levelName: levelName,
           levelColor: levelColor,
-          levelGradient: levelGradient
+          levelGradient: levelGradient,
+          bestSeason: plan.bestSeason || '',
+          suitableFor: plan.suitableFor || '',
+          difficultyLevel: plan.difficultyLevel || null,
+          difficultyLabel: difficultyLabel,
+          people: plan.people || null,
+          travelType: plan.type ?? plan.travelType ?? null,
+          travelTypeLabel: travelTypeLabel
         }
       })
       
@@ -1127,6 +1177,12 @@ const loadTopAuthors = async () => {
   }
 }
 
+// 热门标签 / 目的地的统计阈值
+const MIN_HOT_TAG_COUNT = 2
+const MAX_HOT_TAGS = 10
+const MIN_HOT_DEST_COUNT = 2
+const MAX_HOT_DEST = 10
+
 // 加载热门话题（从攻略标签中提取）
 const loadHotTopics = async () => {
   try {
@@ -1134,7 +1190,7 @@ const loadHotTopics = async () => {
     const response = await request.get('/travel-plan/list', {
       params: {
         page: 1,
-        size: 100,
+        size: 300, // 采样更多数据做统计
         status: 1
       }
     })
@@ -1157,14 +1213,19 @@ const loadHotTopics = async () => {
       })
       
       hotTopics.value = Array.from(tagMap.entries())
+        // 过滤掉出现次数太少或名称太奇怪的标签
+        .filter(([name, count]) => {
+          const c = count as number
+          return !!name && name.length <= 8 && c >= MIN_HOT_TAG_COUNT
+        })
         .map(([name, count]) => ({
           id: name,
           name,
           count,
           trend: Math.random() > 0.5 ? 'up' : 'down'
         }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10)
+        .sort((a, b) => (b.count || 0) - (a.count || 0))
+        .slice(0, MAX_HOT_TAGS)
     }
   } catch (error) {
     console.error('加载热门话题失败:', error)
@@ -1177,7 +1238,7 @@ const loadLatestComments = async () => {
   try {
     const response = await request.get('/community/latest-comments', {
       params: {
-        limit: 10
+        limit: 5
       }
     })
     if (response.code === 200 && response.data) {
@@ -1288,7 +1349,7 @@ const loadHotDestinations = async () => {
     const response = await request.get('/travel-plan/list', {
       params: {
         page: 1,
-        size: 100,
+        size: 300,
         status: 1
       }
     })
@@ -1304,9 +1365,13 @@ const loadHotDestinations = async () => {
       })
       
       hotDestinations.value = Array.from(destMap.entries())
+        .filter(([name, count]) => {
+          const c = count as number
+          return !!name && c >= MIN_HOT_DEST_COUNT
+        })
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10)
+        .sort((a, b) => (b.count || 0) - (a.count || 0))
+        .slice(0, MAX_HOT_DEST)
     }
   } catch (error) {
     console.error('加载热门目的地失败:', error)
@@ -1343,116 +1408,35 @@ const loadCommunityStats = async () => {
   }
 }
 
-// 标签到社区信息的映射
-const tagToCommunityMap: Record<string, { name: string; desc: string; icon: string }> = {
-  '海岛': { name: '海岛度假', desc: '分享海岛旅行经验', icon: '🏝️' },
-  '徒步': { name: '徒步探险', desc: '徒步旅行攻略分享', icon: '🥾' },
-  '美食': { name: '美食探索', desc: '发现各地美食', icon: '🍜' },
-  '文化': { name: '文化体验', desc: '深度文化之旅', icon: '🏛️' },
-  '亲子': { name: '亲子游', desc: '亲子旅行攻略', icon: '👨‍👩‍👧' },
-  '自驾': { name: '自驾游联盟', desc: '自驾游攻略', icon: '🚗' },
-  '摄影': { name: '摄影爱好者', desc: '旅行摄影技巧', icon: '📷' },
-  '温泉': { name: '温泉养生', desc: '温泉度假推荐', icon: '♨️' },
-  '古镇': { name: '古镇漫游', desc: '古镇文化探索', icon: '🏮' },
-  '露营': { name: '户外露营', desc: '露营旅行分享', icon: '⛺' },
-  '旅行': { name: '旅行达人社区', desc: '分享旅行经验', icon: '旅' },
-  '度假': { name: '度假休闲', desc: '休闲度假攻略', icon: '🏖️' },
-  '探险': { name: '探险之旅', desc: '探险旅行分享', icon: '🗺️' }
-}
-
-// 加载推荐社区（从攻略标签中自动统计）
-const loadRecommendedCommunities = async () => {
-  try {
-    // 获取所有攻略，统计标签
-    const response = await request.get('/travel-plan/list', {
-      params: {
-        page: 1,
-        size: 500, // 获取足够多的数据以统计所有分类
-        status: 1
-      }
-    })
-    
-    if (response.code === 200 && response.data?.list) {
-      const tagMap = new Map<string, number>()
-      const plans = response.data.list || []
-      
-      // 统计每个标签的攻略数量
-      plans.forEach((plan: any) => {
-        let tags: string[] = []
-        if (plan.tags) {
-          if (Array.isArray(plan.tags)) {
-            tags = plan.tags
-          } else if (typeof plan.tags === 'string') {
-            tags = plan.tags.split(',').filter(Boolean).map((t: string) => t.trim())
-          }
-        }
-        tags.forEach((tag: string) => {
-          if (tag) {
-            tagMap.set(tag, (tagMap.get(tag) || 0) + 1)
-          }
-        })
-      })
-      
-      // 转换为社区列表
-      recommendedCommunities.value = Array.from(tagMap.entries())
-        .map(([tag, count]) => {
-          // 查找标签对应的社区信息，如果没有则使用默认值
-          const communityInfo = tagToCommunityMap[tag] || {
-            name: tag,
-            desc: `关于${tag}的攻略分享`,
-            icon: tag.charAt(0)
-          }
-          
-          return {
-            id: tag, // 使用标签作为ID
-            name: communityInfo.name,
-            description: communityInfo.desc,
-            icon: communityInfo.icon,
-            tag: tag,
-            planCount: count,
-            avatar: ''
-          }
-        })
-        .sort((a, b) => b.planCount - a.planCount) // 按攻略数量降序
-        .slice(0, 8) // 只显示前8个
-    } else {
-      recommendedCommunities.value = []
-    }
-  } catch (error) {
-    console.error('加载推荐社区失败:', error)
-    recommendedCommunities.value = []
-  }
-}
-
 // 按目的地搜索
 const searchByDestination = (destName: string) => {
-  selectedDestination.value = destName
-  resetAndLoad()
-}
-
-// 查看社区（按标签筛选攻略）
-const viewCommunity = (communityId: string | number) => {
-  const community = recommendedCommunities.value.find(c => c.id === communityId || c.tag === communityId)
-  if (community && community.tag) {
-    // 按社区对应的标签筛选攻略
-    searchKeyword.value = community.tag
-    resetAndLoad()
-    // 滚动到顶部
-    const scrollContainer = getScrollContainer()
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+  // 再次点击同一目的地时取消筛选
+  if (selectedDestination.value === destName) {
+    selectedDestination.value = ''
   } else {
-    ElMessage.warning('社区信息不存在')
+    selectedDestination.value = destName
   }
+  // 点击热门目的地时清空关键字和话题，只按目的地筛选
+  searchKeyword.value = ''
+  activeTopic.value = ''
+  resetAndLoad()
 }
 
 
 // 按话题搜索
 const searchByTopic = (topicName: string) => {
-  searchKeyword.value = topicName
+  // 再次点击同一话题时取消筛选
+  if (activeTopic.value === topicName) {
+    activeTopic.value = ''
+  } else {
+    activeTopic.value = topicName
+  }
+  // 点击热门标签时清空关键字和目的地，只按话题筛选
+  searchKeyword.value = ''
+  selectedDestination.value = ''
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
   resetAndLoad()
 }
 
@@ -1464,19 +1448,6 @@ const viewPlanDetail = (planId: number) => {
 
 // 初始化函数
 const initializePage = () => {
-  // 获取滚动容器并滚动到顶部
-  const scrollContainer = getScrollContainer()
-  
-  if (scrollContainer) {
-    scrollContainer.scrollTop = 0
-  } else {
-    // 如果没有找到滚动容器，使用 window
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
-  }
-  
-  // 加载数据
   loadPlans()
   loadTopAuthors()
   loadHotTopics()
@@ -1485,46 +1456,10 @@ const initializePage = () => {
   loadHotArticles()
   loadHotDestinations()
   loadCommunityStats()
-  loadRecommendedCommunities()
-  
-  // 计算左右固定栏的 top 位置（与热门话题组件对齐）
-  // 使用多重延迟确保 DOM 完全渲染
-  nextTick(() => {
-    setTimeout(() => {
-      updateSidebarPosition()
-    }, 400)
-  })
 }
 
 onMounted(() => {
   initializePage()
-  
-  // 监听窗口大小变化
-  window.addEventListener('resize', updateSidebarPosition)
-  
-  // 监听滚动事件，如果页面回到顶部，重新计算
-  scrollHandler = () => {
-    const scrollContainer = getScrollContainer()
-    let isAtTop = false
-    
-    if (scrollContainer) {
-      isAtTop = scrollContainer.scrollTop === 0
-    } else {
-      isAtTop = window.scrollY === 0 || document.documentElement.scrollTop === 0
-    }
-    
-    if (isAtTop) {
-      updateSidebarPosition()
-    }
-  }
-  
-  // 监听正确的滚动容器
-  const scrollContainer = getScrollContainer()
-  if (scrollContainer) {
-    scrollContainer.addEventListener('scroll', scrollHandler, { passive: true })
-  } else {
-    window.addEventListener('scroll', scrollHandler, { passive: true })
-  }
 })
 
 // 如果使用了 keep-alive，组件激活时也需要处理
@@ -1533,48 +1468,13 @@ onActivated(() => {
 })
 
 onBeforeUnmount(() => {
-  // 清理事件监听
-  window.removeEventListener('resize', updateSidebarPosition)
-  if (scrollHandler) {
-    const scrollContainer = getScrollContainer()
-    if (scrollContainer) {
-      scrollContainer.removeEventListener('scroll', scrollHandler)
-    } else {
-      window.removeEventListener('scroll', scrollHandler)
-    }
-  }
 })
 
 // 监听路由变化，重新计算位置
 watch(() => route.path, (newPath, oldPath) => {
-  // 只有在路由真正变化时才处理
   if (newPath === oldPath) return
-  
-  // 路由变化时先滚动到顶部
-  const scrollContainer = getScrollContainer()
-  if (scrollContainer) {
-    scrollContainer.scrollTop = 0
-  } else {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
-  }
-  
-  nextTick(() => {
-    setTimeout(() => {
-      updateSidebarPosition()
-    }, 400)
-  })
+  // 可根据需要在此重新加载数据
 }, { immediate: false })
-
-// 监听数据加载完成，重新计算位置（数据加载可能影响 DOM 高度）
-watch([plans, hotTopics], () => {
-  nextTick(() => {
-    setTimeout(() => {
-      updateSidebarPosition()
-    }, 100)
-  })
-}, { deep: true })
 
 // 监听热门文章周期变化
 watch(hotArticlePeriod, () => {
@@ -1714,6 +1614,18 @@ watch(statsPeriod, () => {
         justify-content: center;
       }
     }
+    // 两列卡片在小屏幕自动切换为一列
+    .plans-list {
+      grid-template-columns: 1fr;
+    }
+
+    .content-center {
+      .hot-topic-links {
+        .search-right {
+          max-width: 100%;
+        }
+      }
+    }
   }
 
 
@@ -1740,8 +1652,8 @@ watch(statsPeriod, () => {
 
   // 攻略列表（改为列表布局）
   .plans-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
 
     .plan-card {
@@ -1785,21 +1697,6 @@ watch(statsPeriod, () => {
           font-size: 12px;
           font-weight: 600;
         }
-        
-        .days-badge {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 6px 12px;
-          background: white;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #667eea;
-        }
       }
       
       .card-info {
@@ -1840,6 +1737,30 @@ watch(statsPeriod, () => {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+        
+        .card-quick-info {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 16px;
+          
+          .info-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 10px;
+            background: #f5f7ff;
+            color: #606266;
+            font-size: 12px;
+            font-weight: 500;
+            
+            .el-icon {
+              font-size: 14px;
+              color: inherit;
+            }
+          }
         }
         
         .author-info {
@@ -1965,22 +1886,29 @@ watch(statsPeriod, () => {
           }
           
           .card-budget {
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.2);
             
             .budget-label {
               font-size: 12px;
-              color: #909399;
+              color: rgba(255, 255, 255, 0.9);
+              letter-spacing: 1px;
+              text-transform: uppercase;
             }
             
             .budget-value {
-              font-size: 16px;
+              font-size: 18px;
               font-weight: 700;
-              background: linear-gradient(135deg, #67c23a, #85ce61);
-              -webkit-background-clip: text;
-              -webkit-text-fill-color: transparent;
-              background-clip: text;
+              color: white;
+              letter-spacing: 1px;
+              font-family: 'DIN Alternate', 'Segoe UI', sans-serif;
+              text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             }
           }
         }
@@ -2062,9 +1990,8 @@ watch(statsPeriod, () => {
       width: 200px;
       position: fixed;
       left: 24px;
-      // top 值由 JavaScript 动态计算
-      top: v-bind(sidebarTop);
-      max-height: calc(100vh - v-bind(sidebarTop) - 24px);
+      top: 343px; // 继续下移 3px
+      max-height: calc(100vh - 343px - 24px);
       overflow-y: auto;
       z-index: 100;
     }
@@ -2083,9 +2010,8 @@ watch(statsPeriod, () => {
       width: 300px;
       position: fixed;
       right: 24px;
-      // top 值由 JavaScript 动态计算
-      top: v-bind(sidebarTop);
-      max-height: calc(100vh - v-bind(sidebarTop) - 24px);
+      top: 343px; // 与左侧保持对齐
+      max-height: calc(100vh - 343px - 24px);
       overflow-y: auto;
       z-index: 100;
     }
@@ -2231,9 +2157,8 @@ watch(statsPeriod, () => {
   .content-center {
     .hot-topic-links {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
+      flex-direction: column;
+      gap: 12px;
       margin-bottom: 24px;
       padding: 16px 20px;
       background: white;
@@ -2243,9 +2168,8 @@ watch(statsPeriod, () => {
       .topics-left {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
         flex: 1;
-        flex-wrap: wrap;
         min-width: 0;
 
         .link-label {
@@ -2253,142 +2177,76 @@ watch(statsPeriod, () => {
           color: #303133;
           font-size: 15px;
           flex-shrink: 0;
-          margin-right: 4px;
+        }
+
+        .topic-row {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          flex: 1;
+          padding-bottom: 2px;
+
+          &::-webkit-scrollbar {
+            height: 4px;
+          }
         }
 
         .topic-link {
-          font-size: 14px;
+          font-size: 13px;
           cursor: pointer;
-          transition: all 0.2s ease;
           padding: 6px 14px;
-          border-radius: 6px;
+          border-radius: 10px;
           text-decoration: none;
           white-space: nowrap;
-          display: inline-block;
-          font-weight: 500;
+          display: inline-flex;
+          align-items: center;
+          font-weight: 600;
+          color: var(--topic-color, #409eff);
+          background: var(--topic-bg, rgba(64, 158, 255, 0.1));
+          border: 1px solid var(--topic-border-color, rgba(64, 158, 255, 0.3));
+          box-shadow: var(--topic-shadow, 0 6px 12px rgba(0, 0, 0, 0.08));
 
-          // 为每个标签设置不同的颜色
-          &:nth-child(1) {
-            color: #409eff;
-            background: rgba(64, 158, 255, 0.1);
-            &:hover {
-              background: rgba(64, 158, 255, 0.2);
-              color: #409eff;
-            }
-          }
-
-          &:nth-child(2) {
-            color: #67c23a;
-            background: rgba(103, 194, 58, 0.1);
-            &:hover {
-              background: rgba(103, 194, 58, 0.2);
-              color: #67c23a;
-            }
-          }
-
-          &:nth-child(3) {
-            color: #e6a23c;
-            background: rgba(230, 162, 60, 0.1);
-            &:hover {
-              background: rgba(230, 162, 60, 0.2);
-              color: #e6a23c;
-            }
-          }
-
-          &:nth-child(4) {
-            color: #f56c6c;
-            background: rgba(245, 108, 108, 0.1);
-            &:hover {
-              background: rgba(245, 108, 108, 0.2);
-              color: #f56c6c;
-            }
-          }
-
-          &:nth-child(5) {
-            color: #909399;
-            background: rgba(144, 147, 153, 0.1);
-            &:hover {
-              background: rgba(144, 147, 153, 0.2);
-              color: #909399;
-            }
-          }
-
-          &:nth-child(6) {
-            color: #409eff;
-            background: rgba(64, 158, 255, 0.1);
-            &:hover {
-              background: rgba(64, 158, 255, 0.2);
-              color: #409eff;
-            }
-          }
-
-          &:nth-child(7) {
-            color: #67c23a;
-            background: rgba(103, 194, 58, 0.1);
-            &:hover {
-              background: rgba(103, 194, 58, 0.2);
-              color: #67c23a;
-            }
-          }
-
-          &:nth-child(8) {
-            color: #e6a23c;
-            background: rgba(230, 162, 60, 0.1);
-            &:hover {
-              background: rgba(230, 162, 60, 0.2);
-              color: #e6a23c;
-            }
-          }
-
-          &:nth-child(9) {
-            color: #f56c6c;
-            background: rgba(245, 108, 108, 0.1);
-            &:hover {
-              background: rgba(245, 108, 108, 0.2);
-              color: #f56c6c;
-            }
-          }
-
-          &:nth-child(10) {
-            color: #909399;
-            background: rgba(144, 147, 153, 0.1);
-            &:hover {
-              background: rgba(144, 147, 153, 0.2);
-              color: #909399;
-            }
+          .topic-label {
+            letter-spacing: 0.5px;
           }
         }
       }
 
       .search-right {
-        flex-shrink: 0;
-        min-width: 300px;
-        max-width: 400px;
+        width: 100%;
+        max-width: 420px;
+        align-self: flex-start;
 
-        .inline-search {
-          :deep(.el-input__wrapper) {
-            border-radius: 8px;
-            border: 1px solid #e4e7ed;
-            background-color: #ffffff;
-            box-shadow: 0 0 0 0 rgba(144, 147, 153, 0);
-            transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s;
-
-            &:hover {
-              border-color: #dcdfe6;
-              background-color: #fafafa;
-            }
-
-            &.is-focus {
-              border-color: #909399;
+          .inline-search {
+            max-width: 100%;
+            
+            :deep(.el-input__wrapper) {
+              border-radius: 14px;
+              border: 1px solid #e4e7ed;
               background-color: #ffffff;
-              box-shadow: 0 0 0 2px rgba(144, 147, 153, 0.1);
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+              padding: 6px 12px;
+              min-height: 42px;
+              transition: border-color 0.25s, box-shadow 0.25s, background-color 0.25s;
+
+              &:hover {
+                border-color: #dcdfe6;
+                background-color: #fafafa;
+              }
+
+              &.is-focus {
+                border-color: #c0c4cc;
+                background-color: #ffffff;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+              }
             }
-          }
 
           :deep(.el-input__inner) {
             color: #303133;
             font-size: 14px;
-            
+            line-height: 28px;
+            height: 28px;
+          
             &::placeholder {
               color: #c0c4cc;
             }
@@ -2843,54 +2701,6 @@ watch(statsPeriod, () => {
       }
     }
 
-    .recommended-communities {
-      .community-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s;
-        margin-bottom: 8px;
-
-        .community-avatar {
-          flex-shrink: 0;
-        }
-
-        .community-info {
-          flex: 1;
-          min-width: 0;
-
-          .community-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #303133;
-            margin-bottom: 4px;
-          }
-
-          .community-desc {
-            font-size: 12px;
-            color: #909399;
-            
-            .plan-count {
-              color: #606266;
-              font-weight: 500;
-              margin-left: 4px;
-            }
-          }
-        }
-
-        .arrow-icon {
-          color: #c0c4cc;
-          font-size: 16px;
-        }
-      }
-
-      .empty-communities {
-        padding: 20px;
-      }
-    }
   }
 
   // 热门作者排行榜
@@ -3142,14 +2952,14 @@ watch(statsPeriod, () => {
       .left-nav-sidebar {
         width: 180px;
         left: 20px;
-        top: v-bind(sidebarTop);
-        max-height: calc(100vh - v-bind(sidebarTop) - 20px);
+        top: 343px;
+        max-height: calc(100vh - 343px - 20px);
       }
       .sidebar-right {
         width: 280px;
         right: 20px;
-        top: v-bind(sidebarTop);
-        max-height: calc(100vh - v-bind(sidebarTop) - 20px);
+        top: 343px;
+        max-height: calc(100vh - 343px - 20px);
       }
       .content-center {
         // 左侧栏: left 20px + width 180px = 200px, gap 20px, 所以从 220px 开始

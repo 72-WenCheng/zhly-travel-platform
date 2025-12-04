@@ -27,6 +27,10 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/community")
 public class CommunityController {
     
+    // 热门文章和作者的基础阈值，防止“什么都算热门”
+    private static final double MIN_HOT_ARTICLE_SCORE = 5.0;
+    private static final double MIN_HOT_AUTHOR_SCORE = 3.0;
+    
     @Autowired
     private UserMapper userMapper;
     
@@ -62,15 +66,37 @@ public class CommunityController {
                 User user = userMapper.selectById(authorId);
                 
                 if (user != null) {
+                    long planCount = stat.get("plan_count") != null ?
+                            ((Number) stat.get("plan_count")).longValue() : 0L;
+                    long totalViews = stat.get("total_views") != null ?
+                            ((Number) stat.get("total_views")).longValue() : 0L;
+                    long totalLikes = stat.get("total_likes") != null ?
+                            ((Number) stat.get("total_likes")).longValue() : 0L;
+                    
+                    // 计算作者热度分：更多作品 + 点赞 + 浏览
+                    double score = planCount * 1.5
+                            + totalLikes * 1.0
+                            + totalViews / 100.0;
+                    
+                    // 过滤掉作品过少、互动过低的作者
+                    if (planCount <= 0 || score < MIN_HOT_AUTHOR_SCORE) {
+                        continue;
+                    }
+                    
                     Map<String, Object> author = new HashMap<>();
                     author.put("id", user.getId());
                     author.put("name", user.getNickname() != null ? user.getNickname() : user.getUsername());
                     author.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
-                    author.put("planCount", stat.get("plan_count") != null ? 
-                        ((Number) stat.get("plan_count")).longValue() : 0L);
-                    author.put("totalLikes", stat.get("total_likes") != null ? 
-                        ((Number) stat.get("total_likes")).longValue() : 0L);
+                    author.put("planCount", planCount);
+                    author.put("totalLikes", totalLikes);
+                    author.put("totalViews", totalViews);
+                    author.put("hotScore", score);
                     result.add(author);
+                    
+                    // 如果已经达到前端需要的数量，可以提前结束循环
+                    if (result.size() >= limit) {
+                        break;
+                    }
                 }
             }
             
@@ -104,32 +130,60 @@ public class CommunityController {
                 wrapper.ge("create_time", monthStart);
             }
             
+            // 先取一定数量的候选（比前端展示数量多），再在内存中做更精细的热度计算与过滤
             wrapper.orderByDesc("view_count", "like_count");
-            wrapper.last("LIMIT " + limit);
+            wrapper.last("LIMIT " + (limit * 5));
             
             List<TravelPlan> plans = travelPlanMapper.selectList(wrapper);
-            List<Map<String, Object>> result = plans.stream().map(plan -> {
-                Map<String, Object> article = new HashMap<>();
-                article.put("id", plan.getId());
-                article.put("title", plan.getTitle());
-                article.put("viewCount", plan.getViewCount() != null ? plan.getViewCount() : 0);
-                article.put("likeCount", plan.getLikeCount() != null ? plan.getLikeCount() : 0);
-                
-                // 获取作者信息
-                if (plan.getAuthorId() != null) {
-                    User author = userMapper.selectById(plan.getAuthorId());
-                    if (author != null) {
-                        article.put("authorName", author.getNickname() != null ? 
-                            author.getNickname() : author.getUsername());
+            List<Map<String, Object>> result = plans.stream()
+                .map(plan -> {
+                    int viewCount = plan.getViewCount() != null ? plan.getViewCount() : 0;
+                    int likeCount = plan.getLikeCount() != null ? plan.getLikeCount() : 0;
+                    int commentCount = plan.getCommentCount() != null ? plan.getCommentCount() : 0;
+                    
+                    // 热度分：浏览为基础，点赞/评论权重更高
+                    double hotScore = viewCount / 20.0
+                            + likeCount * 1.5
+                            + commentCount * 2.0;
+                    
+                    Map<String, Object> article = new HashMap<>();
+                    article.put("id", plan.getId());
+                    article.put("title", plan.getTitle());
+                    article.put("viewCount", viewCount);
+                    article.put("likeCount", likeCount);
+                    article.put("commentCount", commentCount);
+                    article.put("hotScore", hotScore);
+                    
+                    // 获取作者信息
+                    if (plan.getAuthorId() != null) {
+                        User author = userMapper.selectById(plan.getAuthorId());
+                        if (author != null) {
+                            article.put("authorName", author.getNickname() != null ?
+                                    author.getNickname() : author.getUsername());
+                        } else {
+                            article.put("authorName", "匿名用户");
+                        }
                     } else {
                         article.put("authorName", "匿名用户");
                     }
-                } else {
-                    article.put("authorName", "匿名用户");
-                }
-                
-                return article;
-            }).collect(Collectors.toList());
+                    
+                    return article;
+                })
+                // 过滤掉热度太低的文章，避免“啥都算热门”
+                .filter(a -> {
+                    Object scoreObj = a.get("hotScore");
+                    double score = scoreObj instanceof Number ? ((Number) scoreObj).doubleValue() : 0.0;
+                    return score >= MIN_HOT_ARTICLE_SCORE;
+                })
+                // 按热度分从高到底排序
+                .sorted((a, b) -> {
+                    double sb = ((Number) b.get("hotScore")).doubleValue();
+                    double sa = ((Number) a.get("hotScore")).doubleValue();
+                    return Double.compare(sb, sa);
+                })
+                // 只返回前 limit 条
+                .limit(limit)
+                .collect(Collectors.toList());
             
             return Result.success("获取热门文章成功", result);
         } catch (Exception e) {

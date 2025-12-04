@@ -327,6 +327,7 @@ import {
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
 import { getCurrentUserInfo, getCurrentUserId } from '@/utils/user'
+import { planTagOptions } from '@/constants/tags'
 
 const router = useRouter()
 const loading = ref(false)
@@ -436,12 +437,8 @@ const planRules = {
   ]
 }
 
-// 标签相关 - 标准标签列表（与后端一致）
-const availableTags = ref([
-  '摄影', '美食', '文化', '自然风光', '历史', '建筑',
-  '徒步', '温泉', '博物馆', '夜生活', '夜景', '购物',
-  '度假', '情侣', '亲子', '休闲'
-])
+// 标签相关 - 标准标签列表（与热门话题共用）
+const availableTags = ref([...planTagOptions])
 
 // 上传相关
 const uploadUrl = ref('/api/upload/image')

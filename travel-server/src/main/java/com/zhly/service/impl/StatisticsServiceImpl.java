@@ -1339,12 +1339,15 @@ public class StatisticsServiceImpl implements StatisticsService {
             Map<String, Object> result = new HashMap<>();
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime startTime = null;
+            LocalDateTime activeStartTime = null;
 
             // 根据period设置时间范围
             if ("week".equals(period)) {
                 startTime = now.minusDays(7);
+                activeStartTime = now.minusDays(7);
             } else if ("month".equals(period)) {
                 startTime = now.minusDays(30);
+                activeStartTime = now.minusDays(30);
             }
 
             // 1. 攻略总数
@@ -1356,11 +1359,12 @@ public class StatisticsServiceImpl implements StatisticsService {
             Long totalPlans = travelPlanMapper.selectCount(planWrapper);
             result.put("totalPlans", totalPlans != null ? totalPlans : 0L);
 
-            // 2. 活跃用户（最近7天有登录的用户）
+            // 2. 活跃用户（按 period 限定时间范围，all = 全部有效用户）
             QueryWrapper<com.zhly.entity.User> activeUserWrapper = new QueryWrapper<>();
             activeUserWrapper.eq("status", 1);
-            LocalDateTime activeStartTime = now.minusDays(7);
-            activeUserWrapper.ge("last_login_time", activeStartTime);
+            if (activeStartTime != null) {
+                activeUserWrapper.ge("last_login_time", activeStartTime);
+            }
             Long activeUsers = userMapper.selectCount(activeUserWrapper);
             result.put("activeUsers", activeUsers != null ? activeUsers : 0L);
 
