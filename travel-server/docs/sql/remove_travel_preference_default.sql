@@ -11,3 +11,4 @@ MODIFY COLUMN travel_preference INT NULL COMMENT '出行偏好：1-个人, 2-情
 -- 验证修改结果（可选）
 -- DESC sys_user;
 
+

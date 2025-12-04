@@ -52,6 +52,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserDeactivationManager userDeactivationManager;
     
+    @Autowired(required = false)
+    private com.zhly.mapper.PointsLogMapper pointsLogMapper;
+    
     @Override
     public Map<String, Object> register(User user) {
         Map<String, Object> result = new HashMap<>();
@@ -246,10 +249,29 @@ public class UserServiceImpl implements UserService {
             }
             
             // 检查是否是首次完善资料（判断头像、昵称等关键信息是否为空）
-            boolean isFirstTimeComplete = (currentUser.getAvatar() == null || currentUser.getAvatar().isEmpty()) &&
-                                        (currentUser.getNickname() == null || currentUser.getNickname().isEmpty()) &&
-                                        (user.getAvatar() != null && !user.getAvatar().isEmpty()) &&
-                                        (user.getNickname() != null && !user.getNickname().isEmpty());
+            // 判断逻辑：原来头像或昵称为空，且新提交的头像和昵称都不为空
+            boolean isFirstTimeComplete = 
+                ((currentUser.getAvatar() == null || currentUser.getAvatar().isEmpty()) || 
+                 (currentUser.getNickname() == null || currentUser.getNickname().isEmpty())) &&
+                (user.getAvatar() != null && !user.getAvatar().isEmpty()) &&
+                (user.getNickname() != null && !user.getNickname().isEmpty());
+            
+            // 检查是否已经给过首次完善资料的积分（避免重复奖励）
+            boolean alreadyRewarded = false;
+            if (isFirstTimeComplete && pointsLogMapper != null) {
+                try {
+                    com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.zhly.entity.PointsLog> pointsLogWrapper = 
+                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+                    pointsLogWrapper.eq("user_id", currentUser.getId())
+                                   .eq("action_type", 7)  // 7-完善资料
+                                   .like("action_desc", "首次完善");
+                    Long existingCount = pointsLogMapper.selectCount(pointsLogWrapper);
+                    alreadyRewarded = existingCount != null && existingCount > 0;
+                } catch (Exception e) {
+                    // 检查失败不影响流程，继续执行
+                    System.err.println("检查首次完善资料积分记录失败: " + e.getMessage());
+                }
+            }
             
             // 更新用户信息（使用UpdateWrapper确保所有字段都能正确更新，包括null值）
             LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
@@ -264,12 +286,14 @@ public class UserServiceImpl implements UserService {
             userMapper.update(null, updateWrapper);
             
             // 首次完善资料给予10积分奖励（行为类型7：完善资料）
-            if (isFirstTimeComplete) {
+            if (isFirstTimeComplete && !alreadyRewarded && userPointsService != null) {
                 try {
                     userPointsService.addPoints(currentUser.getId(), 10, 7, "首次完善个人资料", null, null);
+                    System.out.println("✅ 用户 " + currentUser.getId() + " 首次完善资料，已奖励10积分");
                 } catch (Exception e) {
                     // 积分发放失败不影响资料更新
                     System.err.println("发放首次完善资料积分失败: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
             

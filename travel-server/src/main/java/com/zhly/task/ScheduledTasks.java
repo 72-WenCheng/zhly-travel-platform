@@ -25,6 +25,9 @@ public class ScheduledTasks {
     @Autowired
     private AiService aiService;
     
+    @Autowired(required = false)
+    private com.zhly.service.ICouponDistributionService couponDistributionService;
+    
     /**
      * 每小时清理过期缓存
      */
@@ -93,6 +96,24 @@ public class ScheduledTasks {
             logger.info("重要数据备份完成");
         } catch (Exception e) {
             logger.error("备份重要数据失败", e);
+        }
+    }
+    
+    /**
+     * 每月1号凌晨4点自动发放等级权益优惠券
+     */
+    @Scheduled(cron = "0 0 4 1 * ?")
+    public void distributeMonthlyCoupons() {
+        try {
+            logger.info("开始执行每月优惠券自动发放任务...");
+            if (couponDistributionService != null) {
+                couponDistributionService.distributeMonthlyCoupons();
+                logger.info("每月优惠券发放任务完成");
+            } else {
+                logger.warn("优惠券发放服务未启用，跳过发放");
+            }
+        } catch (Exception e) {
+            logger.error("每月优惠券发放任务失败", e);
         }
     }
 }

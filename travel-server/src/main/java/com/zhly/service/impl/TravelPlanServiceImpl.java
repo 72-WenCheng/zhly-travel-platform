@@ -243,24 +243,107 @@ public class TravelPlanServiceImpl extends ServiceImpl<TravelPlanMapper, TravelP
                 return false;
             }
             
+            Long authorId = plan.getAuthorId();
+            Integer oldViewCount = plan.getViewCount();
+            Integer oldLikeCount = plan.getLikeCount();
+            
             switch (type) {
                 case "view":
-                    plan.setViewCount(plan.getViewCount() + 1);
+                    plan.setViewCount((plan.getViewCount() != null ? plan.getViewCount() : 0) + 1);
                     break;
                 case "like":
-                    plan.setLikeCount(plan.getLikeCount() + 1);
+                    plan.setLikeCount((plan.getLikeCount() != null ? plan.getLikeCount() : 0) + 1);
                     break;
                 case "comment":
-                    plan.setCommentCount(plan.getCommentCount() + 1);
+                    plan.setCommentCount((plan.getCommentCount() != null ? plan.getCommentCount() : 0) + 1);
                     break;
                 case "collect":
-                    plan.setLikeCount(plan.getLikeCount() + 1);
+                    plan.setLikeCount((plan.getLikeCount() != null ? plan.getLikeCount() : 0) + 1);
                     break;
                 default:
                     return false;
             }
             
-            return travelPlanMapper.updateById(plan) > 0;
+            boolean updateSuccess = travelPlanMapper.updateById(plan) > 0;
+            
+            // 检查攻略是否达到热门或加精标准，并奖励积分
+            if (updateSuccess && authorId != null && userPointsService != null) {
+                try {
+                    Integer newViewCount = plan.getViewCount();
+                    Integer newLikeCount = plan.getLikeCount();
+                    
+                    // 1. 检查是否达到热门攻略标准（浏览量>10000或点赞>1000）
+                    if ((newViewCount != null && newViewCount > 10000) || (newLikeCount != null && newLikeCount > 1000)) {
+                        // 检查是否已经给过热门攻略积分
+                        if (pointsLogMapper != null) {
+                            com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.zhly.entity.PointsLog> hotWrapper = 
+                                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+                            hotWrapper.eq("user_id", authorId)
+                                     .eq("action_type", 11)  // 11-热门攻略（需要确认行为类型）
+                                     .eq("related_type", "plan")
+                                     .eq("related_id", id)
+                                     .like("action_desc", "热门攻略");
+                            Long hotLogCount = pointsLogMapper.selectCount(hotWrapper);
+                            
+                            if (hotLogCount == 0) {
+                                // 检查是否之前未达到标准（避免重复奖励）
+                                boolean wasHotBefore = (oldViewCount != null && oldViewCount > 10000) || 
+                                                       (oldLikeCount != null && oldLikeCount > 1000);
+                                if (!wasHotBefore) {
+                                    userPointsService.addPoints(
+                                        authorId,
+                                        50,  // 奖励50积分
+                                        11,  // 行为类型：11-热门攻略（如果不存在，可以用10或其他）
+                                        "攻略进入热门榜",
+                                        "plan",
+                                        id
+                                    );
+                                    System.out.println("✅ 攻略 " + id + " 进入热门榜，已给作者 " + authorId + " 奖励50积分");
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 2. 检查是否达到加精标准（点赞>500且浏览量>5000，或点赞>1000）
+                    if ((newLikeCount != null && newLikeCount > 500 && newViewCount != null && newViewCount > 5000) ||
+                        (newLikeCount != null && newLikeCount > 1000)) {
+                        // 检查是否已经给过加精积分
+                        if (pointsLogMapper != null) {
+                            com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.zhly.entity.PointsLog> featuredWrapper = 
+                                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+                            featuredWrapper.eq("user_id", authorId)
+                                          .eq("action_type", 12)  // 12-攻略加精（需要确认行为类型）
+                                          .eq("related_type", "plan")
+                                          .eq("related_id", id)
+                                          .like("action_desc", "攻略加精");
+                            Long featuredLogCount = pointsLogMapper.selectCount(featuredWrapper);
+                            
+                            if (featuredLogCount == 0) {
+                                // 检查是否之前未达到标准（避免重复奖励）
+                                boolean wasFeaturedBefore = (oldLikeCount != null && oldLikeCount > 500 && oldViewCount != null && oldViewCount > 5000) ||
+                                                           (oldLikeCount != null && oldLikeCount > 1000);
+                                if (!wasFeaturedBefore) {
+                                    userPointsService.addPoints(
+                                        authorId,
+                                        30,  // 奖励30积分
+                                        12,  // 行为类型：12-攻略加精（如果不存在，可以用10或其他）
+                                        "攻略获得加精",
+                                        "plan",
+                                        id
+                                    );
+                                    System.out.println("✅ 攻略 " + id + " 获得加精，已给作者 " + authorId + " 奖励30积分");
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // 积分奖励失败不影响统计更新，只记录日志
+                    System.err.println("⚠️ 更新攻略统计成功，但积分奖励检查失败: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
+            return updateSuccess;
         } catch (Exception e) {
             throw new RuntimeException("更新攻略统计失败: " + e.getMessage());
         }

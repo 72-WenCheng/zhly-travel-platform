@@ -304,7 +304,7 @@
 
         <!-- 优惠券列表 -->
         <div 
-          v-for="coupon in availableCoupons" 
+          v-for="coupon in availableCouponsComputed" 
           :key="coupon.id"
           class="coupon-item"
           :class="{ 'active': selectedCouponId === coupon.id, 'disabled': !coupon.available }"
@@ -328,8 +328,12 @@
           <div v-if="!coupon.available" class="coupon-unavailable">不可用</div>
         </div>
 
-        <div v-if="availableCoupons.length === 0" class="empty-coupon">
-          <el-empty description="暂无可用优惠券" />
+        <div v-if="availableCouponsComputed.length === 0" class="empty-coupon">
+          <el-empty description="暂无可用优惠券">
+            <el-button type="primary" @click="router.push('/home/user/level-guide')">
+              查看升级指南
+            </el-button>
+          </el-empty>
         </div>
       </div>
 
@@ -522,22 +526,53 @@ const couponDiscount = computed(() => {
 })
 
 // 可用优惠券列表
-const availableCoupons = computed(() => {
+// 可用优惠券列表（从后端获取）
+const availableCoupons = ref([])
+
+// 加载可用优惠券
+const loadAvailableCoupons = async () => {
+  try {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo') || '{}')
+    const userId = userInfo.id || userInfo.userId
+    
+    if (!userId) {
+      return
+    }
+    
+    const response = await request.get('/user/coupon/available', {
+      params: {
+        userId,
+        orderAmount: goodsTotal.value
+      }
+    })
+    
+    if (response.code === 200 && response.data) {
+      const coupons = response.data.list || []
+      availableCoupons.value = coupons.map((coupon: any) => ({
+        id: coupon.id,
+        name: coupon.couponName || '优惠券',
+        description: coupon.sourceDesc || '等级权益优惠券',
+        amount: coupon.discountValue ? parseFloat(coupon.discountValue) : 0,
+        minAmount: coupon.minAmount ? parseFloat(coupon.minAmount) : 0,
+        expireDate: coupon.validEndTime ? new Date(coupon.validEndTime).toLocaleDateString('zh-CN') : '',
+        available: goodsTotal.value >= (coupon.minAmount ? parseFloat(coupon.minAmount) : 0)
+      }))
+    }
+  } catch (error: any) {
+    console.error('加载可用优惠券失败:', error)
+    // 失败时使用空数组，不影响订单流程
+    availableCoupons.value = []
+  }
+}
+
+// 计算可用优惠券（兼容旧代码）
+const availableCouponsComputed = computed(() => {
   const total = goodsTotal.value
-  return [
-    {
-      id: 1,
-      name: '新用户专享券',
-      description: '新用户首单立减',
-      amount: 20,
-      minAmount: 100,
-      expireDate: '2025-12-31',
-      available: total >= 100
-    },
-    {
-      id: 2,
-      name: '满减优惠券',
-      description: '全场通用',
+  return availableCoupons.value.map(coupon => ({
+    ...coupon,
+    available: total >= coupon.minAmount
+  }))
+})
       amount: 50,
       minAmount: 300,
       expireDate: '2025-11-30',
@@ -717,9 +752,11 @@ const confirmCoupon = () => {
     selectedCoupon.value = null
     ElMessage.success('已取消使用优惠券')
   } else {
-    const coupon = availableCoupons.value.find(c => c.id === selectedCouponId.value)
-    selectedCoupon.value = coupon
-    ElMessage.success(`已使用优惠券，优惠¥${coupon.amount}`)
+    const coupon = availableCouponsComputed.value.find(c => c.id === selectedCouponId.value)
+    if (coupon) {
+      selectedCoupon.value = coupon
+      ElMessage.success(`已使用优惠券，优惠¥${coupon.amount}`)
+    }
   }
   couponDialogVisible.value = false
 }
@@ -786,11 +823,16 @@ onMounted(() => {
       console.error('解析订单商品失败:', e)
       ElMessage.error('订单数据错误')
       router.back()
+      return
     }
   } else {
     ElMessage.error('缺少订单商品')
     router.back()
+    return
   }
+  
+  // 加载可用优惠券
+  loadAvailableCoupons()
 })
 </script>
 

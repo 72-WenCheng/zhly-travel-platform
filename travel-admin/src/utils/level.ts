@@ -19,43 +19,43 @@ export const LEVEL_MAP: Record<number, LevelInfo> = {
     name: '青铜旅行者',
     code: 1,
     points: 0,
-    color: '#CD7F32',
-    gradient: { start: '#CD7F32', end: '#8B6914' }
+    color: '#8B7355',
+    gradient: { start: '#8B7355', end: '#6B5B4F' }
   },
   2: {
     name: '白银探索者',
     code: 2,
     points: 100,
-    color: '#C0C0C0',
-    gradient: { start: '#C0C0C0', end: '#A0A0A0' }
+    color: '#9CA3AF',
+    gradient: { start: '#9CA3AF', end: '#6B7280' }
   },
   3: {
     name: '黄金游侠',
     code: 3,
     points: 500,
-    color: '#FFD700',
-    gradient: { start: '#FFD700', end: '#FFA500' }
+    color: '#F59E0B',
+    gradient: { start: '#F59E0B', end: '#D97706' }
   },
   4: {
     name: '铂金旅者',
     code: 4,
     points: 2000,
-    color: '#E5E4E2',
-    gradient: { start: '#667eea', end: '#764ba2' }
+    color: '#6366F1',
+    gradient: { start: '#6366F1', end: '#4F46E5' }
   },
   5: {
     name: '钻石达人',
     code: 5,
     points: 5000,
-    color: '#B9F2FF',
-    gradient: { start: '#667eea', end: '#764ba2' }
+    color: '#EC4899',
+    gradient: { start: '#EC4899', end: '#DB2777' }
   },
   6: {
     name: '王者导师',
     code: 6,
     points: 10000,
-    color: '#FF4500',
-    gradient: { start: '#FF4500', end: '#FF8C00' }
+    color: '#F97316',
+    gradient: { start: '#F97316', end: '#EA580C' }
   }
 }
 

@@ -31,10 +31,7 @@
       <!-- 核心信息卡片 -->
       <el-row :gutter="20" class="info-cards">
         <el-col :xs="24" :sm="8">
-          <div class="info-card">
-            <div class="card-icon views">
-              <el-icon><View /></el-icon>
-            </div>
+          <div class="info-card views">
             <div class="card-content">
               <div class="card-value">{{ planDetail.viewCount || 0 }}</div>
               <div class="card-label">浏览量</div>
@@ -42,10 +39,7 @@
           </div>
         </el-col>
         <el-col :xs="24" :sm="8">
-          <div class="info-card">
-            <div class="card-icon likes">
-              <el-icon><Star /></el-icon>
-            </div>
+          <div class="info-card likes">
             <div class="card-content">
               <div class="card-value">{{ collectCount }}</div>
               <div class="card-label">收藏数</div>
@@ -53,10 +47,7 @@
           </div>
         </el-col>
         <el-col :xs="24" :sm="8">
-          <div class="info-card">
-            <div class="card-icon comments">
-              <el-icon><ChatDotRound /></el-icon>
-            </div>
+          <div class="info-card comments">
             <div class="card-content">
               <div class="card-value">{{ planDetail.commentCount || 0 }}</div>
               <div class="card-label">评论数</div>
@@ -86,8 +77,18 @@
                   style="cursor: pointer;"
                 >
                   {{ planDetail.authorName }}
-                  <el-tag v-if="planDetail.authorLevel" size="small" type="warning">
-                    {{ planDetail.authorLevel }}
+                  <el-tag 
+                    v-if="authorLevelInfo" 
+                    size="small" 
+                    :style="{ 
+                      background: authorLevelInfo.gradient 
+                        ? `linear-gradient(135deg, ${authorLevelInfo.gradient.start}, ${authorLevelInfo.gradient.end})`
+                        : authorLevelInfo.color,
+                      color: 'white',
+                      border: 'none'
+                    }"
+                  >
+                    {{ authorLevelInfo.name }}
                   </el-tag>
                 </div>
                 <div class="publish-time">发布于 {{ formatDateTime(planDetail.createdTime) }}</div>
@@ -411,6 +412,7 @@ import { formatDateTime } from '@/utils';
 import { addCollect, removeCollect, checkCollected } from '@/api/userCollect';
 import { recordShare } from '@/api/share';
 import { getCurrentUserInfo } from '@/utils/user';
+import { getLevelByPoints } from '@/utils/level';
 
 const route = useRoute();
 const router = useRouter();
@@ -440,6 +442,27 @@ const perPersonBudget = computed(() => {
   const total = totalBudget.value;
   const personCount = planDetail.value.personCount || 1;
   return personCount > 0 ? Math.round(total / personCount) : total;
+});
+
+// 作者等级信息
+const authorLevelInfo = computed(() => {
+  // 优先使用作者积分计算等级
+  if (planDetail.value.authorPoints !== undefined && planDetail.value.authorPoints !== null) {
+    return getLevelByPoints(planDetail.value.authorPoints);
+  }
+  // 如果后端返回了等级名称，尝试根据名称获取等级信息
+  if (planDetail.value.authorLevel) {
+    const levelMap: Record<string, any> = {
+      '青铜旅行者': { name: '青铜旅行者', color: '#8B7355', gradient: { start: '#8B7355', end: '#6B5B4F' } },
+      '白银探索者': { name: '白银探索者', color: '#9CA3AF', gradient: { start: '#9CA3AF', end: '#6B7280' } },
+      '黄金游侠': { name: '黄金游侠', color: '#F59E0B', gradient: { start: '#F59E0B', end: '#D97706' } },
+      '铂金旅者': { name: '铂金旅者', color: '#6366F1', gradient: { start: '#6366F1', end: '#4F46E5' } },
+      '钻石达人': { name: '钻石达人', color: '#EC4899', gradient: { start: '#EC4899', end: '#DB2777' } },
+      '王者导师': { name: '王者导师', color: '#F97316', gradient: { start: '#F97316', end: '#EA580C' } }
+    };
+    return levelMap[planDetail.value.authorLevel] || null;
+  }
+  return null;
 });
 
 // 格式化时间显示（行程安排中的时间）
@@ -500,6 +523,7 @@ const loadPlanDetail = async () => {
         authorName: data.authorName || data.author || '匿名用户', // 支持author和authorName两种字段名
         authorAvatar: data.authorAvatar || '',
         authorLevel: data.authorLevel || '',
+        authorPoints: data.authorPoints || data.authorPoints || null, // 作者积分
         createdTime: data.createTime || '',
         publishTime: data.publishTime || '',
         bestSeason: data.bestSeason || '全年',
@@ -591,6 +615,20 @@ const loadPlanDetail = async () => {
       
       // 更新收藏数
       collectCount.value = planDetail.value.collectCount || 0;
+      
+      // 如果后端没有返回作者积分，尝试获取
+      if (!planDetail.value.authorPoints && planDetail.value.authorId) {
+        try {
+          const pointsResponse = await request.get('/user/points/my', {
+            params: { userId: planDetail.value.authorId }
+          });
+          if (pointsResponse.code === 200 && pointsResponse.data?.userPoints) {
+            planDetail.value.authorPoints = pointsResponse.data.userPoints.totalPoints || 0;
+          }
+        } catch (error) {
+          console.warn('获取作者积分失败:', error);
+        }
+      }
       
       // 检查收藏状态
       checkCollectStatus();
@@ -1263,55 +1301,77 @@ onUnmounted(() => {
     margin-bottom: 24px;
 
     .info-card {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 24px;
-      background: white;
+      position: relative;
+      padding: 20px 16px;
+      background: #ffffff;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: all 0.3s;
+      border: 1px solid #e8eaed;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      overflow: hidden;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        opacity: 0.08;
+        pointer-events: none;
+      }
+
+      &.views {
+        border-color: #409EFF;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #409EFF 0%, transparent 70%);
+        }
+      }
+
+      &.likes {
+        border-color: #f5576c;
+        background: linear-gradient(135deg, #ffffff 0%, #fff0f5 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #f5576c 0%, transparent 70%);
+        }
+      }
+
+      &.comments {
+        border-color: #4facfe;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #4facfe 0%, transparent 70%);
+        }
+      }
 
       &:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      }
-
-      .card-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        color: white;
-
-        &.views {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        &.likes {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        &.comments {
-          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
       }
 
       .card-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+
         .card-value {
           font-size: 28px;
           font-weight: 700;
-          color: #333;
-          line-height: 1;
+          color: #1a1a1a;
+          line-height: 1.2;
           margin-bottom: 8px;
+          letter-spacing: -0.5px;
         }
 
         .card-label {
-          font-size: 14px;
-          color: #999;
+          font-size: 13px;
+          color: #6b7280;
+          font-weight: 500;
         }
       }
     }

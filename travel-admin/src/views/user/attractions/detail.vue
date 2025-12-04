@@ -40,46 +40,34 @@
       <!-- 核心信息 -->
       <el-row :gutter="20" class="info-cards">
         <el-col :xs="12" :sm="6">
-          <div class="info-card">
-            <div class="card-icon time">
-              <el-icon><Clock /></el-icon>
-            </div>
+          <div class="info-card time">
             <div class="card-content">
-              <div class="card-label">建议游玩</div>
               <div class="card-value">{{ attractionDetail.suggestedDuration ? attractionDetail.suggestedDuration + '小时' : '2-3小时' }}</div>
+              <div class="card-label">建议游玩</div>
             </div>
           </div>
         </el-col>
         <el-col :xs="12" :sm="6">
-          <div class="info-card">
-            <div class="card-icon views">
-              <el-icon><View /></el-icon>
-            </div>
+          <div class="info-card views">
             <div class="card-content">
-              <div class="card-label">浏览量</div>
               <div class="card-value">{{ attractionDetail.viewCount || 0 }}</div>
+              <div class="card-label">浏览量</div>
             </div>
           </div>
         </el-col>
         <el-col :xs="12" :sm="6">
-          <div class="info-card">
-            <div class="card-icon comments">
-              <el-icon><ChatDotRound /></el-icon>
-            </div>
+          <div class="info-card comments">
             <div class="card-content">
-              <div class="card-label">评论数</div>
               <div class="card-value">{{ attractionDetail.commentCount || 0 }}</div>
+              <div class="card-label">评论数</div>
             </div>
           </div>
         </el-col>
         <el-col :xs="12" :sm="6">
-          <div class="info-card">
-            <div class="card-icon star">
-              <el-icon><Star /></el-icon>
-            </div>
+          <div class="info-card likes">
             <div class="card-content">
-              <div class="card-label">收藏数</div>
               <div class="card-value">{{ attractionDetail.collectCount || 0 }}</div>
+              <div class="card-label">收藏数</div>
             </div>
           </div>
         </el-col>
@@ -1757,66 +1745,87 @@ onMounted(() => {
     }
 
     .info-card {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 24px;
-      background: white;
+      position: relative;
+      padding: 20px 16px;
+      background: #ffffff;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: all 0.3s;
+      border: 1px solid #e8eaed;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      overflow: hidden;
       height: 100%;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        opacity: 0.08;
+        pointer-events: none;
+      }
+
+      &.time {
+        border-color: #4facfe;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #4facfe 0%, transparent 70%);
+        }
+      }
+
+      &.views {
+        border-color: #409EFF;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #409EFF 0%, transparent 70%);
+        }
+      }
+
+      &.comments {
+        border-color: #4facfe;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #4facfe 0%, transparent 70%);
+        }
+      }
+
+      &.likes {
+        border-color: #f5576c;
+        background: linear-gradient(135deg, #ffffff 0%, #fff0f5 100%);
+        
+        &::after {
+          background: radial-gradient(circle, #f5576c 0%, transparent 70%);
+        }
+      }
 
       &:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      }
-
-      .card-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        color: white;
-        flex-shrink: 0;
-
-        &.price {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        &.time {
-          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        &.views {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        &.comments {
-          background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-
-        &.star {
-          background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
       }
 
       .card-content {
-        flex: 1;
-
-        .card-label {
-          font-size: 14px;
-          color: #999;
-          margin-bottom: 8px;
-        }
+        position: relative;
+        z-index: 1;
+        text-align: center;
 
         .card-value {
-          font-size: 22px;
+          font-size: 28px;
           font-weight: 700;
-          color: #333;
+          color: #1a1a1a;
+          line-height: 1.2;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
+        }
+
+        .card-label {
+          font-size: 13px;
+          color: #6b7280;
+          font-weight: 500;
         }
       }
     }

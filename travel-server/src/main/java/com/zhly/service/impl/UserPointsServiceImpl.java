@@ -39,6 +39,9 @@ public class UserPointsServiceImpl extends ServiceImpl<UserPointsMapper, UserPoi
     @Autowired(required = false)
     private INotificationService notificationService;
     
+    @Autowired(required = false)
+    private com.zhly.service.ICouponDistributionService couponDistributionService;
+    
     @Override
     @Transactional
     public void initUserPoints(Long userId) {
@@ -96,22 +99,44 @@ public class UserPointsServiceImpl extends ServiceImpl<UserPointsMapper, UserPoi
             userPoints.setLevelCode(newLevel.getLevelCode());
             userPoints.setLevelName(newLevel.getLevelName());
             
-            // 如果等级提升，发送升级通知
-            if (levelChanged && oldLevelId != null && notificationService != null) {
-                try {
-                    notificationService.sendNotification(
-                        userId,
-                        7,  // 通知类型：7=等级升级
-                        "等级提升",
-                        "恭喜！您已升级到 " + newLevel.getLevelName() + "，继续加油！",
-                        null,  // 系统通知，无发送者
-                        "LEVEL",  // 关联类型
-                        newLevel.getId(),  // 等级ID
-                        "/user/level-guide"  // 链接地址
-                    );
-                } catch (Exception e) {
-                    // 通知发送失败不影响积分更新
-                    System.err.println("发送升级通知失败: " + e.getMessage());
+            // 如果等级提升，发送升级通知并发放优惠券
+            if (levelChanged && oldLevelId != null) {
+                // 发送升级通知
+                if (notificationService != null) {
+                    try {
+                        notificationService.sendNotification(
+                            userId,
+                            7,  // 通知类型：7=等级升级
+                            "等级提升",
+                            "恭喜！您已升级到 " + newLevel.getLevelName() + "，继续加油！",
+                            null,  // 系统通知，无发送者
+                            "LEVEL",  // 关联类型
+                            newLevel.getId(),  // 等级ID
+                            "/user/level-guide"  // 链接地址
+                        );
+                    } catch (Exception e) {
+                        // 通知发送失败不影响积分更新
+                        System.err.println("发送升级通知失败: " + e.getMessage());
+                    }
+                }
+                
+                // 如果升级到黄金游侠及以上等级，自动发放优惠券
+                if (newLevel.getLevelCode() != null && newLevel.getLevelCode() >= 3 && couponDistributionService != null) {
+                    try {
+                        int couponCount = couponDistributionService.distributeCouponsByLevel(
+                            userId, 
+                            newLevel.getLevelCode(), 
+                            newLevel.getLevelName()
+                        );
+                        if (couponCount > 0) {
+                            System.out.println("✅ 用户 " + userId + " 升级到 " + newLevel.getLevelName() + 
+                                             "，已自动发放 " + couponCount + " 张优惠券");
+                        }
+                    } catch (Exception e) {
+                        // 优惠券发放失败不影响积分更新
+                        System.err.println("⚠️ 升级优惠券发放失败: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             }
         }

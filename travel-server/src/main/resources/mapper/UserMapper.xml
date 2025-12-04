@@ -86,11 +86,12 @@
         WHERE id = #{userId}
     </update>
     
-    <!-- 更新用户最后登录信息（时间和IP） -->
+    <!-- 更新用户最后登录信息（时间、IP和登录次数） -->
     <update id="updateLastLoginInfo">
         UPDATE sys_user 
         SET last_login_time = NOW(), 
             last_login_ip = #{loginIp},
+            login_count = IFNULL(login_count, 0) + 1,
             update_time = NOW()
         WHERE id = #{userId}
     </update>

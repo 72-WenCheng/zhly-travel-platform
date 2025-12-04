@@ -51,11 +51,14 @@
           </div>
           
           <div class="level-main">
-            <div class="level-badge-large" :style="{ borderColor: pointsInfo.currentLevel?.levelColor }">
-              <div class="level-icon-large" :style="{ background: pointsInfo.currentLevel?.levelColor }">
+            <div class="level-badge-large" :style="{ 
+              borderColor: pointsInfo.currentLevel?.levelColor,
+              background: pointsInfo.currentLevel?.levelGradient || `linear-gradient(135deg, ${pointsInfo.currentLevel?.levelColor} 0%, ${pointsInfo.currentLevel?.levelColor} 100%)`
+            }">
+              <div class="level-icon-large">
                 <el-icon :size="48"><Trophy /></el-icon>
               </div>
-              <div class="level-name-large" :style="{ color: pointsInfo.currentLevel?.levelColor }">
+              <div class="level-name-large">
                 {{ pointsInfo.currentLevel?.levelName }}
               </div>
               <div class="level-code">LV.{{ pointsInfo.userPoints?.levelCode }}</div>
@@ -279,7 +282,7 @@
             'locked': level.levelCode > pointsInfo.userPoints?.levelCode
           }"
         >
-          <div class="roadmap-icon" :style="{ background: level.levelColor }">
+          <div class="roadmap-icon" :style="{ background: level.levelGradient || level.levelColor }">
             <el-icon v-if="level.levelCode < pointsInfo.userPoints?.levelCode"><Check /></el-icon>
             <el-icon v-else-if="level.levelCode === pointsInfo.userPoints?.levelCode"><Star /></el-icon>
             <el-icon v-else><Lock /></el-icon>
@@ -393,14 +396,14 @@ const todayStats = ref({
   pointsEarned: 35
 })
 
-// 所有等级
+// 所有等级（与升级指南保持一致）
 const allLevels = ref([
-  { levelCode: 1, levelName: '青铜旅行者', requiredPoints: 0, levelColor: '#CD7F32' },
-  { levelCode: 2, levelName: '白银探索者', requiredPoints: 100, levelColor: '#C0C0C0' },
-  { levelCode: 3, levelName: '黄金游侠', requiredPoints: 500, levelColor: '#FFD700' },
-  { levelCode: 4, levelName: '铂金旅者', requiredPoints: 2000, levelColor: '#E5E4E2' },
-  { levelCode: 5, levelName: '钻石达人', requiredPoints: 5000, levelColor: '#B9F2FF' },
-  { levelCode: 6, levelName: '王者导师', requiredPoints: 10000, levelColor: '#FF4500' }
+  { levelCode: 1, levelName: '青铜旅行者', requiredPoints: 0, levelColor: '#8B7355', levelGradient: 'linear-gradient(135deg, #8B7355 0%, #6B5B4F 100%)' },
+  { levelCode: 2, levelName: '白银探索者', requiredPoints: 100, levelColor: '#9CA3AF', levelGradient: 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)' },
+  { levelCode: 3, levelName: '黄金游侠', requiredPoints: 500, levelColor: '#F59E0B', levelGradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' },
+  { levelCode: 4, levelName: '铂金旅者', requiredPoints: 2000, levelColor: '#6366F1', levelGradient: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' },
+  { levelCode: 5, levelName: '钻石达人', requiredPoints: 5000, levelColor: '#EC4899', levelGradient: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)' },
+  { levelCode: 6, levelName: '王者导师', requiredPoints: 10000, levelColor: '#F97316', levelGradient: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' }
 ])
 
 // 今日日期
@@ -455,6 +458,17 @@ onMounted(async () => {
     const res = await request.get('/user/points/my', { params: { userId } })
     if (res.code === 200) {
       pointsInfo.value = res.data
+      // 确保使用正确的等级颜色和渐变（与升级指南一致）
+      if (pointsInfo.value.userPoints?.levelCode) {
+        const level = allLevels.value.find(l => l.levelCode === pointsInfo.value.userPoints.levelCode)
+        if (level) {
+          pointsInfo.value.currentLevel = {
+            ...pointsInfo.value.currentLevel,
+            levelColor: level.levelColor,
+            levelGradient: level.levelGradient
+          }
+        }
+      }
     }
   } catch (error) {
     console.error('加载用户信息失败', error)
@@ -619,10 +633,22 @@ onMounted(async () => {
     .level-badge-large {
       flex-shrink: 0;
       text-align: center;
-      padding: 20px;
+      padding: 24px 20px;
       border: 3px solid;
-      border-radius: 20px;
-      background: rgba(255, 215, 0, 0.05);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+        pointer-events: none;
+      }
       
       .level-icon-large {
         width: 80px;
@@ -633,18 +659,27 @@ onMounted(async () => {
         justify-content: center;
         margin: 0 auto 15px;
         color: white;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        position: relative;
+        z-index: 1;
       }
       
       .level-name-large {
         font-size: 20px;
         font-weight: 700;
         margin-bottom: 5px;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        position: relative;
+        z-index: 1;
       }
       
       .level-code {
         font-size: 14px;
-        color: #909399;
+        color: rgba(255, 255, 255, 0.9);
+        position: relative;
+        z-index: 1;
       }
     }
     

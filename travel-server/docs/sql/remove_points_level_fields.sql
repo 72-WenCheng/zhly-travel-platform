@@ -32,3 +32,4 @@ DROP COLUMN level;
 -- 查看所有字段列表
 -- SHOW COLUMNS FROM sys_user;
 
+

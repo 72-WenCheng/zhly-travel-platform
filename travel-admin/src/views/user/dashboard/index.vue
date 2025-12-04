@@ -284,16 +284,11 @@
             class="space-card"
             @click="navigateTo(item.path)"
           >
-            <div class="space-icon-wrapper">
-              <div class="space-icon" :style="{ background: item.gradient }">
-                <el-icon :size="32">
-                  <component :is="item.icon" />
-                </el-icon>
-              </div>
-              <div class="space-badge" v-if="item.count > 0">{{ item.count }}</div>
-            </div>
             <div class="space-content">
-              <h3 class="space-title">{{ item.title }}</h3>
+              <div class="space-header">
+                <h3 class="space-title">{{ item.title }}</h3>
+                <div class="space-badge" v-if="item.count > 0">{{ item.count }}</div>
+              </div>
               <p class="space-desc">{{ item.desc }}</p>
               <div class="space-stats">
                 <span class="stat-item">
@@ -332,43 +327,31 @@
           <el-card class="current-level-mini-card">
             <div class="level-status-mini">
               <div class="level-icon-mini" :style="{ background: currentLevelGradient }">
-                <el-icon :size="32"><Medal /></el-icon>
+                <el-icon :size="36">
+                  <User v-if="currentLevelIcon === 'User'" />
+                  <Aim v-else-if="currentLevelIcon === 'Aim'" />
+                  <Medal v-else-if="currentLevelIcon === 'Medal'" />
+                  <Trophy v-else-if="currentLevelIcon === 'Trophy'" />
+                  <StarFilled v-else-if="currentLevelIcon === 'StarFilled'" />
+                  <TrophyBase v-else-if="currentLevelIcon === 'TrophyBase'" />
+                  <Medal v-else />
+                </el-icon>
               </div>
               <div class="level-info-mini">
                 <div class="level-name-mini" :style="{ color: currentLevelColor }">{{ currentLevelName }}</div>
                 <div class="level-desc-mini">当前等级</div>
               </div>
-              <div class="points-info-mini">
-                <div class="points-value-mini">{{ currentPoints }}</div>
-                <div class="points-label-mini">总积分</div>
-              </div>
               <div class="level-progress-mini" v-if="nextLevel">
                 <el-progress 
                   :percentage="levelProgress" 
                   :color="progressColor"
-                  :stroke-width="8"
+                  :stroke-width="10"
                   :show-text="false"
                 />
                 <div class="progress-text-mini">距离{{ nextLevel.name }}还需 {{ nextLevel.points - currentPoints }} 积分</div>
               </div>
             </div>
           </el-card>
-          <!-- 快速升级技巧 -->
-          <div class="upgrade-tips-grid">
-            <div 
-              v-for="(tip, index) in upgradeTips.slice(0, 2)" 
-              :key="index"
-              class="tip-card"
-              @click="handleTipAction(tip)"
-            >
-              <div class="tip-icon">{{ tip.icon }}</div>
-              <div class="tip-content-mini">
-                <div class="tip-title-mini">{{ tip.title }}</div>
-                <div class="tip-desc-mini">{{ tip.desc }}</div>
-              </div>
-              <div class="tip-points">+{{ tip.points }}</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -650,7 +633,7 @@ import {
   Trophy, ArrowRight, Star, Location, View, ChatDotRound, 
   Document, User, Shop, UserFilled, InfoFilled, DataAnalysis,
   TrendCharts, LocationFilled, MagicStick, Top, TrophyBase, Picture, Grid,
-  Edit, Search, Clock
+  Edit, Search, Clock, Medal, Aim, StarFilled
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ElMessage, ElLoading } from 'element-plus'
@@ -1100,15 +1083,8 @@ const loadAnnouncements = async () => {
 
 // 升级指南相关数据
 const currentPoints = ref(0)
-const currentLevelCode = ref('BRONZE')
-const levels = ref([
-  { code: 'BRONZE', name: '青铜旅行者', points: 0, gradient: 'linear-gradient(135deg, #CD7F32, #8B5A00)', color: '#CD7F32' },
-  { code: 'SILVER', name: '白银探索者', points: 100, gradient: 'linear-gradient(135deg, #C0C0C0, #A8A8A8)', color: '#C0C0C0' },
-  { code: 'GOLD', name: '黄金游侠', points: 500, gradient: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#FFD700' },
-  { code: 'PLATINUM', name: '铂金旅者', points: 1500, gradient: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#667eea' },
-  { code: 'DIAMOND', name: '钻石达人', points: 3000, gradient: 'linear-gradient(135deg, #f093fb, #f5576c)', color: '#f093fb' },
-  { code: 'MASTER', name: '王者导师', points: 5000, gradient: 'linear-gradient(135deg, #fa709a, #fee140)', color: '#fa709a' }
-])
+const currentLevelCode = ref(1)
+const currentLevelInfo = ref(null) // 存储当前等级完整信息
 
 const upgradeTips = ref([
   { icon: '📝', title: '完善个人资料', desc: '首次完善获得10积分', points: 10, action: 'profile' },
@@ -1117,20 +1093,32 @@ const upgradeTips = ref([
   { icon: '💬', title: '积极互动交流', desc: '每条有效评论获得2积分', points: 2, action: 'community' }
 ])
 
+// 等级列表（与升级指南保持一致）
+const levels = ref([
+  { code: 1, name: '青铜旅行者', points: 0, gradient: 'linear-gradient(135deg, #8B7355 0%, #6B5B4F 100%)', color: '#8B7355', icon: 'User' },
+  { code: 2, name: '白银探索者', points: 100, gradient: 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)', color: '#9CA3AF', icon: 'Aim' },
+  { code: 3, name: '黄金游侠', points: 500, gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#F59E0B', icon: 'Medal' },
+  { code: 4, name: '铂金旅者', points: 2000, gradient: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)', color: '#6366F1', icon: 'Trophy' },
+  { code: 5, name: '钻石达人', points: 5000, gradient: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)', color: '#EC4899', icon: 'StarFilled' },
+  { code: 6, name: '王者导师', points: 10000, gradient: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)', color: '#F97316', icon: 'TrophyBase' }
+])
+
 // 计算当前等级信息
 const currentLevelName = computed(() => {
-  const level = levels.value.find(l => l.code === currentLevelCode.value)
-  return level?.name || '青铜旅行者'
+  return currentLevelInfo.value?.name || '青铜旅行者'
 })
 
 const currentLevelColor = computed(() => {
-  const level = levels.value.find(l => l.code === currentLevelCode.value)
-  return level?.color || '#CD7F32'
+  return currentLevelInfo.value?.color || '#8B7355'
 })
 
 const currentLevelGradient = computed(() => {
+  return currentLevelInfo.value?.gradient || 'linear-gradient(135deg, #8B7355 0%, #6B5B4F 100%)'
+})
+
+const currentLevelIcon = computed(() => {
   const level = levels.value.find(l => l.code === currentLevelCode.value)
-  return level?.gradient || 'linear-gradient(135deg, #CD7F32, #8B5A00)'
+  return level?.icon || 'User'
 })
 
 const nextLevel = computed(() => {
@@ -3347,12 +3335,39 @@ const loadUserLevelInfo = async () => {
       const userPoints = pointsResponse.data.userPoints || {}
       currentPoints.value = userPoints.totalPoints || 0
       
-      // 前端依旧根据积分计算等级，保持展示逻辑一致
+      // 根据积分计算等级（使用升级指南的等级体系）
       const levelInfo = getLevelByPoints(currentPoints.value)
-      currentLevelCode.value = levelInfo.code || levelInfo.levelCode || 'BRONZE'
+      currentLevelCode.value = levelInfo.code || 1
+      
+      // 从 levels 数组中获取完整的等级信息（包括颜色和渐变）
+      const levelData = levels.value.find(l => l.code === levelInfo.code)
+      if (levelData) {
+        currentLevelInfo.value = {
+          name: levelData.name,
+          color: levelData.color,
+          gradient: levelData.gradient,
+          icon: levelData.icon
+        }
+      } else {
+        // 降级方案：使用 levelInfo 的数据
+        currentLevelInfo.value = {
+          name: levelInfo.name,
+          color: levelInfo.color,
+          gradient: levelInfo.gradient ? `linear-gradient(135deg, ${levelInfo.gradient.start}, ${levelInfo.gradient.end})` : `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color})`,
+          icon: 'User'
+        }
+      }
     }
   } catch (error) {
     console.error('加载用户等级信息失败:', error)
+    // 默认设置为青铜旅行者
+    currentLevelCode.value = 1
+    currentLevelInfo.value = {
+      name: '青铜旅行者',
+      color: '#8B7355',
+      gradient: 'linear-gradient(135deg, #8B7355 0%, #6B5B4F 100%)',
+      icon: 'User'
+    }
   }
 }
 
@@ -3507,58 +3522,78 @@ onMounted(() => {
     margin-top: 20px;
 
     .current-level-mini-card {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      
+      :deep(.el-card__body) {
+        padding: 28px 24px;
+      }
+      
       .level-status-mini {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 20px;
 
         .level-icon-mini {
-          width: 80px;
-          height: 80px;
+          width: 90px;
+          height: 90px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           margin: 0 auto;
           color: white;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+          position: relative;
+          
+          &::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+          }
         }
 
         .level-info-mini {
           text-align: center;
 
           .level-name-mini {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 4px;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
           }
 
           .level-desc-mini {
-            font-size: 12px;
-            color: #909399;
-          }
-        }
-
-        .points-info-mini {
-          text-align: center;
-
-          .points-value-mini {
-            font-size: 24px;
-            font-weight: 700;
-            color: #409eff;
-          }
-
-          .points-label-mini {
-            font-size: 12px;
+            font-size: 13px;
             color: #909399;
           }
         }
 
         .level-progress-mini {
+          margin-top: 4px;
+          
+          :deep(.el-progress-bar__outer) {
+            border-radius: 10px;
+            background-color: #f3f4f6;
+          }
+          
+          :deep(.el-progress-bar__inner) {
+            border-radius: 10px;
+          }
+          
           .progress-text-mini {
-            font-size: 12px;
-            color: #909399;
+            font-size: 13px;
+            color: #6b7280;
             text-align: center;
-            margin-top: 8px;
+            margin-top: 10px;
+            font-weight: 500;
           }
         }
       }
@@ -4747,69 +4782,40 @@ onMounted(() => {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 24px;
-      background: white;
-      border-radius: 24px;
-      padding: 32px;
+      justify-content: space-between;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px 28px;
       cursor: pointer;
       overflow: hidden;
-      transition: transform 0.3s ease;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      transition: all 0.25s ease;
+      border: 1px solid #e8eaed;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       
       &::before {
-        display: none;
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, #409EFF 0%, #337ECC 100%);
+        transform: scaleY(0);
+        transform-origin: top;
+        transition: transform 0.3s ease;
       }
       
       &:hover {
-        transform: translateY(-4px);
+        border-color: #409EFF;
+        box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
         
-        .space-icon {
-          transform: none;
+        &::before {
+          transform: scaleY(1);
         }
         
         .space-arrow {
-          transform: none;
-        }
-      }
-      
-      .space-icon-wrapper {
-        position: relative;
-        flex-shrink: 0;
-        pointer-events: none;
-        
-        .space-icon {
-          width: 88px;
-          height: 88px;
-          border-radius: 22px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 40px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-          transition: none;
-          position: relative;
-          z-index: 1;
-        }
-        
-        .space-badge {
-          position: absolute;
-          top: -8px;
-          right: -8px;
-          min-width: 28px;
-          height: 28px;
-          padding: 0 8px;
-          background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-          color: white;
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 13px;
-          font-weight: 700;
-          box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-          z-index: 2;
-          animation: badgePulse 2s ease-in-out infinite;
+          color: #409EFF;
+          transform: translateX(3px);
         }
       }
       
@@ -4819,34 +4825,58 @@ onMounted(() => {
         z-index: 1;
         pointer-events: none;
         
-        .space-title {
-          font-size: 22px;
-          font-weight: 700;
-          margin: 0 0 8px 0;
-          color: #303133;
+        .space-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
+          
+          .space-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            color: #1a1a1a;
+            letter-spacing: 0;
+          }
+          
+          .space-badge {
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            background: #ff4757;
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+          }
         }
         
         .space-desc {
-          font-size: 14px;
-          color: #909399;
+          font-size: 13px;
+          color: #8e8e93;
           margin: 0 0 16px 0;
+          line-height: 1.5;
         }
         
         .space-stats {
           display: flex;
-          gap: 24px;
+          gap: 28px;
           
           .stat-item {
             display: flex;
             align-items: center;
             gap: 6px;
             font-size: 14px;
-            color: #606266;
-            font-weight: 600;
+            color: #3a3a3c;
+            font-weight: 500;
             
             .el-icon {
-              font-size: 18px;
-              color: #667eea;
+              font-size: 16px;
+              color: #8e8e93;
             }
           }
         }
@@ -4855,18 +4885,12 @@ onMounted(() => {
       .space-arrow {
         position: relative;
         z-index: 1;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(102, 126, 234, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #667eea;
-        font-size: 20px;
-        opacity: 0.6;
-        transition: none;
+        color: #8e8e93;
+        font-size: 18px;
+        transition: all 0.25s ease;
         pointer-events: none;
+        flex-shrink: 0;
+        margin-left: 16px;
       }
     }
   }
@@ -4885,29 +4909,36 @@ onMounted(() => {
       gap: 16px;
       
       .space-card {
-        padding: 24px;
-        
-        .space-icon-wrapper .space-icon {
-          width: 72px;
-          height: 72px;
-        }
+        padding: 20px 24px;
         
         .space-content {
-          .space-title {
-            font-size: 18px;
+          .space-header {
+            .space-title {
+              font-size: 17px;
+            }
+          }
+          
+          .space-desc {
+            font-size: 12px;
+            margin-bottom: 14px;
           }
           
           .space-stats {
-            gap: 16px;
+            gap: 20px;
             
             .stat-item {
               font-size: 13px;
               
               .el-icon {
-                font-size: 16px;
+                font-size: 15px;
               }
             }
           }
+        }
+        
+        .space-arrow {
+          font-size: 16px;
+          margin-left: 12px;
         }
       }
     }

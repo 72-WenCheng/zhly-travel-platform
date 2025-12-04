@@ -347,15 +347,20 @@ const canComment = ref(true);
 const expandedReplies = ref(new Set()); // 存储已展开回复的评论ID
 const loadingReplies = ref(new Set()); // 存储正在加载回复的评论ID
 
+// 当前用户积分（从后端获取）
+const currentUserPoints = ref(0);
+
 // 当前用户信息
 const currentUser = computed(() => {
   const user = userStore.userInfo || userStore.user;
   if (!user) return null;
+  // 优先使用从后端获取的积分，其次使用 userPoints，最后使用 points
+  const points = currentUserPoints.value || user.userPoints || user.points || 0;
   return {
     id: user.id,
     username: user.nickname || user.name || user.username || '用户', // 优先显示昵称，其次名字，最后账号名
     avatar: user.avatar || '',
-    userPoints: user.points || user.userPoints || 0
+    userPoints: points
   };
 });
 
@@ -538,16 +543,38 @@ const loadAllReplies = async (comment) => {
   }
 };
 
+// 获取当前用户积分
+const loadCurrentUserPoints = async () => {
+  const user = userStore.userInfo || userStore.user;
+  if (!user || !user.id) return;
+  
+  try {
+    const response = await request.get('/user/points/my', {
+      params: { userId: user.id }
+    });
+    if (response.code === 200 && response.data?.userPoints) {
+      currentUserPoints.value = response.data.userPoints.totalPoints || 0;
+    }
+  } catch (error) {
+    console.warn('获取当前用户积分失败:', error);
+    // 降级方案：使用store中的积分
+    const user = userStore.userInfo || userStore.user;
+    currentUserPoints.value = user?.userPoints || user?.points || 0;
+  }
+};
+
 // 显示发布对话框
-const showPublishDialog = () => {
+const showPublishDialog = async () => {
   isReply.value = false;
   replyTarget.value = null;
   commentContent.value = '';
+  // 打开对话框时获取最新的用户积分
+  await loadCurrentUserPoints();
   publishDialogVisible.value = true;
 };
 
 // 处理回复
-const handleReply = (comment) => {
+const handleReply = async (comment) => {
   if (!canComment.value) {
     ElMessage.warning('您的等级不足，无法回复评论');
     return;
@@ -562,6 +589,8 @@ const handleReply = (comment) => {
   isReply.value = true;
   replyTarget.value = comment;
   commentContent.value = '';
+  // 打开对话框时获取最新的用户积分
+  await loadCurrentUserPoints();
   publishDialogVisible.value = true;
 };
 
@@ -776,7 +805,7 @@ const canDelete = (comment) => {
 // 根据积分获取等级样式信息（统一使用升级指南的计算方式）
 const getLevelStyleByPoints = (points) => {
   if (points === undefined || points === null || points < 0) {
-    return { name: '青铜旅行者', color: '#CD7F32', gradient: { start: '#CD7F32', end: '#8B6914' } };
+    return { name: '青铜旅行者', color: '#8B7355', gradient: { start: '#8B7355', end: '#6B5B4F' } };
   }
   return getLevelByPoints(points);
 };
@@ -794,6 +823,8 @@ const viewUserProfile = (userId) => {
 onMounted(() => {
   loadComments();
   checkPermission();
+  // 初始化时获取当前用户积分
+  loadCurrentUserPoints();
 });
 </script>
 

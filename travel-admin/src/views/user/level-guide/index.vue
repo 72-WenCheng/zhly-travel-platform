@@ -20,7 +20,15 @@
     <el-card class="current-level-card">
       <div class="level-status">
         <div class="level-icon" :style="{ background: currentLevelGradient }">
-          <el-icon :size="48"><Medal /></el-icon>
+          <el-icon :size="48">
+            <User v-if="currentLevelIcon === 'User'" />
+            <Aim v-else-if="currentLevelIcon === 'Aim'" />
+            <Medal v-else-if="currentLevelIcon === 'Medal'" />
+            <Trophy v-else-if="currentLevelIcon === 'Trophy'" />
+            <StarFilled v-else-if="currentLevelIcon === 'StarFilled'" />
+            <TrophyBase v-else-if="currentLevelIcon === 'TrophyBase'" />
+            <Medal v-else />
+          </el-icon>
         </div>
         <div class="level-info">
           <div class="level-name" :style="{ color: currentLevelColor }">{{ currentLevelName }}</div>
@@ -45,7 +53,7 @@
           :color="progressColor"
           :stroke-width="12"
         />
-        <div class="progress-percentage">{{ Math.min(100, Math.round(levelProgress)) }}%</div>
+        <div class="progress-percentage">{{ Math.min(100, Math.round(levelProgress * 10) / 10) }}%</div>
       </div>
       <div class="max-level-tip" v-else>
         <el-icon><Trophy /></el-icon>
@@ -66,39 +74,31 @@
         :class="{ 'current': level.code === currentLevelCode, 'locked': level.code > currentLevelCode }"
       >
         <div class="level-badge" :style="{ background: level.gradient }">
-          <el-icon :size="32"><Medal /></el-icon>
+          <el-icon :size="40">
+            <User v-if="level.icon === 'User'" />
+            <Aim v-else-if="level.icon === 'Aim'" />
+            <Medal v-else-if="level.icon === 'Medal'" />
+            <Trophy v-else-if="level.icon === 'Trophy'" />
+            <StarFilled v-else-if="level.icon === 'StarFilled'" />
+            <TrophyBase v-else-if="level.icon === 'TrophyBase'" />
+            <Medal v-else />
+          </el-icon>
           <div class="level-badge-name">{{ level.name }}</div>
         </div>
         <div class="level-details">
-          <div class="level-points">
-            <el-icon><Coin /></el-icon>
-            <span>{{ level.points }} 积分</span>
-          </div>
+          <div class="level-points">{{ level.points }} 积分</div>
           <el-divider />
           <div class="level-perks">
             <div class="perk-item">
-              <el-icon :color="level.canPost ? '#67c23a' : '#909399'">
-                <CircleCheck v-if="level.canPost" />
-                <CircleClose v-else />
-              </el-icon>
               <span>{{ level.canPost ? `发布攻略 ${level.postLimit}篇/天` : '无发布权限' }}</span>
             </div>
             <div class="perk-item">
-              <el-icon color="#67c23a"><ChatDotRound /></el-icon>
               <span>评论 {{ level.commentLimit }}条/天</span>
             </div>
-            <div class="perk-item">
-              <el-icon :color="level.couponBenefit ? '#67c23a' : '#909399'">
-                <Ticket v-if="level.couponBenefit" />
-                <CircleClose v-else />
-              </el-icon>
+            <div class="perk-item" :class="{ 'clickable': level.couponBenefit }" @click="level.couponBenefit && goToCoupons()">
               <span>{{ level.couponBenefit ? level.couponText : '无优惠券权益' }}</span>
             </div>
           </div>
-        </div>
-        <div class="current-badge" v-if="level.code === currentLevelCode">
-          <el-icon><CircleCheck /></el-icon>
-          当前等级
         </div>
       </el-card>
     </div>
@@ -111,9 +111,6 @@
     <el-card class="points-rules-card">
       <div class="rules-grid">
         <div v-for="rule in pointsRules" :key="rule.action" class="rule-item">
-          <div class="rule-icon" :style="{ background: rule.gradient }">
-            {{ rule.icon }}
-          </div>
           <div class="rule-info">
             <div class="rule-name">{{ rule.name }}</div>
             <div class="rule-desc">{{ rule.desc }}</div>
@@ -138,7 +135,7 @@
           </div>
           <el-button 
             v-if="tip.action" 
-            size="small" 
+            size="default" 
             @click="handleTipAction(tip)"
             class="tip-action-btn"
           >
@@ -196,9 +193,28 @@
         </el-table-column>
       </el-table>
       
-      <el-empty v-if="pointsLog.length === 0" description="暂无积分记录" />
+      <el-empty v-if="pointsLog.length === 0 && total === 0" description="暂无积分记录" />
+      
+      <!-- 分页组件 -->
+      <div v-if="total > pageSize" class="points-log-pagination">
+        <el-button 
+          :disabled="pageNum <= 1"
+          class="page-btn prev-btn"
+          @click="handlePointsLogPageChange(pageNum - 1)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="page-info">{{ pageNum }} / {{ totalPages }}</span>
+        <el-button 
+          :disabled="pageNum >= totalPages"
+          class="page-btn next-btn"
+          @click="handlePointsLogPageChange(pageNum + 1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+      </div>
     </el-card>
-    
+
     <!-- 签到对话框 -->
     <el-dialog
       v-model="checkinDialogVisible"
@@ -244,7 +260,8 @@ import {
   TrophyBase, Medal, Trophy, TrendCharts, Coin, 
   CircleCheck, CircleClose, ChatDotRound, View, Hide,
   Promotion, List, Calendar, Document, Star, Share, 
-  User, UserFilled, Setting, Right, InfoFilled, Ticket
+  User, UserFilled, Setting, Right, InfoFilled, Ticket, ArrowRight, ArrowLeft,
+  Location, StarFilled, Aim, Rank, MagicStick
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
@@ -266,8 +283,9 @@ const levels = ref([
     code: 1,
     name: '青铜旅行者',
     points: 0,
-    color: '#CD7F32',
-    gradient: 'linear-gradient(135deg, #CD7F32 0%, #8B5A00 100%)',
+    color: '#8B7355',
+    gradient: 'linear-gradient(135deg, #8B7355 0%, #6B5B4F 100%)',
+    icon: 'User',
     canPost: false,
     postLimit: 0,
     canComment: true,
@@ -279,8 +297,9 @@ const levels = ref([
     code: 2,
     name: '白银探索者',
     points: 100,
-    color: '#C0C0C0',
-    gradient: 'linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%)',
+    color: '#9CA3AF',
+    gradient: 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)',
+    icon: 'Aim',
     canPost: true,
     postLimit: 2,
     canComment: true,
@@ -292,8 +311,9 @@ const levels = ref([
     code: 3,
     name: '黄金游侠',
     points: 500,
-    color: '#FFD700',
-    gradient: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+    color: '#F59E0B',
+    gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+    icon: 'Medal',
     canPost: true,
     postLimit: 5,
     canComment: true,
@@ -305,8 +325,9 @@ const levels = ref([
     code: 4,
     name: '铂金旅者',
     points: 2000,
-    color: '#E5E4E2',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#6366F1',
+    gradient: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+    icon: 'Trophy',
     canPost: true,
     postLimit: 10,
     canComment: true,
@@ -318,8 +339,9 @@ const levels = ref([
     code: 5,
     name: '钻石达人',
     points: 5000,
-    color: '#B9F2FF',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    color: '#EC4899',
+    gradient: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
+    icon: 'StarFilled',
     canPost: true,
     postLimit: 20,
     canComment: true,
@@ -331,8 +353,9 @@ const levels = ref([
     code: 6,
     name: '王者导师',
     points: 10000,
-    color: '#FF4500',
-    gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    color: '#F97316',
+    gradient: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+    icon: 'TrophyBase',
     canPost: true,
     postLimit: 999,
     canComment: true,
@@ -396,6 +419,30 @@ const tips = ref([
     action: 'my-plans',
     actionText: '查看我的'
   },
+  { 
+    title: '邀请好友注册', 
+    desc: '邀请好友完成注册，每成功邀请一位好友可获得50积分',
+    action: 'invite',
+    actionText: '去邀请'
+  },
+  { 
+    title: '完成文旅订单', 
+    desc: '购买文旅产品并完成订单，可获得消费金额1%的积分奖励',
+    action: 'culture',
+    actionText: '去购买'
+  },
+  { 
+    title: '攻略获得加精', 
+    desc: '你的攻略被设为精华时，可获得30积分奖励',
+    action: 'my-plans',
+    actionText: '查看我的'
+  },
+  { 
+    title: '攻略进入热门', 
+    desc: '你的攻略进入热门榜时，可获得50积分奖励',
+    action: 'my-plans',
+    actionText: '查看我的'
+  },
 ])
 
 // 积分记录
@@ -403,6 +450,7 @@ const pointsLog = ref([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1)
 
 // 签到相关
 const checkinDialogVisible = ref(false)
@@ -450,12 +498,79 @@ const progressColor = computed(() => {
   return '#67c23a'
 })
 
+// 获取当前等级的图标
+const currentLevelIcon = computed(() => {
+  const level = levels.value.find(l => l.code === currentLevelCode.value)
+  return level?.icon || 'Medal'
+})
+
 // 获取日志详情
+// 获取友好的说明文本
 const getLogDetail = (log) => {
-  if (log.relatedType && log.relatedId) {
-    return `关联${log.relatedType} #${log.relatedId}`
+  // 如果已经有详细的actionDesc，直接使用（如"首次完善个人资料"、"连续7天奖励"等）
+  if (log.actionDesc && !log.actionDesc.includes('关联') && !log.actionDesc.includes('#')) {
+    return log.actionDesc
   }
-  return '-'
+  
+  // 根据行为类型和关联类型生成友好说明
+  const actionType = log.actionType
+  const relatedType = log.relatedType
+  const relatedId = log.relatedId
+  
+  // 如果没有关联信息，返回默认说明
+  if (!relatedType || !relatedId) {
+    // 根据行为类型返回默认说明
+    const defaultDesc = {
+      1: '每日登录奖励',
+      2: '攻略审核通过',
+      3: '评论已发布',
+      4: '收到点赞',
+      5: '收藏成功',
+      6: '分享成功',
+      7: '资料已完善',
+      8: '好友注册成功',
+      9: '订单已完成',
+      10: '管理员调整',
+      11: '攻略进入热门',
+      12: '攻略获得加精'
+    }
+    return defaultDesc[actionType] || '积分操作'
+  }
+  
+  // 根据关联类型生成友好说明
+  const typeMap = {
+    'plan': '攻略',
+    'attraction': '景点',
+    'comment': '评论',
+    'order': '订单',
+    'user': '用户'
+  }
+  
+  const typeName = typeMap[relatedType] || relatedType
+  
+  // 根据行为类型组合说明
+  const actionDescMap = {
+    1: '每日登录',
+    2: '发布攻略',
+    3: '发表评论',
+    4: `收到${typeName}的点赞`,
+    5: `收藏了${typeName}`,
+    6: `分享了${typeName}`,
+    7: '完善资料',
+    8: '邀请好友',
+    9: '完成订单',
+    10: '管理员调整',
+    11: '攻略进入热门',
+    12: '攻略获得加精'
+  }
+  
+  return actionDescMap[actionType] || `${typeName}相关操作`
+}
+
+// 积分记录分页改变
+const handlePointsLogPageChange = (page) => {
+  pageNum.value = page
+  loadPointsLog()
 }
 
 // 格式化时间
@@ -506,12 +621,20 @@ const loadUserInfo = async () => {
             const levelInfo = getLevelByPoints(currentPoints.value)
             if (levelInfo) {
               currentLevelCode.value = levelInfo.code
-              currentLevelName.value = levelInfo.name
-              currentLevelColor.value = levelInfo.color
-              if (levelInfo.gradient) {
-                currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.gradient.start}, ${levelInfo.gradient.end})`
+              // 从 levels 数组中获取完整的等级信息（包括颜色和渐变）
+              const levelData = levels.value.find(l => l.code === levelInfo.code)
+              if (levelData) {
+                currentLevelName.value = levelData.name
+                currentLevelColor.value = levelData.color
+                currentLevelGradient.value = levelData.gradient
               } else {
-                currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color})`
+                currentLevelName.value = levelInfo.name
+                currentLevelColor.value = levelInfo.color
+                if (levelInfo.gradient) {
+                  currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.gradient.start}, ${levelInfo.gradient.end})`
+                } else {
+                  currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color})`
+                }
               }
             }
           }
@@ -526,11 +649,23 @@ const loadUserInfo = async () => {
           const userData = JSON.parse(savedUserInfo)
           currentPoints.value = userData.points || 0
           const levelInfo = getLevelByPoints(currentPoints.value)
-          currentLevelCode.value = levelInfo.code
-          currentLevelName.value = levelInfo.name
-          currentLevelColor.value = levelInfo.color
-          if (levelInfo.gradient) {
-            currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.gradient.start}, ${levelInfo.gradient.end})`
+          if (levelInfo) {
+            currentLevelCode.value = levelInfo.code
+            // 从 levels 数组中获取完整的等级信息（包括颜色和渐变）
+            const levelData = levels.value.find(l => l.code === levelInfo.code)
+            if (levelData) {
+              currentLevelName.value = levelData.name
+              currentLevelColor.value = levelData.color
+              currentLevelGradient.value = levelData.gradient
+            } else {
+              currentLevelName.value = levelInfo.name
+              currentLevelColor.value = levelInfo.color
+              if (levelInfo.gradient) {
+                currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.gradient.start}, ${levelInfo.gradient.end})`
+              } else {
+                currentLevelGradient.value = `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color})`
+              }
+            }
           }
         }
       } catch (parseError) {
@@ -588,9 +723,43 @@ const loadPointsLogForUser = async (userId) => {
     
     // 兼容R和Result两种返回格式
     if ((response.code === 200 || response.code === 0) && response.data) {
-      // 处理分页数据
-      if (response.data.records || response.data.list) {
-        const records = response.data.records || response.data.list || []
+      console.log('📦 后端返回的完整数据:', JSON.stringify(response.data, null, 2))
+      
+      // 处理分页数据 - MyBatis Plus的Page对象包含records和total
+      if (response.data.records) {
+        // MyBatis Plus分页返回格式
+        const records = response.data.records || []
+        pointsLog.value = records.map((log) => ({
+          actionType: log.actionType,
+          actionDesc: log.actionDesc || log.description || '积分操作',
+          points: log.points || log.pointChange || 0,
+          balanceAfter: log.balanceAfter || log.balance || 0,
+          createTime: log.createTime || log.createdTime,
+          relatedType: log.relatedType,
+          relatedId: log.relatedId
+        }))
+        // 修复：如果total为0但records有数据，说明后端分页可能有问题
+        // 如果records长度等于pageSize，说明可能还有更多数据，需要设置一个合理的total
+        if (response.data.total > 0) {
+          total.value = response.data.total
+        } else if (records.length > 0) {
+          // 如果total为0但有数据，说明后端可能没有正确返回total
+          // 如果当前页数据量等于pageSize，说明可能还有更多数据，设置一个较大的total
+          // 否则使用records.length作为total
+          if (records.length >= pageSize.value) {
+            // 当前页数据满了，可能还有更多数据，设置一个合理的total（至少是当前页数 * pageSize）
+            total.value = pageNum.value * pageSize.value + 1 // 至少比当前页多1，确保有下一页
+          } else {
+            // 当前页数据不满，说明这是最后一页，使用records.length作为total
+            total.value = (pageNum.value - 1) * pageSize.value + records.length
+          }
+        } else {
+          total.value = 0
+        }
+        console.log('✅ 积分记录加载成功 - 总数:', total.value, '当前页数据:', records.length, '总页数:', Math.ceil(total.value / pageSize.value), '后端返回total:', response.data.total)
+      } else if (response.data.list) {
+        // 自定义分页格式
+        const records = response.data.list || []
         pointsLog.value = records.map((log) => ({
           actionType: log.actionType,
           actionDesc: log.actionDesc || log.description || '积分操作',
@@ -601,9 +770,10 @@ const loadPointsLogForUser = async (userId) => {
           relatedId: log.relatedId
         }))
         total.value = response.data.total || records.length
+        console.log('✅ 积分记录加载成功(list格式) - 总数:', total.value, '当前页数据:', records.length)
       } else if (Array.isArray(response.data)) {
-        // 直接是数组
-        pointsLog.value = response.data.map((log) => ({
+        // 直接是数组（无分页）
+        pointsLog.value = response.data.slice((pageNum.value - 1) * pageSize.value, pageNum.value * pageSize.value).map((log) => ({
           actionType: log.actionType,
           actionDesc: log.actionDesc || log.description || '积分操作',
           points: log.points || log.pointChange || 0,
@@ -652,37 +822,65 @@ const useMockPointsLog = () => {
       relatedId: 2
     }
   ]
+  // 模拟数据时，设置total为实际数据长度，用于分页显示
   total.value = pointsLog.value.length
+  // 如果数据超过一页，需要分页显示
+  if (pointsLog.value.length > pageSize.value) {
+    pointsLog.value = pointsLog.value.slice(0, pageSize.value)
+  }
 }
 
 // 处理技巧跳转
 const handleTipAction = (tip) => {
   const actionMap = {
     'profile': () => {
+      // 跳转到个人资料编辑页面
       router.push('/home/user/profile-edit')
     },
     'checkin': () => {
+      // 打开签到对话框
       checkinDialogVisible.value = true
       checkTodayCheckin()
     },
     'create-plan': () => {
+      // 跳转到创建攻略页面
       router.push('/home/user/plans/create')
     },
     'community': () => {
+      // 跳转到攻略社区页面（可以发表评论）
       router.push('/home/user/community')
     },
     'recommendations': () => {
+      // 跳转到推荐页面（可以收藏和分享）
       router.push('/home/user/recommendations')
     },
     'my-plans': () => {
+      // 跳转到我的攻略页面（查看自己的攻略、点赞情况、加精和热门状态）
       router.push('/home/user/plans')
+    },
+    'invite': () => {
+      // 跳转到邀请好友页面（如果存在）或用户中心
+      // TODO: 如果有专门的邀请页面，可以跳转过去
+      ElMessage.info('邀请好友功能开发中，敬请期待！')
+      // router.push('/home/user/invite')
+    },
+    'culture': () => {
+      // 跳转到文旅体验页面（可以购买产品）
+      router.push('/home/user/culture')
     },
   }
   
   const action = actionMap[tip.action]
   if (action) {
     action()
+  } else {
+    ElMessage.warning('功能暂未开放')
   }
+}
+
+// 跳转到我的优惠券页面
+const goToCoupons = () => {
+  router.push('/home/user/coupons')
 }
 
 // 检查今日是否已签到
@@ -969,23 +1167,22 @@ onMounted(() => {
 }
 
 .level-card {
-  border-radius: 12px;
-  transition: all 0.3s;
+  border-radius: 16px;
   position: relative;
-  overflow: visible;
-  
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  }
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  background: #ffffff;
   
   &.current {
-    border: 2px solid #ffd700;
-    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.25);
+    border: 3px solid #F59E0B;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1), 0 8px 24px rgba(245, 158, 11, 0.3);
   }
   
   &.locked {
-    opacity: 0.6;
+    opacity: 0.75;
+    filter: grayscale(20%);
   }
   
   :deep(.el-card__body) {
@@ -993,69 +1190,90 @@ onMounted(() => {
   }
   
   .level-badge {
-    padding: 24px;
+    padding: 32px 24px;
     color: white;
     text-align: center;
-    border-radius: 12px 12px 0 0;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    
+    .el-icon {
+      margin-bottom: 12px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    }
     
     .level-badge-name {
-      margin-top: 12px;
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 700;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
   }
   
   .level-details {
-    padding: 20px;
+    padding: 28px 24px;
+    background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%);
     
     .level-points {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #303133;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+      padding: 12px 0;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      border-radius: 10px;
     }
     
     .level-perks {
-      margin-top: 12px;
+      margin-top: 20px;
       
       .perk-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 0;
+        padding: 12px 16px;
         font-size: 14px;
-        color: #606266;
+        color: #4b5563;
+        line-height: 1.7;
+        background: #ffffff;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border-left: 3px solid #e5e7eb;
+        transition: all 0.2s ease;
+        
+        &:last-child {
+          margin-bottom: 0;
+        }
+        
+        &:hover {
+          background: #f9fafb;
+          border-left-color: #6366f1;
+          transform: translateX(4px);
+        }
+        
+        &.clickable {
+          cursor: pointer;
+          color: #6366f1;
+          border-left-color: #6366f1;
+          
+          &:hover {
+            background: #eef2ff;
+            border-left-color: #4f46e5;
+          }
+          
+          &:active {
+            transform: translateX(2px);
+          }
+        }
       }
-    }
-  }
-  
-  .current-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: linear-gradient(135deg, #ffd700 0%, #ffb800 100%);
-    color: #8B4513;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    box-shadow: 0 3px 12px rgba(255, 215, 0, 0.4);
-    border: 1.5px solid rgba(255, 255, 255, 0.5);
-    animation: badge-glow 2s ease-in-out infinite;
-  }
-  
-  @keyframes badge-glow {
-    0%, 100% {
-      box-shadow: 0 3px 12px rgba(255, 215, 0, 0.4);
-    }
-    50% {
-      box-shadow: 0 3px 16px rgba(255, 215, 0, 0.6);
     }
   }
 }
@@ -1073,26 +1291,12 @@ onMounted(() => {
   .rule-item {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px;
-    background: #f5f7fa;
-    border-radius: 8px;
-    transition: all 0.3s;
-    
-    &:hover {
-      background: #ecf5ff;
-      transform: translateX(4px);
-    }
-  }
-  
-  .rule-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: #ffffff;
+    border: 1px solid #e4e7ed;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
   
   .rule-info {
@@ -1102,22 +1306,23 @@ onMounted(() => {
       font-size: 16px;
       font-weight: 600;
       color: #303133;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      line-height: 1.4;
     }
     
     .rule-desc {
-      font-size: 13px;
-      color: #909399;
+      font-size: 14px;
+      color: #606266;
+      line-height: 1.5;
     }
   }
   
   .rule-points {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ff6b35;
+    margin-left: 20px;
+    white-space: nowrap;
   }
 }
 
@@ -1172,11 +1377,13 @@ onMounted(() => {
     .tip-action-btn {
       flex-shrink: 0;
       border-radius: 20px;
-      padding: 8px 20px;
+      padding: 12px 28px;
       font-weight: 500;
+      font-size: 15px;
       background: #f5f7fa;
       border-color: #dcdfe6;
       color: #606266;
+      min-height: 44px;
       
       &:hover {
         background: #e4e7ed;
@@ -1186,7 +1393,8 @@ onMounted(() => {
       
       .el-icon {
         margin-right: 0;
-        margin-left: 4px;
+        margin-left: 6px;
+        font-size: 16px;
       }
     }
   }
@@ -1194,6 +1402,10 @@ onMounted(() => {
 
 .points-log-card {
   border-radius: 12px;
+  
+  :deep(.el-card__body) {
+    padding: 20px;
+  }
   
   .action-cell {
     display: flex;
@@ -1299,6 +1511,75 @@ onMounted(() => {
   .level-status {
     flex-direction: column;
     text-align: center;
+  }
+}
+
+// 积分记录分页样式
+.points-log-pagination {
+  margin-top: 24px;
+  padding: 20px 0;
+  border-top: 1px solid #ebeef5;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+
+  .page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
+    background: #fff;
+    color: #606266;
+    font-weight: 400;
+    font-size: 14px;
+    box-shadow: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    .el-icon {
+      font-size: 14px;
+      color: #606266;
+    }
+
+    &:hover:not(.is-disabled) {
+      border-color: #409eff;
+      color: #409eff;
+      background: #ecf5ff;
+
+      .el-icon {
+        color: #409eff;
+      }
+    }
+
+    &:active:not(.is-disabled) {
+      background: #b3d8ff;
+    }
+
+    &.is-disabled {
+      border-color: #e4e7ed;
+      background: #f5f7fa;
+      color: #c0c4cc;
+      cursor: not-allowed;
+
+      .el-icon {
+        color: #c0c4cc;
+      }
+    }
+  }
+
+  .page-info {
+    font-size: 14px;
+    color: #606266;
+    min-width: 50px;
+    text-align: center;
+    font-weight: 500;
   }
 }
 </style>

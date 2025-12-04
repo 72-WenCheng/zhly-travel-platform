@@ -23,6 +23,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Autowired
     private OrderMapper orderMapper;
     
+    @Autowired(required = false)
+    private com.zhly.service.IUserPointsService userPointsService;
+    
+    @Autowired(required = false)
+    private com.zhly.mapper.PointsLogMapper pointsLogMapper;
+    
     @Override
     public boolean createOrder(Order order) {
         try {
@@ -97,7 +103,47 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 throw new RuntimeException("订单状态不正确，无法完成");
             }
             
-            return updateOrderStatus(id, 2); // 已完成
+            boolean success = updateOrderStatus(id, 2); // 已完成
+            
+            // 订单完成后，给用户奖励积分（消费金额的1%）
+            if (success && order.getUserId() != null && order.getTotalAmount() != null && userPointsService != null) {
+                try {
+                    // 检查是否已经给过积分（避免重复奖励）
+                    if (pointsLogMapper != null) {
+                        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.zhly.entity.PointsLog> pointsLogWrapper = 
+                            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+                        pointsLogWrapper.eq("user_id", order.getUserId())
+                                       .eq("action_type", 9)  // 9-消费
+                                       .eq("related_type", "order")
+                                       .eq("related_id", id);
+                        Long existingLogCount = pointsLogMapper.selectCount(pointsLogWrapper);
+                        
+                        if (existingLogCount == 0) {
+                            // 计算积分：消费金额的1%（向下取整）
+                            int points = order.getTotalAmount().multiply(new java.math.BigDecimal("0.01")).intValue();
+                            if (points > 0) {
+                                userPointsService.addPoints(
+                                    order.getUserId(),
+                                    points,
+                                    9,  // 行为类型：9-消费
+                                    "完成订单奖励（消费金额1%）",
+                                    "order",  // 关联类型
+                                    id        // 关联ID
+                                );
+                                System.out.println("✅ 订单完成，已给用户 " + order.getUserId() + " 奖励" + points + "积分（订单金额：" + order.getTotalAmount() + "）");
+                            }
+                        } else {
+                            System.out.println("ℹ️ 订单 " + id + " 已经给过积分奖励，跳过重复奖励");
+                        }
+                    }
+                } catch (Exception e) {
+                    // 积分奖励失败不影响订单完成流程，只记录日志
+                    System.err.println("⚠️ 订单完成，但积分奖励失败: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
+            return success;
         } catch (Exception e) {
             throw new RuntimeException("完成订单失败: " + e.getMessage());
         }

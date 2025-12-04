@@ -248,6 +248,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/user/culture/applications.vue'),
         meta: { title: '我的申请', icon: 'Document' }
       },
+      {
+        path: 'user/coupons',
+        name: 'UserCoupons',
+        component: () => import('@/views/user/coupons/index.vue'),
+        meta: { title: '我的优惠券', icon: 'Ticket' }
+      },
       // 用户端详情页路由
       {
         path: 'user/profile/:id',

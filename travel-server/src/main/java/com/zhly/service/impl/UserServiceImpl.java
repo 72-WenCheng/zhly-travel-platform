@@ -51,6 +51,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired(required = false)
     private UserInviteService userInviteService;
+    
+    @Autowired(required = false)
+    private com.zhly.mapper.PointsLogMapper pointsLogMapper;
+    
+    @Autowired(required = false)
+    private com.zhly.service.IUserPointsService userPointsService;
 
     @Autowired
     private OnlineUserManager onlineUserManager;
@@ -273,6 +279,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
             // 更新最后登录时间和IP
             updateLastLoginInfo(user.getId());
+            
+            // 每日首次登录自动奖励5积分（与签到区分）
+            rewardDailyLoginPoints(user.getId());
 
             // 生成真实的JWT Token
             long sessionTimeoutMinutes = policy.getSessionTimeoutMinutes();
@@ -610,10 +619,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 System.out.println("从缓存验证token成功，邮箱: " + email);
             } else {
                 // 如果没有缓存服务，从token中提取邮箱（兼容旧逻辑）
-                String[] tokenParts = token.split("_");
-                if (tokenParts.length < 3) {
-                    throw new RuntimeException("重置链接格式错误，请重新申请");
-                }
+            String[] tokenParts = token.split("_");
+            if (tokenParts.length < 3) {
+                throw new RuntimeException("重置链接格式错误，请重新申请");
+            }
                 email = tokenParts[2];
                 System.out.println("未使用缓存服务，从token中提取邮箱: " + email);
             }
@@ -652,6 +661,39 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         } catch (Exception e) {
             System.err.println("更新用户登录信息失败: " + e.getMessage());
             // 不抛出异常，避免影响登录流程
+        }
+    }
+
+    /**
+     * 每日首次登录自动奖励5积分（与签到区分）
+     */
+    private void rewardDailyLoginPoints(Long userId) {
+        if (userId == null || userPointsService == null || pointsLogMapper == null) {
+            return;
+        }
+        
+        try {
+            // 检查今日是否已经给过登录积分
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.LocalDateTime startOfDay = today.atStartOfDay();
+            java.time.LocalDateTime endOfDay = today.atTime(java.time.LocalTime.MAX);
+            
+            com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.zhly.entity.PointsLog> checkWrapper = 
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+            checkWrapper.eq("user_id", userId)
+                       .eq("action_type", 1)  // 1-登录/签到
+                       .like("action_desc", "每日登录")
+                       .between("create_time", startOfDay, endOfDay);
+            
+            Long todayLoginCount = pointsLogMapper.selectCount(checkWrapper);
+            if (todayLoginCount == null || todayLoginCount == 0) {
+                // 今日首次登录，奖励5积分
+                userPointsService.addPoints(userId, 5, 1, "每日登录", null, null);
+                System.out.println("✅ 用户 " + userId + " 今日首次登录，已奖励5积分");
+            }
+        } catch (Exception e) {
+            // 积分奖励失败不影响登录流程，只记录日志
+            System.err.println("⚠️ 每日登录积分奖励失败: " + e.getMessage());
         }
     }
 

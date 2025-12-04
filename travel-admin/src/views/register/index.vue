@@ -508,78 +508,78 @@ const handleRegister = async () => {
     }
     
     try {
-      console.log('开始注册，表单数据:', {
-        username: registerForm.username,
-        email: registerForm.email,
-        phone: registerForm.phone
-      })
-      
-      loading.value = true
-      
-      // 从URL参数获取邀请码
-      const inviteCode = route.query.invite as string || ''
-      
-      // 调用注册API
-      const response = await authAPI.register({
-        username: registerForm.username,
-        email: registerForm.email,
-        password: registerForm.password,
-        phone: registerForm.phone,
-        inviteCode: inviteCode  // 传递邀请码
-      })
-      
-      console.log('注册响应:', response)
-      
-      if (response.code === 200) {
-        ElMessage.success('注册成功！请登录')
-        setTimeout(() => {
-          router.push('/')
-        }, 1500)
-      } else {
-        console.error('注册失败，返回码:', response.code, '错误信息:', response.message)
-        ElMessage.error(response.message || '注册失败')
-      }
-    } catch (error: any) {
-      console.error('注册错误:', error)
-      console.error('错误response:', error.response)
-      console.error('错误response.data:', error.response?.data)
-      
-      // 提取用户友好的错误信息
-      let errorMessage = '注册失败，请重试'
-      
-      // 优先使用后端返回的错误信息
-      // 后端返回格式: { code: 400, message: "错误信息", data: null }
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-        console.log('使用后端返回的错误信息:', errorMessage)
-      } else if (error.response?.data?.data) {
-        errorMessage = error.response.data.data
-        console.log('使用后端返回的数据信息:', errorMessage)
-      } else if (error.message) {
-        // 过滤掉技术性的错误信息
-        if (error.message.includes('username') && error.message.includes('already exists')) {
-          errorMessage = '用户名已存在，请选择其他用户名'
-        } else if (error.message.includes('email') && error.message.includes('already exists')) {
-          errorMessage = '邮箱已被注册，请使用其他邮箱'
-        } else if (error.message.includes('phone') && error.message.includes('already exists')) {
-          errorMessage = '手机号已被使用，请使用其他手机号'
-        } else if (error.message.includes('Connection') || 
-                   error.message.includes('timeout')) {
-          errorMessage = '网络连接异常，请检查网络后重试'
-        } else if (error.message.includes('500') || 
-                   error.message.includes('Internal Server Error')) {
-          errorMessage = '服务器异常，请稍后重试'
-        } else {
-          errorMessage = error.message
-        }
-        console.log('使用错误message:', errorMessage)
-      }
-      
-      console.log('最终错误信息:', errorMessage)
-      ElMessage.error(errorMessage)
-    } finally {
-      loading.value = false
+    console.log('开始注册，表单数据:', {
+      username: registerForm.username,
+      email: registerForm.email,
+      phone: registerForm.phone
+    })
+    
+    loading.value = true
+    
+    // 从URL参数获取邀请码
+    const inviteCode = route.query.invite as string || ''
+    
+    // 调用注册API
+    const response = await authAPI.register({
+      username: registerForm.username,
+      email: registerForm.email,
+      password: registerForm.password,
+      phone: registerForm.phone,
+      inviteCode: inviteCode  // 传递邀请码
+    })
+    
+    console.log('注册响应:', response)
+    
+    if (response.code === 200) {
+      ElMessage.success('注册成功！请登录')
+      setTimeout(() => {
+        router.push('/')
+      }, 1500)
+    } else {
+      console.error('注册失败，返回码:', response.code, '错误信息:', response.message)
+      ElMessage.error(response.message || '注册失败')
     }
+  } catch (error: any) {
+    console.error('注册错误:', error)
+    console.error('错误response:', error.response)
+    console.error('错误response.data:', error.response?.data)
+    
+    // 提取用户友好的错误信息
+    let errorMessage = '注册失败，请重试'
+    
+    // 优先使用后端返回的错误信息
+    // 后端返回格式: { code: 400, message: "错误信息", data: null }
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message
+      console.log('使用后端返回的错误信息:', errorMessage)
+    } else if (error.response?.data?.data) {
+      errorMessage = error.response.data.data
+      console.log('使用后端返回的数据信息:', errorMessage)
+    } else if (error.message) {
+      // 过滤掉技术性的错误信息
+      if (error.message.includes('username') && error.message.includes('already exists')) {
+        errorMessage = '用户名已存在，请选择其他用户名'
+      } else if (error.message.includes('email') && error.message.includes('already exists')) {
+        errorMessage = '邮箱已被注册，请使用其他邮箱'
+      } else if (error.message.includes('phone') && error.message.includes('already exists')) {
+        errorMessage = '手机号已被使用，请使用其他手机号'
+      } else if (error.message.includes('Connection') || 
+                 error.message.includes('timeout')) {
+        errorMessage = '网络连接异常，请检查网络后重试'
+      } else if (error.message.includes('500') || 
+                 error.message.includes('Internal Server Error')) {
+        errorMessage = '服务器异常，请稍后重试'
+      } else {
+        errorMessage = error.message
+      }
+      console.log('使用错误message:', errorMessage)
+    }
+    
+    console.log('最终错误信息:', errorMessage)
+    ElMessage.error(errorMessage)
+  } finally {
+    loading.value = false
+  }
   })
 }
 
@@ -950,7 +950,7 @@ watch(() => registerMethod.value, () => {
               inset 0 0 10px rgba(255, 255, 255, 0.1);
             
             &:hover {
-              border-color: #ffffff;
+        border-color: #ffffff;
               background: rgba(255, 255, 255, 0.2);
               box-shadow: 
                 0 0 12px rgba(255, 255, 255, 0.4),
