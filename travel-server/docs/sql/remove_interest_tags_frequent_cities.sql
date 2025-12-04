@@ -38,3 +38,5 @@ DROP COLUMN frequent_cities;
 
 
 
+
+

@@ -2,7 +2,7 @@
   <div class="modern-user-dashboard">
     <!-- 轮播图（最顶部） -->
     <div id="carousel" class="carousel-section" v-if="banners.length > 0">
-      <el-carousel :interval="5000" arrow="never" height="500px" class="premium-carousel">
+      <el-carousel :interval="5000" arrow="never" height="580px" class="premium-carousel">
         <el-carousel-item v-for="(banner, index) in banners" :key="banner.id || index">
           <div 
             class="carousel-item" 
@@ -176,30 +176,47 @@
       <!-- 右侧：新闻/公告区域 -->
       <div class="news-section">
         <div class="news-container">
+          <div class="news-header">
+            <div>
+              <div class="news-kicker">公告中心</div>
+              <h3>最新系统通知</h3>
+              <p>切换标签即可查看系统、活动、功能与维护公告。</p>
+            </div>
+          </div>
           <div class="news-tabs">
-            <div 
-              v-for="tab in newsTabs" 
+            <button
+              v-for="tab in newsTabs"
               :key="tab.key"
+              type="button"
               class="news-tab"
-              :class="{ 'active': activeNewsTab === tab.key }"
+              :class="['news-tab', tabStyleMap[tab.key], { active: activeNewsTab === tab.key }]"
               @click="activeNewsTab = tab.key"
             >
               {{ tab.label }}
-            </div>
+            </button>
           </div>
           <div class="news-content">
-            <div class="news-list">
-              <div 
-                v-for="(item, index) in getNewsList()" 
-                :key="index"
-                class="news-item"
-                @click="handleNewsClick(item)"
-              >
-                <span class="news-label">{{ item.label }}</span>
-                <span class="news-title">{{ item.title }}</span>
-                <span class="news-date">{{ item.date }}</span>
+            <transition name="news-fade" mode="out-in">
+              <div v-if="getNewsList().length" class="news-list" :key="activeNewsTab">
+                <button
+                  v-for="(item, index) in getNewsList()"
+                  :key="`${activeNewsTab}-${item.id || index}`"
+                  class="news-item"
+                  type="button"
+                  @click="handleNewsClick(item)"
+                >
+                  <div class="news-item-label" :class="getAnnouncementTypeClass(item.type)">{{ item.label }}</div>
+                  <div class="news-item-title">{{ item.title }}</div>
+                  <div class="news-item-date">{{ item.date }}</div>
+                  <el-icon class="news-item-arrow"><ArrowRight /></el-icon>
+                </button>
               </div>
-            </div>
+              <div class="news-empty" :key="`${activeNewsTab}-empty`" v-else>
+                <div class="news-empty-icon">📭</div>
+                <div class="news-empty-title">暂无公告</div>
+                <p class="news-empty-desc">稍后再来看看，新的公告会第一时间展示在这里。</p>
+              </div>
+            </transition>
           </div>
         </div>
       </div>
@@ -217,9 +234,9 @@
         <div class="dialog-header-custom">
           <div class="dialog-title">{{ currentAnnouncement?.title || '公告详情' }}</div>
           <div v-if="currentAnnouncement" class="dialog-subtitle">
-            <el-tag :type="getAnnouncementTypeTag(currentAnnouncement.type)" size="default" class="type-tag">
+            <span class="type-tag" :class="getAnnouncementTypeClass(currentAnnouncement.type)">
               {{ getAnnouncementTypeName(currentAnnouncement.type) }}
-            </el-tag>
+            </span>
             <span class="announcement-date">
               <el-icon class="date-icon"><Clock /></el-icon>
               <span class="date-text">{{ formatAnnouncementDate(currentAnnouncement.publishTime || currentAnnouncement.createTime) }}</span>
@@ -227,7 +244,7 @@
           </div>
         </div>
       </template>
-      <div v-if="currentAnnouncement" class="announcement-detail">
+          <div v-if="currentAnnouncement" class="announcement-detail">
         <div class="announcement-content">
           <div class="content-text" v-html="formatContent(currentAnnouncement.content)"></div>
         </div>
@@ -1029,6 +1046,12 @@ const newsTabs = ref([
   { key: '3', label: '功能更新', type: 3 },
   { key: '4', label: '维护通知', type: 4 }
 ])
+const tabStyleMap = {
+  '1': 'tab-system',
+  '2': 'tab-activity',
+  '3': 'tab-feature',
+  '4': 'tab-maintain'
+}
 const activeNewsTab = ref('1') // 默认选中系统公告
 
 // 新闻列表数据（按类型存储）
@@ -1192,14 +1215,15 @@ const getAnnouncementTypeName = (type) => {
 }
 
 // 获取公告类型标签样式
-const getAnnouncementTypeTag = (type) => {
-  const tagMap = {
-    1: 'primary',
-    2: 'success',
-    3: 'warning',
-    4: 'danger'
-  }
-  return tagMap[type] || ''
+const announcementTypeClassMap = {
+  1: 'badge-system',
+  2: 'badge-activity',
+  3: 'badge-feature',
+  4: 'badge-maintain'
+}
+
+const getAnnouncementTypeClass = (type) => {
+  return announcementTypeClassMap[type] || 'badge-system'
 }
 
 // 格式化公告日期
@@ -3406,99 +3430,260 @@ onMounted(() => {
 .news-section {
   flex: 1;
   min-width: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
 
   .news-container {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #ebeef5;
+    padding: 24px 28px;
+    box-shadow: 0 10px 30px rgba(15, 39, 95, 0.04);
+  }
+
+  .news-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+
+    h3 {
+      margin: 8px 0 6px;
+      font-size: 20px;
+      color: #1f2a37;
+    }
+
+    p {
+      margin: 0;
+      color: #909399;
+      font-size: 13px;
+    }
+  }
+
+  .news-kicker {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #a0a7b3;
+    text-transform: uppercase;
+  }
+
+  .news-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+  }
+
+  .news-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 20px 0 12px;
+  }
+
+  @media (min-width: 1280px) {
     .news-tabs {
-      display: flex;
-      gap: 0;
-      border-bottom: 1px solid #f0f0f0;
-      background: #fafafa;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
 
-      .news-tab {
-        padding: 16px 24px;
-        cursor: pointer;
-        font-size: 14px;
-        color: #606266;
-        transition: all 0.3s;
-        border-bottom: 2px solid transparent;
+  .news-tab {
+    border: 1px solid #e4e7ed;
+    border-radius: 12px;
+    padding: 8px 14px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+    box-shadow: none;
 
-        &:hover {
-          color: #409eff;
-        }
+    &:focus,
+    &:active {
+      outline: none;
+      box-shadow: none;
+    }
 
-        &.active {
-          color: #409eff;
-          border-bottom-color: #409eff;
-          background: white;
-        }
+    &.tab-system {
+      color: #4c7dff;
+      border-color: rgba(76, 125, 255, 0.4);
+
+      &.active {
+        background: transparent;
+        color: #1d4aff;
+        border-color: #1d4aff;
       }
     }
 
-    .news-content {
-      padding: 20px 24px;
+    &.tab-activity {
+      color: #f08b32;
+      border-color: rgba(240, 139, 50, 0.4);
 
-      .news-list {
-        .news-item {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 12px 0;
-          cursor: pointer;
-          transition: background 0.2s;
-          border-bottom: 1px solid #f5f5f5;
-
-          &:last-child {
-            border-bottom: none;
-          }
-
-          &:hover {
-            background: #fafafa;
-          }
-
-          .news-label {
-            padding: 2px 8px;
-            background: #409eff;
-            color: white;
-            border-radius: 4px;
-            font-size: 12px;
-          }
-
-          .news-title {
-            flex: 1;
-            color: #303133;
-            font-size: 14px;
-          }
-
-          .news-date {
-            color: #909399;
-            font-size: 12px;
-          }
-        }
+      &.active {
+        background: transparent;
+        color: #c8680f;
+        border-color: #c8680f;
       }
+    }
 
-      .news-more {
-        margin-top: 16px;
-        text-align: right;
+    &.tab-feature {
+      color: #2f9f61;
+      border-color: rgba(47, 159, 97, 0.4);
 
-        a {
-          color: #409eff;
-          text-decoration: none;
-          font-size: 14px;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
+      &.active {
+        background: transparent;
+        color: #197443;
+        border-color: #197443;
+      }
+    }
 
-          &:hover {
-            text-decoration: underline;
-          }
-        }
+    &.tab-maintain {
+      color: #d85149;
+      border-color: rgba(216, 81, 73, 0.4);
+
+      &.active {
+        background: transparent;
+        color: #b02c24;
+        border-color: #b02c24;
       }
     }
   }
+
+  .news-content {
+    margin-top: 12px;
+    min-height: 220px;
+  }
+
+  .news-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .news-item {
+    display: grid;
+    grid-template-columns: 110px 1fr 70px 24px;
+    align-items: center;
+    padding: 14px 0;
+    column-gap: 12px;
+    border-bottom: 1px solid #f2f3f5;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none;
+    width: 100%;
+    text-align: left;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    outline: none;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover .news-item-title {
+      color: #3a7bff;
+    }
+
+    &:hover,
+    &:focus,
+    &:focus-visible,
+    &:active {
+      background: transparent !important;
+      background-color: transparent !important;
+      outline: none;
+      box-shadow: none !important;
+    }
+  }
+
+  .news-item-label {
+    justify-self: start;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+
+  .news-item-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1f2a37;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .news-item-date {
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: right;
+    pointer-events: none;
+  }
+
+  .news-item-arrow {
+    color: #c0c4cc;
+    font-size: 16px;
+    pointer-events: none;
+  }
+
+  .news-empty {
+    text-align: center;
+    padding: 40px 0;
+    color: #909399;
+  }
+
+  .news-empty-icon {
+    font-size: 30px;
+    margin-bottom: 10px;
+  }
+
+  .news-empty-title {
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 6px;
+  }
+
+  .news-empty-desc {
+    margin: 0;
+    font-size: 13px;
+    color: #a0a7b3;
+  }
+
+  .news-fade-enter-active,
+  .news-fade-leave-active {
+    transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+  }
+
+  .news-fade-enter-from,
+  .news-fade-leave-to {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+.badge-system {
+  background: rgba(76, 125, 255, 0.12);
+  color: #3c5ed4;
+  border-color: rgba(76, 125, 255, 0.3);
+}
+
+.badge-activity {
+  background: rgba(255, 173, 102, 0.15);
+  color: #d26a18;
+  border-color: rgba(255, 173, 102, 0.35);
+}
+
+.badge-feature {
+  background: rgba(57, 199, 135, 0.15);
+  color: #1c9150;
+  border-color: rgba(57, 199, 135, 0.35);
+}
+
+.badge-maintain {
+  background: rgba(242, 126, 126, 0.15);
+  color: #c3473c;
+  border-color: rgba(242, 126, 126, 0.35);
 }
 
 // 升级指南和文旅体验容器
@@ -6023,6 +6208,8 @@ onMounted(() => {
           line-height: 1.5;
           display: inline-flex;
           align-items: center;
+          border: 1px solid transparent;
+          background: transparent;
         }
         
         .announcement-date {
@@ -6222,6 +6409,9 @@ onMounted(() => {
         .type-tag {
           font-size: 12px;
           padding: 4px 10px;
+          border: 1px solid transparent;
+          border-radius: 999px;
+          background: transparent;
         }
 
         .announcement-date {

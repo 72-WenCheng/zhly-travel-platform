@@ -331,7 +331,9 @@
             
             <div class="card-budget">
               <span class="budget-label">预算</span>
-              <span class="budget-value">¥{{ plan.budget }}</span>
+              <span class="budget-value">
+                {{ plan.budget && plan.budget > 0 ? `¥${plan.budget}` : '免费' }}
+              </span>
             </div>
           </div>
         </div>
@@ -1886,29 +1888,27 @@ watch(statsPeriod, () => {
           }
           
           .card-budget {
-            display: inline-flex;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.2);
+            padding: 12px 16px;
+            margin-top: 12px;
+            border-top: 1px dashed rgba(0, 0, 0, 0.08);
             
             .budget-label {
-              font-size: 12px;
-              color: rgba(255, 255, 255, 0.9);
-              letter-spacing: 1px;
-              text-transform: uppercase;
+              font-size: 14px;
+              font-weight: 600;
+              color: #909399;
+              letter-spacing: 0.5px;
             }
             
             .budget-value {
-              font-size: 18px;
+              font-family: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Songti SC', serif;
+              font-size: 22px;
               font-weight: 700;
-              color: white;
-              letter-spacing: 1px;
-              font-family: 'DIN Alternate', 'Segoe UI', sans-serif;
-              text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+              color: #f5576c;
+              letter-spacing: -0.5px;
+              text-transform: uppercase;
             }
           }
         }
