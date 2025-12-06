@@ -32,6 +32,16 @@ export default defineConfig({
     port: 3000,
     open: true,
     host: '0.0.0.0',
+    // 启用 HTTP/2（如果支持）
+    https: false,
+    // 优化 HMR（热模块替换）性能
+    hmr: {
+      overlay: true
+    },
+    // 预热常用文件，提升首次加载速度
+    warmup: {
+      clientFiles: ['./src/main.ts', './src/router/index.ts', './src/App.vue']
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8070',
@@ -109,16 +119,25 @@ export default defineConfig({
     // 启用 CSS 代码分割
     cssCodeSplit: true
   },
-  // 优化依赖预构建
+  // 优化依赖预构建 - 提升开发服务器启动速度
   optimizeDeps: {
     include: [
       'vue',
       'vue-router',
       'pinia',
       'element-plus',
-      '@element-plus/icons-vue'
+      '@element-plus/icons-vue',
+      'axios',
+      'dayjs',
+      'lodash-es'
     ],
-    exclude: ['echarts']
+    exclude: ['echarts'],
+    // 强制预构建，避免运行时编译
+    force: false,
+    // 预构建优化选项
+    esbuildOptions: {
+      target: 'es2015'
+    }
   },
   // 性能优化：启用更快的构建
   esbuild: {

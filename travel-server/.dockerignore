@@ -1,0 +1,12 @@
+target/
+.git/
+.gitignore
+.idea/
+*.iml
+*.log
+logs/
+upload/
+.DS_Store
+*.md
+deploy/
+

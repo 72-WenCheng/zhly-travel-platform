@@ -1,33 +1,47 @@
-# 使用OpenJDK 17作为基础镜像
-FROM openjdk:17-jdk-slim
+# 多阶段构建 - 构建阶段
+FROM maven:3.9-eclipse-temurin-17 AS builder
 
-# 设置工作目录
-WORKDIR /app
+WORKDIR /build
 
-# 复制Maven配置文件
+# 复制 pom.xml 和源代码
 COPY pom.xml .
-COPY .mvn .mvn
-COPY mvnw .
-
-# 下载依赖（利用Docker缓存）
-RUN ./mvnw dependency:go-offline -B
-
-# 复制源代码
 COPY src ./src
 
 # 构建应用
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
-# 创建非root用户
-RUN addgroup --system spring && adduser --system spring --ingroup spring
-RUN chown -R spring:spring /app
-USER spring:spring
+# 运行阶段
+FROM eclipse-temurin:17-jre-alpine
+
+# 安装必要的工具
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone && \
+    apk del tzdata
+
+WORKDIR /app
+
+# 从构建阶段复制 jar 文件
+COPY --from=builder /build/target/*.jar app.jar
+
+# 创建必要的目录
+RUN mkdir -p /app/upload /app/logs
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 8070
 
-# 设置JVM参数
-ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+UseContainerSupport"
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8070/api/health/check || exit 1
 
 # 启动应用
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar target/travel-server-1.0.0.jar"]
+ENTRYPOINT ["java", \
+  "-Xms512m", \
+  "-Xmx1024m", \
+  "-XX:+UseG1GC", \
+  "-XX:MaxGCPauseMillis=200", \
+  "-XX:+HeapDumpOnOutOfMemoryError", \
+  "-XX:HeapDumpPath=/app/logs/heapdump.hprof", \
+  "-jar", \
+  "app.jar", \
+  "--spring.profiles.active=prod"]

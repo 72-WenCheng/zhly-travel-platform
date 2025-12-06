@@ -50,7 +50,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
         }
         
         registry.addResourceHandler("/upload/**")
-                .addResourceLocations("file:" + absolutePath);
+                .addResourceLocations("file:" + absolutePath)
+                // 设置缓存策略，提升静态资源加载速度
+                .setCachePeriod(2592000) // 30天缓存
+                .resourceChain(true); // 启用资源链优化
     }
 
     @Override
