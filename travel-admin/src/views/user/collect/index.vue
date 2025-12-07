@@ -157,10 +157,10 @@
               </span>
             </div>
             <div class="card-actions">
-              <el-button class="action-btn" type="primary" @click.stop="handleView(item)">
+              <el-button class="action-btn action-btn-view" @click.stop="handleView(item)">
                 查看
               </el-button>
-              <el-button class="action-btn" type="danger" @click.stop="handleDelete(item)">
+              <el-button class="action-btn action-btn-delete" @click.stop="handleDelete(item)">
                 取消收藏
               </el-button>
             </div>
@@ -313,18 +313,10 @@ const getTypeText = (type: number) => {
   return typeMap[type] || '未知'
 }
 
-// 获取标签样式（柔和色块，简单又有区分度）
+// 获取标签样式（白色系，统一风格）
 const getBadgeStyle = (type: number) => {
-  const styleMap: Record<number, string> = {
-    // 攻略：蓝色系
-    1: 'background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); color: #1d4ed8;',
-    // 景点：橙色系
-    2: 'background: rgba(249, 115, 22, 0.12); border: 1px solid rgba(249, 115, 22, 0.35); color: #c05621;',
-    // 文旅项目：绿色系
-    3: 'background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #047857;'
-  }
-  // 默认使用蓝色
-  return styleMap[type] || styleMap[1]
+  // 所有类型统一使用白色系样式
+  return 'background: white; border: 1px solid #e4e7ed; color: #606266;'
 }
 
 // 格式化日期
@@ -847,7 +839,7 @@ const handleDelete = async (item: any) => {
     transition: all 0.3s ease;
     
     &:hover {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     }
 
     .header-left {
@@ -1338,17 +1330,24 @@ const handleDelete = async (item: any) => {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        box-shadow: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
         z-index: 2;
+        // 统一白色系样式
+        background: white !important;
+        border: 1px solid #e4e7ed !important;
+        color: #606266 !important;
         
         &:hover {
-          filter: brightness(0.97);
+          background: #f5f7fa !important;
+          border-color: #dcdfe6 !important;
+          color: #303133 !important;
         }
         
         .el-icon {
           font-size: 14px;
           opacity: 0.9;
+          color: #606266;
         }
       }
     }
@@ -1396,14 +1395,56 @@ const handleDelete = async (item: any) => {
 
         .action-btn {
           flex: 1;
-          border-radius: 4px;
-          padding: 6px 16px;
+          border-radius: 6px;
+          padding: 8px 16px;
           font-weight: 500;
-          transition: none;
-
+          transition: border-color 0.15s ease, background 0.15s ease;
+          border: 1px solid #e4e7ed;
+          background: white;
+          color: #606266;
+          
           &:hover {
+            background: #f5f7fa;
+            border-color: #dcdfe6;
+            color: #303133;
             transform: none !important;
             box-shadow: none !important;
+          }
+          
+          &:active {
+            background: #f0f0f0;
+            border-color: #c0c4cc;
+          }
+          
+          &:focus {
+            outline: none;
+            box-shadow: 0 0 0 1px rgba(144, 147, 153, 0.2);
+          }
+        }
+        
+        // 查看按钮样式
+        .action-btn-view {
+          border: 1px solid #e4e7ed;
+          background: white;
+          color: #606266;
+          
+          &:hover {
+            background: #f5f7fa;
+            border-color: #dcdfe6;
+            color: #303133;
+          }
+        }
+        
+        // 取消收藏按钮样式
+        .action-btn-delete {
+          border: 1px solid #e4e7ed;
+          background: white;
+          color: #606266;
+          
+          &:hover {
+            background: #f5f7fa;
+            border-color: #dcdfe6;
+            color: #303133;
           }
         }
       }
@@ -1771,5 +1812,34 @@ const handleDelete = async (item: any) => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
   outline: none !important;
   background: white !important;
+}
+
+// 卡片按钮样式 - 全局覆盖，确保白色系样式生效
+.user-collect .collect-card .card-actions .action-btn,
+.user-collect .collect-card .card-actions .action-btn-view,
+.user-collect .collect-card .card-actions .action-btn-delete,
+body .user-collect .collect-card .card-actions .el-button.action-btn {
+  background: white !important;
+  border: 1px solid #e4e7ed !important;
+  color: #606266 !important;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  font-weight: 500 !important;
+  
+  &:hover {
+    background: #f5f7fa !important;
+    border-color: #dcdfe6 !important;
+    color: #303133 !important;
+  }
+  
+  &:active {
+    background: #f0f0f0 !important;
+    border-color: #c0c4cc !important;
+  }
+  
+  &:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 1px rgba(144, 147, 153, 0.2) !important;
+  }
 }
 </style>

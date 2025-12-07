@@ -696,3 +696,45 @@ body .recommendations-page .location-filter .location-select-black-focus {
     outline-style: none !important;
   }
 }
+
+// 修改密码对话框输入框样式覆盖（全局样式，确保在所有页面生效）
+.el-overlay .change-password-dialog,
+body .el-overlay .change-password-dialog {
+  .el-input {
+    --el-input-focus-border-color: #e4e7ed !important;
+    --el-border-color: #e4e7ed !important;
+    --el-color-primary: #e4e7ed !important;
+    
+    .el-input__wrapper {
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      background: white !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      outline: none !important;
+      transition: none !important;
+      
+      &:hover {
+        border-color: #e4e7ed !important;
+        border: 1px solid #e4e7ed !important;
+        background: white !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        --el-input-focus-border-color: #e4e7ed !important;
+        --el-border-color: #e4e7ed !important;
+      }
+      
+      &.is-focus,
+      &:focus,
+      &:focus-visible,
+      &:focus-within {
+        border-color: #e4e7ed !important;
+        border: 1px solid #e4e7ed !important;
+        background: white !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        --el-input-focus-border-color: #e4e7ed !important;
+        --el-border-color: #e4e7ed !important;
+        --el-color-primary: #e4e7ed !important;
+        outline: none !important;
+      }
+    }
+  }
+}

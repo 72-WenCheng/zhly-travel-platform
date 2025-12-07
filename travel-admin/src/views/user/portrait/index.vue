@@ -124,12 +124,11 @@
               v-for="tag in portraitData.interestTags" 
               :key="tag.name"
               class="interest-tag"
-              :style="{ 
-                fontSize: tag.weight * 2 + 'px',
-                opacity: 0.5 + tag.weight / 20
-              }"
+              :class="getTagWeightClass(tag.weight)"
+              :style="getTagStyle(tag.weight)"
             >
-              {{ tag.icon }} {{ tag.name }}
+              <span class="tag-icon">{{ tag.icon }}</span>
+              <span class="tag-name">{{ tag.name }}</span>
             </div>
           </div>
           <div v-else class="interest-tags-empty">
@@ -138,8 +137,16 @@
           
           <div v-if="portraitData.interestTags && portraitData.interestTags.length > 0" class="tag-legend">
             <span class="legend-item">
-              <span class="legend-dot" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></span>
-              字体越大表示兴趣度越高
+              <span class="legend-dot legend-high"></span>
+              <span>兴趣度高</span>
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot legend-medium"></span>
+              <span>兴趣度中</span>
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot legend-low"></span>
+              <span>兴趣度低</span>
             </span>
           </div>
         </el-card>
@@ -157,9 +164,7 @@
           
           <div class="consumption-analysis">
             <div class="consumption-level">
-              <div v-if="portraitData.consumptionLevel && portraitData.consumptionLevel.level" class="level-badge" :style="{ 
-                background: portraitData.consumptionLevel.color 
-              }">
+              <div v-if="portraitData.consumptionLevel && portraitData.consumptionLevel.level" class="level-badge" :class="getConsumptionLevelClass(portraitData.consumptionLevel.level)">
                 <span class="badge-icon">{{ portraitData.consumptionLevel.icon }}</span>
                 <span class="badge-text">{{ portraitData.consumptionLevel.level }}</span>
               </div>
@@ -308,6 +313,41 @@ const portraitData = ref({
 
 const lastUpdateTime = ref('')
 
+// 获取消费等级样式类
+const getConsumptionLevelClass = (level: string) => {
+  if (level.includes('豪华')) {
+    return 'level-luxury'
+  } else if (level.includes('品质') || level.includes('舒适')) {
+    return 'level-comfort'
+  } else if (level.includes('经济') || level.includes('实惠')) {
+    return 'level-economy'
+  }
+  return ''
+}
+
+// 获取标签权重样式类
+const getTagWeightClass = (weight: number) => {
+  if (weight >= 10) {
+    return 'tag-weight-high'
+  } else if (weight >= 5) {
+    return 'tag-weight-medium'
+  } else {
+    return 'tag-weight-low'
+  }
+}
+
+// 获取标签样式
+const getTagStyle = (weight: number) => {
+  // 根据权重计算边框粗细和背景色深度
+  const borderWidth = Math.max(1, Math.min(3, Math.floor(weight / 3) + 1))
+  const bgOpacity = Math.min(0.15, weight / 30)
+  
+  return {
+    borderWidth: `${borderWidth}px`,
+    backgroundColor: `rgba(144, 147, 153, ${bgOpacity})`
+  }
+}
+
 // 加载用户画像数据
 const loadPortraitData = async () => {
   try {
@@ -363,10 +403,10 @@ const loadPortraitData = async () => {
       avgStayTime: 0,
       primaryPreference: '自然风光',
       preferenceDistribution: [
-        { type: '自然风光', icon: '🏔️', percentage: 45, color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-        { type: '人文历史', icon: '🏛️', percentage: 25, color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-        { type: '美食体验', icon: '🍽️', percentage: 20, color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-        { type: '休闲度假', icon: '🏖️', percentage: 10, color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }
+        { type: '自然风光', icon: '🏔️', percentage: 45, color: '#909399' },
+        { type: '人文历史', icon: '🏛️', percentage: 25, color: '#909399' },
+        { type: '美食体验', icon: '🍽️', percentage: 20, color: '#909399' },
+        { type: '休闲度假', icon: '🏖️', percentage: 10, color: '#909399' }
       ],
       interestTags: [
         { name: '摄影', icon: '📷', weight: 10 },
@@ -376,7 +416,7 @@ const loadPortraitData = async () => {
       consumptionLevel: {
         level: '品质舒适型',
         icon: '💳',
-        color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        color: '#909399'
       },
       avgConsumption: 800,
       consumptionFrequency: '每月2-3次',
@@ -565,45 +605,59 @@ onMounted(() => {
   
   .portrait-card {
     margin-bottom: 20px;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    overflow: visible;
+    border: 1px solid #e4e7ed;
+    box-shadow: none;
+    background: white;
+    
+    :deep(.el-card__header) {
+      padding: 20px 24px;
+      border-bottom: 2px solid #f0f2f5;
+      background: #fafbfc;
+    }
+    
+    :deep(.el-card__body) {
+      padding: 24px;
+      background: white;
+    }
     
     .card-header {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
+      color: #303133;
       
       .header-icon {
-        font-size: 22px;
-        color: #667eea;
+        font-size: 20px;
+        color: #606266;
       }
     }
     
-    // 旅游偏好分析
+    // 旅游偏好分析 - 清晰数据展示
     .preference-analysis {
       .primary-preference {
         text-align: center;
-        padding: 20px;
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-        border-radius: 12px;
+        padding: 32px 24px;
+        background: #f8f9fa;
+        border: 1px solid #e4e7ed;
+        border-radius: 6px;
         margin-bottom: 24px;
         
         .preference-label {
-          font-size: 14px;
+          font-size: 13px;
           color: #909399;
-          margin-bottom: 8px;
+          margin-bottom: 12px;
+          font-weight: 500;
         }
         
         .preference-value {
-          font-size: 28px;
+          font-size: 32px;
           font-weight: 700;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: #303133;
+          line-height: 1.2;
         }
       }
       
@@ -621,11 +675,14 @@ onMounted(() => {
           .chart-label {
             display: flex;
             align-items: center;
-            gap: 6px;
-            min-width: 120px;
+            gap: 8px;
+            min-width: 100px;
+            flex-shrink: 0;
             
             .label-icon {
-              font-size: 20px;
+              font-size: 18px;
+              width: 20px;
+              text-align: center;
             }
             
             .label-text {
@@ -637,50 +694,107 @@ onMounted(() => {
           
           .chart-bar-wrapper {
             flex: 1;
-            height: 24px;
-            background: #f5f7fa;
-            border-radius: 12px;
+            height: 28px;
+            background: #f0f2f5;
+            border-radius: 4px;
             overflow: hidden;
+            position: relative;
             
             .chart-bar {
               height: 100%;
-              border-radius: 12px;
-              transition: all 0.3s ease;
+              background: #909399 !important;
+              transition: width 0.5s ease;
+              display: flex;
+              align-items: center;
+              padding-right: 8px;
+              justify-content: flex-end;
             }
           }
           
           .chart-value {
-            min-width: 48px;
+            min-width: 50px;
             text-align: right;
             font-size: 14px;
             font-weight: 600;
-            color: #667eea;
+            color: #303133;
+            flex-shrink: 0;
           }
         }
       }
       
       .preference-chart-empty {
         text-align: center;
-        padding: 40px 0;
+        padding: 60px 0;
         color: #909399;
         font-size: 14px;
       }
     }
     
-    // 兴趣标签云
+    // 兴趣标签云 - 清晰标签展示（优化版）
     .interest-tags {
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
-      justify-content: center;
+      gap: 10px;
       padding: 20px 0;
       min-height: 200px;
-      align-items: center;
+      align-items: flex-start;
       
       .interest-tag {
-        color: #667eea;
-        font-weight: 600;
+        padding: 10px 16px;
+        background: white;
+        border: 1px solid #e4e7ed;
+        border-radius: 4px;
+        color: #606266;
+        font-weight: 500;
+        font-size: 14px;
         cursor: default;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        
+        .tag-icon {
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+        
+        .tag-name {
+          font-size: 14px;
+          line-height: 1.4;
+        }
+        
+        // 兴趣度高（权重 >= 10）
+        &.tag-weight-high {
+          border-color: #909399;
+          font-weight: 600;
+          background: rgba(144, 147, 153, 0.08);
+          
+          .tag-name {
+            color: #303133;
+          }
+        }
+        
+        // 兴趣度中（权重 5-9）
+        &.tag-weight-medium {
+          border-color: #c0c4cc;
+          font-weight: 500;
+          background: rgba(144, 147, 153, 0.05);
+          
+          .tag-name {
+            color: #606266;
+          }
+        }
+        
+        // 兴趣度低（权重 < 5）
+        &.tag-weight-low {
+          border-color: #e4e7ed;
+          font-weight: 500;
+          background: white;
+          
+          .tag-name {
+            color: #909399;
+          }
+        }
       }
     }
     
@@ -694,44 +808,105 @@ onMounted(() => {
     }
     
     .tag-legend {
-      text-align: center;
+      text-align: left;
       padding-top: 16px;
-      border-top: 1px solid #ebeef5;
+      border-top: 1px solid #f0f2f5;
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
       
       .legend-item {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #909399;
+        gap: 6px;
+        font-size: 12px;
+        color: #606266;
         
         .legend-dot {
-          width: 12px;
-          height: 12px;
+          width: 10px;
+          height: 10px;
           border-radius: 50%;
+          flex-shrink: 0;
+          
+          &.legend-high {
+            background: #909399;
+          }
+          
+          &.legend-medium {
+            background: #c0c4cc;
+          }
+          
+          &.legend-low {
+            background: #e4e7ed;
+          }
         }
+      }
+      
+      .legend-note {
+        font-size: 11px;
+        color: #909399;
+        margin-left: auto;
       }
     }
     
-    // 消费行为分析
+    // 消费行为分析 - 清晰数据展示
     .consumption-analysis {
       .consumption-level {
         text-align: center;
         margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #f0f2f5;
         
         .level-badge {
           display: inline-flex;
           align-items: center;
-          gap: 12px;
-          padding: 16px 32px;
-          border-radius: 50px;
-          color: white;
-          font-size: 20px;
-          font-weight: 700;
-          box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+          gap: 10px;
+          padding: 10px 20px;
+          border-radius: 4px;
+          background: white;
+          border: 1px solid #e4e7ed;
+          color: #303133;
+          font-size: 15px;
+          font-weight: 600;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
           
           .badge-icon {
-            font-size: 28px;
+            font-size: 18px;
+          }
+          
+          // 豪华型
+          &.level-luxury {
+            background: white;
+            border-color: #e4e7ed;
+            color: #303133;
+            
+            .badge-icon {
+              color: #606266;
+            }
+          }
+          
+          // 品质舒适型
+          &.level-comfort {
+            background: white;
+            border-color: #e4e7ed;
+            color: #303133;
+            
+            .badge-icon {
+              color: #606266;
+            }
+          }
+          
+          // 经济实惠型
+          &.level-economy {
+            background: white;
+            border-color: #e4e7ed;
+            color: #303133;
+            
+            .badge-icon {
+              color: #606266;
+            }
           }
         }
         
@@ -739,12 +914,12 @@ onMounted(() => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 16px 32px;
-          border-radius: 50px;
-          background: #f5f7fa;
-          border: 1px solid #dcdfe6;
+          padding: 10px 20px;
+          border-radius: 4px;
+          background: #f8f9fa;
+          border: 1px solid #e4e7ed;
           color: #909399;
-          font-size: 20px;
+          font-size: 15px;
           font-weight: 500;
           
           .badge-text {
@@ -758,22 +933,22 @@ onMounted(() => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 16px 20px;
-          background: #f5f7fa;
-          border-radius: 12px;
-          margin-bottom: 12px;
+          padding: 14px 0;
+          border-bottom: 1px solid #f0f2f5;
           
           &:last-child {
             margin-bottom: 0;
+            border-bottom: none;
           }
           
           .stat-label {
             font-size: 14px;
-            color: #606266;
+            color: #909399;
+            font-weight: 500;
           }
           
           .stat-value {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: #303133;
           }
@@ -781,46 +956,50 @@ onMounted(() => {
       }
     }
     
-    // 出行特征
+    // 出行特征 - 清晰列表展示
     .travel-characteristics {
       .characteristic-item {
         display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 16px;
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-        border-radius: 12px;
-        margin-bottom: 12px;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px 0;
+        border-bottom: 1px solid #f0f2f5;
         
         &:last-child {
           margin-bottom: 0;
+          border-bottom: none;
         }
         
         .char-icon {
-          font-size: 32px;
-          width: 56px;
-          height: 56px;
+          font-size: 20px;
+          width: 36px;
+          height: 36px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          background: #f8f9fa;
+          border: 1px solid #e4e7ed;
+          border-radius: 4px;
+          flex-shrink: 0;
         }
         
         .char-content {
           flex: 1;
+          min-width: 0;
           
           .char-label {
-            font-size: 13px;
+            font-size: 12px;
             color: #909399;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            font-weight: 500;
           }
           
           .char-value {
             font-size: 15px;
             font-weight: 600;
             color: #303133;
+            line-height: 1.5;
+            word-break: break-all;
           }
         }
       }

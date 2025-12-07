@@ -203,11 +203,11 @@
     <el-form
       ref="passwordFormRef"
       :model="passwordForm"
-      :rules="passwordRules"
-      label-position="top"
+      label-position="left"
       class="password-form-minimal"
+      :hide-required-asterisk="true"
     >
-      <el-form-item label="原密码" prop="oldPassword">
+      <el-form-item label="原密码">
         <el-input
           v-model="passwordForm.oldPassword"
           type="password"
@@ -215,9 +215,10 @@
           show-password
           clearable
           size="large"
+          @blur="validateOldPassword"
         />
       </el-form-item>
-      <el-form-item label="新密码" prop="newPassword">
+      <el-form-item label="新密码">
         <el-input
           v-model="passwordForm.newPassword"
           type="password"
@@ -225,9 +226,10 @@
           show-password
           clearable
           size="large"
+          @blur="validateNewPasswordInput"
         />
       </el-form-item>
-      <el-form-item label="确认新密码" prop="confirmPassword">
+      <el-form-item label="确认新密码">
         <el-input
           v-model="passwordForm.confirmPassword"
           type="password"
@@ -235,6 +237,7 @@
           show-password
           clearable
           size="large"
+          @blur="validateConfirmPasswordInput"
         />
       </el-form-item>
     </el-form>
@@ -256,7 +259,7 @@
   <el-dialog
     v-model="deactivateDialogVisible"
     title="注销账号"
-    width="560px"
+    width="640px"
     :close-on-click-modal="false"
     class="deactivate-dialog"
   >
@@ -270,20 +273,22 @@
     <el-form
       ref="deactivateFormRef"
       :model="deactivateForm"
-      :rules="deactivateRules"
       label-position="top"
+      :hide-required-asterisk="true"
     >
-      <el-form-item label="确认关键词" prop="confirmText">
+      <el-form-item label="确认关键词">
         <el-input
           v-model="deactivateForm.confirmText"
-          placeholder="请输入“注销”以确认操作"
+          placeholder='请输入"注销"以确认操作'
+          size="large"
+          @blur="validateDeactivateConfirmInput"
         />
       </el-form-item>
       <el-form-item label="注销原因（选填）">
         <el-input
           v-model="deactivateForm.reason"
           type="textarea"
-          :rows="3"
+          :rows="4"
           placeholder="可简单描述注销原因，帮助我们优化体验"
         />
       </el-form-item>
@@ -291,7 +296,7 @@
     <template #footer>
       <div class="deactivate-dialog-footer">
         <el-button @click="deactivateDialogVisible = false">取消</el-button>
-        <el-button type="danger" :loading="deactivateLoading" @click="handleDeactivateAccount">
+        <el-button :loading="deactivateLoading" @click="handleDeactivateAccount">
           确认注销
         </el-button>
       </div>
@@ -374,38 +379,43 @@ const passwordForm = ref({
 const passwordMinLength = ref(6)
 const passwordPlaceholder = computed(() => `请输入新密码（至少${passwordMinLength.value}位）`)
 
-// 密码验证规则
-const validateConfirmPassword = (rule: any, value: any, callback: any) => {
-  if (value === '') {
-    callback(new Error('请再次输入新密码'))
-  } else if (value !== passwordForm.value.newPassword) {
-    callback(new Error('两次输入的密码不一致'))
-  } else {
-    callback()
+// 密码验证函数（使用 ElMessage 弹出提示）
+const validateOldPassword = () => {
+  if (!passwordForm.value.oldPassword) {
+    ElMessage.warning('请输入原密码')
+    return false
   }
+  return true
 }
 
-const validateNewPassword = (_rule: any, value: string, callback: Function) => {
-  if (!value) {
-    callback(new Error('请输入新密码'))
-  } else if (value.length < passwordMinLength.value) {
-    callback(new Error(`密码长度至少${passwordMinLength.value}位`))
-  } else {
-    callback()
+const validateNewPasswordInput = () => {
+  if (!passwordForm.value.newPassword) {
+    ElMessage.warning('请输入新密码')
+    return false
+  } else if (passwordForm.value.newPassword.length < passwordMinLength.value) {
+    ElMessage.warning(`密码长度至少${passwordMinLength.value}位`)
+    return false
   }
+  return true
 }
 
-const passwordRules: FormRules = {
-  oldPassword: [
-    { required: true, message: '请输入原密码', trigger: 'blur' }
-  ],
-  newPassword: [
-    { validator: validateNewPassword, trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
-    { validator: validateConfirmPassword, trigger: 'blur' }
-  ]
+const validateConfirmPasswordInput = () => {
+  if (!passwordForm.value.confirmPassword) {
+    ElMessage.warning('请再次输入新密码')
+    return false
+  } else if (passwordForm.value.confirmPassword !== passwordForm.value.newPassword) {
+    ElMessage.warning('两次输入的密码不一致')
+    return false
+  }
+  return true
+}
+
+// 验证所有字段
+const validateAllFields = (): boolean => {
+  if (!validateOldPassword()) return false
+  if (!validateNewPasswordInput()) return false
+  if (!validateConfirmPasswordInput()) return false
+  return true
 }
 
 // 注销账号相关
@@ -417,20 +427,16 @@ const deactivateForm = ref({
   reason: ''
 })
 
-const validateDeactivateConfirm = (rule: any, value: any, callback: any) => {
-  if (!value) {
-    callback(new Error('请输入确认关键词'))
-  } else if (value !== '注销') {
-    callback(new Error('请输入“注销”两个字以确认'))
-  } else {
-    callback()
+// 注销账号验证函数（使用 ElMessage 弹出提示）
+const validateDeactivateConfirmInput = (): boolean => {
+  if (!deactivateForm.value.confirmText) {
+    ElMessage.warning('请输入确认关键词')
+    return false
+  } else if (deactivateForm.value.confirmText !== '注销') {
+    ElMessage.warning('请输入"注销"两个字以确认')
+    return false
   }
-}
-
-const deactivateRules: FormRules = {
-  confirmText: [
-    { validator: validateDeactivateConfirm, trigger: 'blur' }
-  ]
+  return true
 }
 
 const userNavMenus = [
@@ -682,31 +688,30 @@ const handleCommand = async (command: string) => {
 
 // 处理修改密码
 const handleChangePassword = async () => {
-  if (!passwordFormRef.value) return
+  // 使用自定义验证函数
+  if (!validateAllFields()) {
+    return
+  }
   
-  await passwordFormRef.value.validate(async (valid) => {
-    if (valid) {
-      changePasswordLoading.value = true
-      try {
-        const response = await changePassword({
-          oldPassword: passwordForm.value.oldPassword,
-          newPassword: passwordForm.value.newPassword
-        })
-        
-        if (response.code === 200) {
-          changePasswordDialogVisible.value = false
-          ElMessage.success('密码修改成功，请重新登录')
-          // 直接退出登录
-          handleLogout()
-        }
-      } catch (error: any) {
-        // 错误提示已在响应拦截器中显示，这里只记录日志
-        console.error('修改密码失败:', error)
-      } finally {
-        changePasswordLoading.value = false
-      }
+  changePasswordLoading.value = true
+  try {
+    const response = await changePassword({
+      oldPassword: passwordForm.value.oldPassword,
+      newPassword: passwordForm.value.newPassword
+    })
+    
+    if (response.code === 200) {
+      changePasswordDialogVisible.value = false
+      ElMessage.success('密码修改成功，请重新登录')
+      // 直接退出登录
+      handleLogout()
     }
-  })
+  } catch (error: any) {
+    // 错误提示已在响应拦截器中显示，这里只记录日志
+    console.error('修改密码失败:', error)
+  } finally {
+    changePasswordLoading.value = false
+  }
 }
 
 // 查看用户详情
@@ -779,26 +784,27 @@ const openDeactivateDialog = () => {
 }
 
 const handleDeactivateAccount = async () => {
-  if (!deactivateFormRef.value) return
-  await deactivateFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    deactivateLoading.value = true
-    try {
-      const response = await deactivateAccount({
-        reason: deactivateForm.value.reason?.trim() || undefined
-      })
-      if (response.code === 200) {
-        ElMessage.success('注销申请已提交，7天内登录可取消')
-        deactivateDialogVisible.value = false
-        await userStore.logout()
-        router.push('/')
-      }
-    } catch (error) {
-      console.error('注销账号失败:', error)
-    } finally {
-      deactivateLoading.value = false
+  // 使用自定义验证函数
+  if (!validateDeactivateConfirmInput()) {
+    return
+  }
+  
+  deactivateLoading.value = true
+  try {
+    const response = await deactivateAccount({
+      reason: deactivateForm.value.reason?.trim() || undefined
+    })
+    if (response.code === 200) {
+      ElMessage.success('注销申请已提交，7天内登录可取消')
+      deactivateDialogVisible.value = false
+      await userStore.logout()
+      router.push('/')
     }
-  })
+  } catch (error) {
+    console.error('注销账号失败:', error)
+  } finally {
+    deactivateLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -1734,7 +1740,7 @@ watch(
     margin: 0 !important;
     
     .el-dialog__title {
-      font-size: 18px !important;
+      font-size: 20px !important;
       font-weight: 600 !important;
       color: #303133 !important;
       letter-spacing: 0.3px;
@@ -1757,7 +1763,7 @@ watch(
   }
   
   .el-dialog__body {
-    padding: 28px 24px !important;
+    padding: 32px 28px !important;
     background: #fff !important;
   }
   
@@ -1800,44 +1806,71 @@ watch(
   // 表单样式优化
   .el-form {
     .el-form-item {
-      margin-bottom: 28px !important;
+      margin-bottom: 32px !important;
       
       &:last-child {
         margin-bottom: 0 !important;
       }
       
       .el-form-item__label {
-        font-size: 16px !important;
+        font-size: 18px !important;
         color: #606266 !important;
         font-weight: 500 !important;
-        padding-bottom: 10px !important;
+        padding-bottom: 12px !important;
         line-height: 1.5;
       }
       
       .el-form-item__content {
         .el-input {
+          // 覆盖 Element Plus CSS 变量
+          --el-input-focus-border-color: #e4e7ed !important;
+          --el-border-color: #e4e7ed !important;
+          --el-color-primary: #e4e7ed !important;
+          
           .el-input__wrapper {
-            border-radius: 10px !important;
-            box-shadow: 0 0 0 1px #e2e8f0 inset !important;
-            transition: all 0.2s ease;
-            background: #f8fafc !important;
-            padding: 12px 16px !important;
-            min-height: 44px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            transition: none !important;
+            background: white !important;
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            padding: 14px 18px !important;
+            min-height: 50px !important;
+            outline: none !important;
             
             &:hover {
-              box-shadow: 0 0 0 1px #cbd5f5 inset !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              border-color: #e4e7ed !important;
+              border: 1px solid #e4e7ed !important;
+              background: white !important;
+              --el-input-focus-border-color: #e4e7ed !important;
+              --el-border-color: #e4e7ed !important;
             }
             
-            &.is-focus {
-              box-shadow: 0 0 0 1px #6366f1 inset !important;
-              background: #fff !important;
+            &.is-focus,
+            &:focus,
+            &:focus-visible,
+            &:focus-within {
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              border-color: #e4e7ed !important;
+              border: 1px solid #e4e7ed !important;
+              background: white !important;
+              --el-input-focus-border-color: #e4e7ed !important;
+              --el-border-color: #e4e7ed !important;
+              --el-color-primary: #e4e7ed !important;
+              outline: none !important;
             }
           }
           
           .el-input__inner {
-            font-size: 16px !important;
+            font-size: 17px !important;
             color: #303133 !important;
-            line-height: 1.5;
+            line-height: 1.6;
+            
+            &::placeholder {
+              font-size: 17px !important;
+              color: #909399 !important;
+            }
           }
         }
       }
@@ -1909,7 +1942,7 @@ watch(
     margin: 0 !important;
     
     .el-dialog__title {
-      font-size: 16px !important;
+      font-size: 20px !important;
       font-weight: 500 !important;
       color: #262626 !important;
     }
@@ -1918,6 +1951,85 @@ watch(
   .el-dialog__body {
     padding: 18px 20px 10px !important;
     background: #ffffff !important;
+    
+    // 强制覆盖修改密码对话框的输入框样式
+    .el-form {
+      .el-form-item {
+        // 隐藏错误提示（使用 ElMessage 弹出提示代替）
+        .el-form-item__error {
+          display: none !important;
+        }
+        
+        // 标签和输入框垂直居中对齐
+        display: flex !important;
+        align-items: center !important;
+        
+        .el-form-item__label {
+          font-size: 16px !important;
+          color: #606266 !important;
+          font-weight: 500 !important;
+          padding-bottom: 0 !important;
+          line-height: 1.5;
+          display: flex !important;
+          align-items: center !important;
+        }
+        
+        .el-form-item__content {
+          .el-input {
+            // 覆盖 Element Plus CSS 变量
+            --el-input-focus-border-color: #e4e7ed !important;
+            --el-border-color: #e4e7ed !important;
+            --el-color-primary: #e4e7ed !important;
+            
+            .el-input__wrapper {
+              border-radius: 6px !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              transition: none !important;
+              background: white !important;
+              border: 1px solid #e4e7ed !important;
+              border-color: #e4e7ed !important;
+              padding: 8px 12px !important;
+              min-height: 40px !important;
+              outline: none !important;
+              
+              &:hover {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border-color: #e4e7ed !important;
+                border: 1px solid #e4e7ed !important;
+                background: white !important;
+                --el-input-focus-border-color: #e4e7ed !important;
+                --el-border-color: #e4e7ed !important;
+              }
+              
+              &.is-focus,
+              &:focus,
+              &:focus-visible,
+              &:focus-within {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border-color: #e4e7ed !important;
+                border: 1px solid #e4e7ed !important;
+                background: white !important;
+                --el-input-focus-border-color: #e4e7ed !important;
+                --el-border-color: #e4e7ed !important;
+                --el-color-primary: #e4e7ed !important;
+                outline: none !important;
+              }
+            }
+            
+            .el-input__inner {
+              font-size: 14px !important;
+              color: #303133 !important;
+              line-height: 1.5;
+              
+              &::placeholder {
+                font-size: 14px !important;
+                color: #909399 !important;
+              }
+            }
+          }
+        }
+      }
+    }
   }
   
   .el-dialog__footer {
@@ -1929,37 +2041,72 @@ watch(
     .password-dialog-footer-minimal {
       display: flex;
       justify-content: flex-end;
-      gap: 10px;
+      gap: 14px;
       
       .el-button {
-        min-width: 80px;
-        border-radius: 6px;
+        min-width: 120px;
+        min-height: 48px;
+        padding: 12px 24px;
+        border-radius: 8px;
         font-weight: 500;
+        font-size: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transition: none;
       }
       
-      // 取消按钮：白底浅灰边
+      // 取消按钮：白色系
       .el-button:first-child {
-        border-color: #d9d9d9;
-        background-color: #ffffff;
-        color: #595959;
+        border: 1px solid #e4e7ed;
+        background-color: white;
+        color: #606266;
         
         &:hover {
-          border-color: #bfbfbf;
-          color: #404040;
-          background-color: #ffffff;
+          border-color: #e4e7ed;
+          color: #606266;
+          background-color: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:active {
+          border-color: #e4e7ed;
+          color: #606266;
+          background-color: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:focus {
+          border-color: #e4e7ed;
+          color: #606266;
+          background-color: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
       
-      // 确定按钮：同样采用白色系，只用边框和文字颜色做区分
+      // 确定按钮：白色系
       .el-button--primary {
-        background-color: #ffffff;
-        border-color: #ff9f7a;
-        color: #ff6a3c;
+        background-color: white;
+        border: 1px solid #e4e7ed;
+        color: #606266;
         
         &:hover {
-          background-color: #fff7f3;
-          border-color: #ff8553;
-          color: #ff6a3c;
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:active {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:focus {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
     }
@@ -1968,40 +2115,240 @@ watch(
 
 // 注销对话框全局样式
 .el-overlay .deactivate-dialog {
+  .el-dialog {
+    border-radius: 10px !important;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+  }
+  
+  .el-dialog__header {
+    padding: 16px 20px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    margin: 0 !important;
+    
+    .el-dialog__title {
+      font-size: 20px !important;
+      font-weight: 500 !important;
+      color: #262626 !important;
+    }
+  }
+  
   .deactivate-warning {
     background: #fff5f5;
     border: 1px solid #fecaca;
     color: #c2410c;
-    padding: 12px 16px;
+    padding: 16px 20px;
     border-radius: 8px;
-    font-size: 13px;
-    line-height: 1.6;
-    margin-bottom: 16px;
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 20px;
 
     .deactivate-warning-title {
       font-weight: 600;
-      margin: 0 0 6px 0;
+      font-size: 16px;
+      margin: 0 0 8px 0;
     }
 
     .deactivate-warning-list {
       margin: 0;
-      padding-left: 18px;
+      padding-left: 20px;
 
       li {
-        margin: 2px 0;
+        margin: 4px 0;
       }
     }
   }
 
   .el-dialog__body {
-    // 让内容整体离边框更远一些，阅读更舒服
     padding: 20px 24px 16px !important;
+    
+    .el-form {
+      .el-form-item {
+        margin-bottom: 24px !important;
+        
+        // 隐藏错误提示（使用 ElMessage 弹出提示代替）
+        .el-form-item__error {
+          display: none !important;
+        }
+        
+        .el-form-item__label {
+          font-size: 16px !important;
+          color: #606266 !important;
+          font-weight: 500 !important;
+          padding-bottom: 10px !important;
+          line-height: 1.5;
+        }
+        
+        .el-form-item__content {
+          .el-input {
+            --el-input-focus-border-color: #e4e7ed !important;
+            --el-border-color: #e4e7ed !important;
+            --el-color-primary: #e4e7ed !important;
+            
+            .el-input__wrapper {
+              border-radius: 8px !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              transition: none !important;
+              background: white !important;
+              border: 1px solid #e4e7ed !important;
+              border-color: #e4e7ed !important;
+              padding: 12px 16px !important;
+              min-height: 48px !important;
+              outline: none !important;
+              
+              &:hover {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border-color: #e4e7ed !important;
+                border: 1px solid #e4e7ed !important;
+                background: white !important;
+                --el-input-focus-border-color: #e4e7ed !important;
+                --el-border-color: #e4e7ed !important;
+              }
+              
+              &.is-focus,
+              &:focus,
+              &:focus-visible,
+              &:focus-within {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border-color: #e4e7ed !important;
+                border: 1px solid #e4e7ed !important;
+                background: white !important;
+                --el-input-focus-border-color: #e4e7ed !important;
+                --el-border-color: #e4e7ed !important;
+                --el-color-primary: #e4e7ed !important;
+                outline: none !important;
+              }
+            }
+            
+            .el-input__inner {
+              font-size: 15px !important;
+              color: #303133 !important;
+              line-height: 1.6;
+              
+              &::placeholder {
+                font-size: 15px !important;
+                color: #909399 !important;
+              }
+            }
+          }
+          
+          .el-textarea {
+            .el-textarea__inner {
+              border-radius: 8px !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              transition: none !important;
+              background: white !important;
+              border: 1px solid #e4e7ed !important;
+              border-color: #e4e7ed !important;
+              padding: 12px 16px !important;
+              font-size: 15px !important;
+              color: #303133 !important;
+              line-height: 1.6;
+              outline: none !important;
+              
+              &::placeholder {
+                font-size: 15px !important;
+                color: #909399 !important;
+              }
+              
+              &:hover {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border-color: #e4e7ed !important;
+                background: white !important;
+              }
+              
+              &:focus {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                border-color: #e4e7ed !important;
+                background: white !important;
+                outline: none !important;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .el-dialog__footer {
+    padding: 10px 20px 16px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #f0f0f0 !important;
+    margin: 0 !important;
   }
 
   .deactivate-dialog-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 14px;
+    
+    .el-button {
+      min-width: 120px;
+      min-height: 48px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      transition: none;
+      
+      // 取消按钮：白色系
+      &:first-child {
+        border: 1px solid #e4e7ed;
+        background-color: white;
+        color: #606266;
+        
+        &:hover {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:active {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:focus {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+      }
+      
+      // 确认注销按钮：白色系
+      &:last-child {
+        border: 1px solid #e4e7ed;
+        background-color: white;
+        color: #606266;
+        
+        &:hover {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:active {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        &:focus {
+          background-color: white;
+          border-color: #e4e7ed;
+          color: #606266;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+      }
+    }
   }
 }
 </style>

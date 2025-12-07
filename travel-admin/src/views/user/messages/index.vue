@@ -1061,11 +1061,19 @@ onBeforeUnmount(() => {
     border-color: #dfe3eb;
     box-shadow: none;
     transition: border-color 0.2s ease;
+    font-size: 16px;
+    line-height: 1.6;
+    
+    &::placeholder {
+      font-size: 16px;
+      color: #909399;
+    }
   }
   :deep(.el-textarea__inner:focus),
   :deep(.el-textarea__inner:focus-visible) {
     border-color: #000;
     box-shadow: none;
+    font-size: 16px;
   }
 
   .chat-input-actions {

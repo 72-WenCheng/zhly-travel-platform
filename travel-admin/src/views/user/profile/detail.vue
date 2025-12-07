@@ -431,7 +431,7 @@ const portraitData = ref<any>({})
 // 基本资料
 const basicInfo = ref<any>({})
 
-// 画像总结词（计算属性，实时更新，专业丰富的描述）
+// 画像总结词（计算属性，实时更新，更自然、更具体的描述）
 const portraitSummary = computed(() => {
   const hasPortraitData = portraitData.value && Object.keys(portraitData.value).length > 0
   const hasBasicInfo = basicInfo.value && Object.keys(basicInfo.value).length > 0
@@ -440,9 +440,11 @@ const portraitSummary = computed(() => {
     return ''
   }
   
-  const descriptions: string[] = []
+  const traits: string[] = []
+  const behaviors: string[] = []
+  const preferences: string[] = []
   
-  // 年龄段描述（更专业的表达）
+  // 年龄段特征
   let ageNum: number | null = null
   if (portraitData.value?.ageGroup) {
     const age = portraitData.value.ageGroup.replace('岁', '')
@@ -453,21 +455,21 @@ const portraitSummary = computed(() => {
   
   if (ageNum !== null && !isNaN(ageNum)) {
     if (ageNum < 25) {
-      descriptions.push('年轻活力的')
+      traits.push('年轻')
     } else if (ageNum < 30) {
-      descriptions.push('充满朝气的')
+      traits.push('充满活力')
     } else if (ageNum < 35) {
-      descriptions.push('成熟稳重的')
+      traits.push('成熟')
     } else if (ageNum < 45) {
-      descriptions.push('阅历丰富的')
+      traits.push('阅历丰富')
     } else if (ageNum < 55) {
-      descriptions.push('资深专业的')
+      traits.push('资深')
     } else {
-      descriptions.push('经验深厚的')
+      traits.push('经验深厚')
     }
   }
   
-  // 兴趣标签描述（更丰富的表达）
+  // 兴趣标签 - 用更自然的语言描述
   if (portraitData.value?.interestTags && Array.isArray(portraitData.value.interestTags) && portraitData.value.interestTags.length > 0) {
     const tags = portraitData.value.interestTags
     const tagNames = tags.map((tag: any) => {
@@ -476,114 +478,198 @@ const portraitSummary = computed(() => {
     }).filter((name: string | null): name is string => name !== null && name.trim().length > 0 && !name.includes('[object'))
     
     if (tagNames.length > 0) {
-      let tagText = ''
-      if (tagNames.length === 1) {
-        tagText = tagNames[0]
-        descriptions.push(`热衷于${tagText}探索`)
+      // 根据标签组合生成更自然的描述
+      const tagDescriptions: Record<string, string> = {
+        '摄影': '喜欢用镜头记录旅途中的美好瞬间',
+        '美食': '热衷于探索各地特色美食',
+        '文化': '对历史文化有着浓厚兴趣',
+        '自然风光': '偏爱大自然的壮美景色',
+        '夜景': '享受城市夜晚的繁华与宁静',
+        '情侣': '喜欢与伴侣一起创造浪漫回忆',
+        '家庭': '注重家庭旅行的温馨体验',
+        '购物': '享受在旅途中发现独特商品的乐趣',
+        '休闲': '追求轻松惬意的旅行方式'
+      }
+      
+      // 优先使用特定组合的描述
+      if (tagNames.includes('情侣') && tagNames.includes('夜景')) {
+        behaviors.push('喜欢与伴侣一起欣赏城市夜景，享受浪漫时光')
+      } else if (tagNames.includes('美食') && tagNames.length > 1) {
+        behaviors.push(`热爱美食探索，同时${tagNames.filter(t => t !== '美食').slice(0, 2).join('和')}也是其旅行中的重要元素`)
+      } else if (tagNames.length === 1) {
+        const desc = tagDescriptions[tagNames[0]] || `对${tagNames[0]}情有独钟`
+        behaviors.push(desc)
       } else if (tagNames.length <= 3) {
-        tagText = tagNames.join('、')
-        descriptions.push(`对${tagText}等领域充满热情`)
+        behaviors.push(`在旅行中，${tagNames.join('、')}都是其关注的重点`)
       } else {
-        tagText = tagNames.slice(0, 3).join('、')
-        descriptions.push(`在${tagText}等多个领域展现出浓厚兴趣`)
+        behaviors.push(`旅行兴趣广泛，尤其关注${tagNames.slice(0, 3).join('、')}等方面`)
       }
     }
   }
   
-  // 旅游偏好描述（更专业的表达）
+  // 旅游偏好 - 更具体的描述
   let prefText = ''
   if (portraitData.value?.primaryPreference) {
     const prefValue = getSafeFieldValue(portraitData.value.primaryPreference)
     if (prefValue && prefValue !== '----') {
       prefText = prefValue
     }
-  } else if (portraitData.value?.travelPreference) {
-    prefText = getTravelPreferenceText(portraitData.value.travelPreference)
   }
   
   if (prefText && prefText !== '----' && !prefText.includes('[object')) {
-    // 根据不同的偏好类型，使用不同的专业表达
-    const preferenceMap: Record<string, string> = {
-      '自然风光': '钟情于自然风光类目的地',
-      '人文历史': '偏好人文历史深度体验',
-      '美食体验': '追求美食文化探索',
-      '购物娱乐': '注重购物娱乐体验',
-      '休闲度假': '倾向于休闲度假模式',
-      '冒险探索': '热爱冒险探索之旅',
-      '温泉度假': '偏好温泉度假体验',
-      '主题公园': '热衷主题公园游玩'
+    const preferenceDescriptions: Record<string, string> = {
+      '自然风光': '更愿意选择山川湖海等自然景观作为目的地',
+      '人文历史': '对古迹、博物馆、历史建筑等文化场所格外感兴趣',
+      '美食体验': '旅行计划往往围绕当地特色美食展开',
+      '购物娱乐': '喜欢在旅途中购物和体验娱乐项目',
+      '休闲度假': '倾向于选择轻松舒适的度假方式',
+      '冒险探索': '追求刺激和新奇的旅行体验',
+      '温泉度假': '偏好温泉、SPA等放松身心的旅行方式',
+      '宗教场所': '对宗教文化和建筑艺术有独特兴趣',
+      '主题公园': '喜欢在主题公园中寻找乐趣'
     }
-    descriptions.push(preferenceMap[prefText] || `偏好${prefText}类型的旅行体验`)
+    preferences.push(preferenceDescriptions[prefText] || `更偏好${prefText}类型的旅行目的地`)
   }
   
-  // 消费水平描述（更专业的术语）
+  // 消费水平 - 更具体的描述
   let consumptionLevelText = getConsumptionLevelText(portraitData.value?.consumptionLevel)
   if (consumptionLevelText && consumptionLevelText !== '----') {
-    const consumptionMap: Record<string, string> = {
-      '经济实惠型': '消费理念务实理性',
-      '品质舒适型': '注重品质与舒适度',
-      '高端奢华型': '追求高端奢华体验',
-      '性价比型': '重视性价比平衡'
+    const consumptionDescriptions: Record<string, string> = {
+      '经济实惠型': '在旅行中注重性价比，善于寻找物美价廉的体验',
+      '品质舒适型': '愿意为更好的住宿和体验支付合理费用',
+      '豪华型': '追求高品质的旅行体验，不吝于为舒适和享受投入',
+      '高端奢华型': '偏好高端酒店和精致服务，追求极致旅行体验',
+      '性价比型': '在预算范围内追求最佳体验'
     }
-    descriptions.push(consumptionMap[consumptionLevelText] || `消费能力为${consumptionLevelText}`)
+    behaviors.push(consumptionDescriptions[consumptionLevelText] || `消费水平属于${consumptionLevelText}`)
   }
   
-  // 出行类型描述（更丰富的表达）
-  if (basicInfo.value?.userType !== undefined && basicInfo.value?.userType !== null) {
-    const userTypeText = getUserTypeText(basicInfo.value.userType)
-    if (userTypeText && userTypeText !== '-') {
-      const userTypeMap: Record<string, string> = {
-        '个人': '偏好独立自主的',
-        '情侣': '倾向于浪漫双人的',
-        '家庭': '适合家庭亲子',
-        '团队': '适合团队协作'
-      }
-      descriptions.push(userTypeMap[userTypeText] || `偏好${userTypeText}出行模式`)
-    }
-  }
-  
-  // 出行方式（如果有数据）
+  // 出行方式 - 更具体的描述
   if (portraitData.value?.travelMode) {
     const travelMode = String(portraitData.value.travelMode)
     if (travelMode.includes('自由行')) {
-      descriptions.push('崇尚自由行探索方式')
+      behaviors.push('更倾向于自由行，享受自主规划行程的乐趣')
     } else if (travelMode.includes('自驾')) {
-      descriptions.push('偏好自驾游出行')
+      behaviors.push('喜欢自驾出行，享受路上的自由与灵活')
+    } else if (travelMode.includes('跟团')) {
+      behaviors.push('偏好跟团旅行，享受省心省力的旅行方式')
     }
   }
   
-  // 旅游时长偏好（如果有数据）
+  // 旅游时长 - 更具体的描述
   if (portraitData.value?.tripDuration) {
     const duration = String(portraitData.value.tripDuration)
-    if (duration.includes('3-5')) {
-      descriptions.push('倾向于中短途深度游')
+    if (duration.includes('1-3') || duration.includes('短途')) {
+      behaviors.push('通常选择短途旅行，适合周末或小长假出行')
+    } else if (duration.includes('3-5')) {
+      behaviors.push('偏好中短途旅行，既能深度体验又不会过于疲惫')
     } else if (duration.includes('5-7') || duration.includes('7')) {
-      descriptions.push('偏好中长期旅行规划')
+      behaviors.push('喜欢安排较长的旅行时间，追求深度体验')
     }
   }
   
-  // 构建最终描述
-  if (descriptions.length > 0) {
-    // 使用更专业的句式结构
-    let summary = '这是一位'
-    
-    // 第一部分：年龄特征
-    if (descriptions[0] && descriptions[0].endsWith('的')) {
-      summary += descriptions[0]
-      descriptions.shift()
+  // 季节偏好
+  if (portraitData.value?.seasonPreference) {
+    const season = String(portraitData.value.seasonPreference)
+    if (season.includes('春季') || season.includes('春天')) {
+      preferences.push('偏爱春季出行，享受万物复苏的美好')
+    } else if (season.includes('秋季') || season.includes('秋天')) {
+      preferences.push('喜欢在秋高气爽的季节踏上旅程')
+    } else if (season.includes('夏季') || season.includes('夏天')) {
+      preferences.push('更愿意在夏季出行，享受阳光与活力')
+    } else if (season.includes('冬季') || season.includes('冬天')) {
+      preferences.push('偏好冬季旅行，体验不同季节的独特魅力')
     }
-    
-    // 后续部分用更自然的连接
-    if (descriptions.length > 0) {
-      summary += descriptions.join('，')
-    }
-    
-    summary += '的旅行者。'
-    
-    return summary
   }
   
-  return ''
+  // 常去目的地
+  if (portraitData.value?.frequentDestinations) {
+    const destinations = getFrequentCities(portraitData.value.frequentDestinations)
+    if (destinations.length > 0) {
+      if (destinations.length === 1) {
+        preferences.push(`经常前往${destinations[0]}，对这座城市有着特殊的情感`)
+      } else if (destinations.length <= 3) {
+        preferences.push(`常去的目的地包括${destinations.join('、')}等地`)
+      } else {
+        preferences.push(`足迹遍布${destinations.slice(0, 3).join('、')}等多个城市`)
+      }
+    }
+  }
+  
+  // 统计数据补充
+  if (portraitData.value?.browseCount > 0 || portraitData.value?.favoriteCount > 0) {
+    const browseCount = portraitData.value.browseCount || 0
+    const favoriteCount = portraitData.value.favoriteCount || 0
+    
+    if (browseCount > 100 || favoriteCount > 20) {
+      behaviors.push('是一位活跃的旅行爱好者，经常浏览和收藏感兴趣的旅行内容')
+    } else if (browseCount > 50 || favoriteCount > 10) {
+      behaviors.push('对旅行充满热情，会主动探索和收集旅行信息')
+    }
+  }
+  
+  // 构建最终描述 - 更自然、更丰富的表达
+  if (traits.length === 0 && behaviors.length === 0 && preferences.length === 0) {
+    return ''
+  }
+  
+  let summary = ''
+  
+  // 开头：年龄特征 + 身份定位
+  if (traits.length > 0) {
+    summary = `这是一位${traits[0]}的旅行者`
+  } else {
+    summary = '这是一位旅行者'
+  }
+  
+  // 中间部分：行为特征和偏好，用更自然的语言连接
+  const allDescriptions = [...behaviors, ...preferences]
+  
+  if (allDescriptions.length > 0) {
+    if (allDescriptions.length === 1) {
+      summary += `，${allDescriptions[0]}`
+    } else if (allDescriptions.length === 2) {
+      summary += `，${allDescriptions[0]}，同时${allDescriptions[1]}`
+    } else {
+      // 3个或更多描述，用更自然的连接
+      const firstPart = allDescriptions.slice(0, allDescriptions.length - 1).join('，')
+      const lastPart = allDescriptions[allDescriptions.length - 1]
+      summary += `，${firstPart}，此外${lastPart}`
+    }
+  }
+  
+  summary += '。'
+  
+  // 添加互动性文字
+  const interactiveMessages = [
+    '希望多多关照，期待与志同道合的旅友一起分享旅行心得！',
+    '如果有和我一样兴趣的旅友，欢迎一起交流旅行经验！',
+    '期待认识更多热爱旅行的朋友，一起探索美好的世界！',
+    '希望在这里遇到志同道合的旅友，一起分享旅途中的精彩！',
+    '欢迎有相同旅行偏好的朋友多多交流，一起发现更多美好！',
+    '期待与同样热爱旅行的你相遇，一起分享旅途中的点点滴滴！',
+    '如果有和我一样喜欢探索的朋友，欢迎一起交流互动！',
+    '希望在这里找到志同道合的旅友，一起开启更多精彩的旅程！'
+  ]
+  
+  // 根据用户特征选择更合适的互动文字
+  let interactiveText = ''
+  if (portraitData.value?.interestTags && Array.isArray(portraitData.value.interestTags) && portraitData.value.interestTags.length > 0) {
+    const tagCount = portraitData.value.interestTags.length
+    if (tagCount >= 3) {
+      interactiveText = '希望多多关照，期待与志同道合的旅友一起分享旅行心得！'
+    } else {
+      interactiveText = '如果有和我一样兴趣的旅友，欢迎一起交流旅行经验！'
+    }
+  } else if (portraitData.value?.primaryPreference) {
+    interactiveText = '期待认识更多热爱旅行的朋友，一起探索美好的世界！'
+  } else {
+    interactiveText = '希望在这里遇到志同道合的旅友，一起分享旅途中的精彩！'
+  }
+  
+  summary += ` ${interactiveText}`
+  
+  return summary
 })
 
 // 旅游偏好映射
@@ -732,7 +818,7 @@ const getUserTypeText = (userType: number | null | undefined): string => {
 // 攻略列表
 const plans = ref<any[]>([])
 const planCurrentPage = ref(1)
-const planPageSize = ref(10)
+const planPageSize = ref(7)
 const planTotal = ref(0)
 
 // 粉丝/关注列表
@@ -1152,7 +1238,7 @@ watch(() => route.params.id, (newId) => {
     isFollowing.value = false
     // 重置分页状态
     planCurrentPage.value = 1
-    planPageSize.value = 10
+    planPageSize.value = 7
     planTotal.value = 0
     // 重新加载用户信息
     loadUserInfo()
@@ -1163,7 +1249,7 @@ watch(() => route.params.id, (newId) => {
     isFollowing.value = false
     // 重置分页状态
     planCurrentPage.value = 1
-    planPageSize.value = 10
+    planPageSize.value = 7
     planTotal.value = 0
     loadUserInfo()
   }
@@ -1276,7 +1362,14 @@ export default {}
         gap: 12px;
 
         :deep(.message-btn) {
-          min-width: 110px;
+          min-width: 130px;
+          min-height: 44px;
+          padding: 12px 20px;
+          font-size: 15px;
+          
+          .el-icon {
+            font-size: 18px;
+          }
         }
 
         :deep(.follow-btn),
@@ -1284,18 +1377,20 @@ export default {}
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 16px;
+          padding: 12px 20px;
+          min-height: 44px;
+          min-width: 110px;
           border-radius: 6px;
           border: 1px solid #dcdfe6 !important;
           background: #fff !important;
           color: #606266 !important;
           font-weight: 400;
-          font-size: 14px;
+          font-size: 15px;
           box-shadow: none;
           transition: all 0.2s ease;
 
           .el-icon {
-            font-size: 16px;
+            font-size: 18px;
             color: #606266 !important;
           }
 
@@ -1394,31 +1489,73 @@ export default {}
         border-radius: 12px;
         padding: 20px;
         border: 1px solid #f0f0f0;
-        transition: all 0.3s ease;
+        transition: none;
         
         &:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-          transform: translateY(-2px);
+          // 移除悬停效果
+          background: #fafafa;
+          border-color: #f0f0f0;
+          transform: none;
+          box-shadow: none;
         }
 
         .card-header {
           display: flex;
-          align-items: center;
+          align-items: baseline;
           gap: 8px;
           margin-bottom: 16px;
           padding-bottom: 12px;
           border-bottom: 1px solid #e8e8e8;
+          line-height: 1.5;
 
           .card-icon {
             font-size: 18px;
             color: #667eea;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.5;
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            padding: 0;
+            vertical-align: baseline;
+            
+            :deep(.el-icon) {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              width: 18px;
+              height: 18px;
+              line-height: 1.5;
+              vertical-align: baseline;
+            }
+            
+            :deep(svg) {
+              width: 18px;
+              height: 18px;
+              vertical-align: baseline;
+            }
           }
 
           .card-title {
             font-size: 16px;
             font-weight: 600;
             margin: 0;
+            padding: 0;
             color: #303133;
+            line-height: 1.5;
+            display: inline-block;
+            vertical-align: baseline;
+            
+            // 确保 h4 标签没有默认样式影响
+            &, h4 {
+              margin: 0;
+              padding: 0;
+              line-height: 1.5;
+              vertical-align: baseline;
+            }
           }
         }
 
@@ -1623,15 +1760,20 @@ export default {}
       }
 
       &:hover:not(.is-disabled) {
+        border-color: #dcdfe6;
+        color: #303133;
+        background: #f5f7fa;
+      }
+
+      &:active:not(.is-disabled) {
+        background: #e4e7ed;
         border-color: #c0c4cc;
-        color: #606266;
-        background: #fff;
       }
 
       &:focus {
-        border-color: #c0c4cc;
-        color: #606266;
-        background: #fff;
+        border-color: #dcdfe6;
+        color: #303133;
+        background: #f5f7fa;
       }
 
       &.is-disabled {

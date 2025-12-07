@@ -969,7 +969,7 @@ onMounted(() => {
   transition: all 0.3s ease;
   
   &:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   }
   
   .header-content {
@@ -1508,17 +1508,18 @@ onMounted(() => {
     }
 
     &:hover:not(.is-disabled) {
-      border-color: #409eff;
-      color: #409eff;
-      background: #ecf5ff;
+      border-color: #dcdfe6;
+      color: #303133;
+      background: #f5f7fa;
 
       .el-icon {
-        color: #409eff;
+        color: #303133;
       }
     }
 
     &:active:not(.is-disabled) {
-      background: #b3d8ff;
+      background: #e4e7ed;
+      border-color: #c0c4cc;
     }
 
     &.is-disabled {

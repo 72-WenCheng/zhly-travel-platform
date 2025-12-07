@@ -57,7 +57,7 @@
             <div class="weather-main">
               <div class="weather-icon-wrapper">
                 <span class="weather-icon">{{ weatherIcon }}</span>
-                <div class="weather-temp">{{ weather.temperature !== null ? `${weather.temperature}°C` : (weatherLoading ? '加载中...' : '--') }}</div>
+                <div class="weather-temp">{{ weatherTemperature }}</div>
               </div>
               <div class="weather-details">
                 <div class="weather-location">
@@ -604,18 +604,19 @@
     <el-dialog
       v-model="showLocationSelector"
       title="选择位置"
-      width="600px"
+      width="640px"
       :close-on-click-modal="false"
       class="location-selector-dialog"
     >
       <div class="location-selector-content">
-        <el-form :model="locationForm" label-width="80px" label-position="top">
-          <el-form-item label="市" required>
+        <el-form :model="locationForm" label-width="80px" label-position="top" :hide-required-asterisk="true">
+          <el-form-item label="市">
             <el-input
               v-model="locationForm.city"
               placeholder="请输入城市名称，如：南宁、北京、上海"
               clearable
-              size="small"
+              size="large"
+              @blur="validateCityInput"
             />
           </el-form-item>
           
@@ -624,7 +625,7 @@
               v-model="locationForm.district"
               placeholder="请输入区/县名称，如：青秀区、西乡塘区（可选）"
               clearable
-              size="small"
+              size="large"
             />
           </el-form-item>
         </el-form>
@@ -753,11 +754,19 @@ const locationForm = ref({
   district: ''
 })
 
-// 确认位置选择
-const confirmLocationSelection = async () => {
-  // 验证城市是否填写
+// 验证城市输入
+const validateCityInput = (): boolean => {
   if (!locationForm.value.city || !locationForm.value.city.trim()) {
     ElMessage.warning('请输入城市名称')
+    return false
+  }
+  return true
+}
+
+// 确认位置选择
+const confirmLocationSelection = async () => {
+  // 使用自定义验证函数
+  if (!validateCityInput()) {
     return
   }
   
@@ -806,6 +815,16 @@ const weatherIcon = computed(() => {
   if (weatherStr.includes('雪')) return '❄️'
   if (weatherStr.includes('雾')) return '🌫️'
   return '🌤️'
+})
+
+const weatherTemperature = computed(() => {
+  if (weather.value.temperature !== null) {
+    return `${weather.value.temperature}°C`
+  }
+  if (weatherLoading.value) {
+    return '加载中...'
+  }
+  return '--'
 })
 
 const weatherAdvice = computed(() => {
@@ -6048,16 +6067,15 @@ onMounted(() => {
   }
   
   :deep(.el-dialog__header) {
-    padding: 24px 24px 20px;
-    background: #fff;
-    border-bottom: none;
-    margin: 0;
+    padding: 16px 20px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    margin: 0 !important;
     
     .el-dialog__title {
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 600;
-      color: #303133;
-      letter-spacing: 0.3px;
+      color: #1f2937;
     }
     
     .el-dialog__headerbtn {
@@ -6077,15 +6095,15 @@ onMounted(() => {
   }
   
   :deep(.el-dialog__body) {
-    padding: 24px;
-    background: #fff;
+    padding: 20px 24px 16px !important;
+    background: #ffffff !important;
   }
   
   :deep(.el-dialog__footer) {
-    padding: 20px 24px 24px;
-    background: #fff;
-    border-top: none;
-    margin: 0;
+    padding: 10px 20px 16px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e5e7eb !important;
+    margin: 0 !important;
   }
   
   .location-selector-content {
@@ -6096,48 +6114,68 @@ onMounted(() => {
         margin-bottom: 0;
       }
       
+      // 隐藏错误提示（使用 ElMessage 弹出提示代替）
+      .el-form-item__error {
+        display: none !important;
+      }
+      
       .el-form-item__label {
-        font-size: 14px;
-        font-weight: 400;
-        color: #303133;
-        padding-bottom: 8px;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        color: #606266 !important;
+        padding-bottom: 10px !important;
         line-height: 1.5;
-        
-        // 必填星号样式
-        &::before {
-          color: #f56c6c;
-          margin-right: 4px;
-        }
       }
       
       .el-form-item__content {
         .el-input {
+          --el-input-focus-border-color: #e4e7ed !important;
+          --el-border-color: #e4e7ed !important;
+          --el-color-primary: #e4e7ed !important;
+          
           .el-input__wrapper {
-            border-radius: 4px;
-            border: 1px solid #dcdfe6;
-            box-shadow: none;
-            transition: border-color 0.2s ease;
-            background: #fff;
-            padding: 10px 12px;
-            min-height: 40px;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            transition: none !important;
+            background: white !important;
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            padding: 12px 16px !important;
+            min-height: 48px !important;
+            outline: none !important;
             
             &:hover {
-              border-color: #c0c4cc;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              border-color: #e4e7ed !important;
+              border: 1px solid #e4e7ed !important;
+              background: white !important;
+              --el-input-focus-border-color: #e4e7ed !important;
+              --el-border-color: #e4e7ed !important;
             }
             
-            &.is-focus {
-              border-color: #000000;
-              box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+            &.is-focus,
+            &:focus,
+            &:focus-visible,
+            &:focus-within {
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              border-color: #e4e7ed !important;
+              border: 1px solid #e4e7ed !important;
+              background: white !important;
+              --el-input-focus-border-color: #e4e7ed !important;
+              --el-border-color: #e4e7ed !important;
+              --el-color-primary: #e4e7ed !important;
+              outline: none !important;
             }
           }
           
           .el-input__inner {
-            font-size: 14px;
-            color: #303133;
-            line-height: 1.5;
+            font-size: 15px !important;
+            color: #303133 !important;
+            line-height: 1.6;
             
             &::placeholder {
-              color: #c0c4cc;
+              font-size: 15px !important;
+              color: #909399 !important;
             }
           }
         }
@@ -6151,92 +6189,44 @@ onMounted(() => {
     gap: 12px;
     
     .location-dialog-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 20px;
-      border-radius: 4px;
-      border: 1px solid #dcdfe6 !important;
-      background: #fff !important;
-      background-color: #fff !important;
-      color: #606266 !important;
-      font-weight: 400;
-      font-size: 14px;
-      box-shadow: none !important;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
-      min-width: 80px;
-      cursor: pointer;
-
-      &,
-      &:focus,
-      &:focus-visible {
-        border: 1px solid #dcdfe6 !important;
-        background: #fff !important;
-        background-color: #fff !important;
-        color: #606266 !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
-
-      :deep(.el-button__inner) {
-        color: #606266 !important;
-      }
-
+      min-width: 120px;
+      min-height: 48px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      transition: none;
+      border: 1px solid #e4e7ed;
+      background-color: white;
+      color: #606266;
+      
       &:hover {
-        border-color: #c0c4cc !important;
-        background: #fff !important;
-        background-color: #fff !important;
-        color: #606266 !important;
-        box-shadow: none !important;
-        
-        :deep(.el-button__inner) {
-          color: #606266 !important;
-        }
-      }
-
-      &:active,
-      &:focus {
-        border-color: #c0c4cc !important;
-        background: #fff !important;
-        background-color: #fff !important;
-        color: #606266 !important;
-        box-shadow: none !important;
-        
-        :deep(.el-button__inner) {
-          color: #606266 !important;
-        }
-      }
-
-      &.is-loading {
-        border-color: #dcdfe6 !important;
-        background: #fff !important;
-        color: #606266 !important;
+        background-color: white;
+        border-color: #e4e7ed;
+        color: #606266;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       
-      // 确定按钮保持蓝色样式
-      &.el-button--primary {
-        background: #409eff !important;
-        border-color: #409eff !important;
-        color: #fff !important;
-        
-        &:hover {
-          background: #66b1ff !important;
-          border-color: #66b1ff !important;
-          color: #fff !important;
-        }
-        
-        &:focus {
-          background: #66b1ff !important;
-          border-color: #66b1ff !important;
-          color: #fff !important;
-        }
-        
-        &:active {
-          background: #3a8ee6 !important;
-          border-color: #3a8ee6 !important;
-          color: #fff !important;
-        }
+      &:active {
+        background-color: white;
+        border-color: #e4e7ed;
+        color: #606266;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      
+      &:focus {
+        background-color: white;
+        border-color: #e4e7ed;
+        color: #606266;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        outline: none;
+      }
+      
+      &.is-loading {
+        border-color: #e4e7ed;
+        background: white;
+        color: #606266;
       }
     }
   }
