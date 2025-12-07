@@ -1246,7 +1246,7 @@ onMounted(() => {
     }
   }
   
-  // 输入框样式：去掉hover和focus的transform效果，只保留阴影
+  // 输入框样式：去掉hover和focus的所有效果，只保留固定阴影
   .el-textarea {
     // 去掉外层wrapper的默认focus样式
     &.is-focus {
@@ -1254,6 +1254,7 @@ onMounted(() => {
         border-color: #e0e0e0 !important;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
         outline: none !important;
+        background: #ffffff !important;
       }
     }
     
@@ -1262,25 +1263,33 @@ onMounted(() => {
       border: 1px solid #e0e0e0 !important;
       border-radius: 8px !important;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-      transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      transition: none !important;
       outline: none !important;
       
       &:hover {
-        border-color: #d0d0d0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
       }
       
       &:focus {
         border-color: #e0e0e0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
         outline: none !important;
       }
     }
     
-    // 确保外层wrapper也没有蓝色边框
+    // 确保外层wrapper也没有蓝色边框和hover效果
     .el-textarea__wrapper {
       outline: none !important;
       box-shadow: none !important;
+      transition: none !important;
+      
+      &:hover {
+        outline: none !important;
+        box-shadow: none !important;
+      }
       
       &:focus,
       &:focus-within {
@@ -1353,14 +1362,14 @@ onMounted(() => {
     }
   }
 
-  // 输入框样式：初始状态就有阴影，去掉hover和focus的transform效果，去除蓝色边框
+  // 输入框样式：去掉hover和focus的所有效果，只保留固定阴影
   .el-select {
     .el-select__wrapper {
-    background: #ffffff !important;
+      background: #ffffff !important;
       border: 1px solid #e0e0e0 !important;
       border-radius: 8px !important;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; // 初始状态就有阴影
-      transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      transition: none !important;
       outline: none !important;
       min-height: 44px !important; // 增大输入框高度
       padding: 10px 14px !important; // 增大内边距
@@ -1374,14 +1383,16 @@ onMounted(() => {
       }
       
       &:hover {
-        border-color: #d0d0d0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
       }
       
       &:focus,
       &:focus-within {
-    border-color: #e0e0e0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
         outline: none !important;
       }
     }
@@ -1390,7 +1401,8 @@ onMounted(() => {
     &.is-focus {
       .el-select__wrapper {
         border-color: #e0e0e0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
         outline: none !important;
       }
     }
@@ -1402,7 +1414,7 @@ onMounted(() => {
       border: 1px solid #e0e0e0 !important;
       border-radius: 8px !important;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; // 初始状态就有阴影
-      transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      transition: none !important;
       outline: none !important;
       font-size: 15px !important; // 增大字体
       line-height: 1.6 !important;
@@ -1412,14 +1424,16 @@ onMounted(() => {
         font-size: 15px !important; // 增大占位符字体
       }
     
-    &:hover {
-        border-color: #d0d0d0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      &:hover {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
       }
       
       &:focus {
         border-color: #e0e0e0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
         outline: none !important;
       }
     }
@@ -1428,8 +1442,27 @@ onMounted(() => {
     &.is-focus {
       .el-textarea__inner {
         border-color: #e0e0e0 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
         outline: none !important;
+      }
+    }
+    
+    // 确保外层wrapper也没有hover效果
+    .el-textarea__wrapper {
+      outline: none !important;
+      box-shadow: none !important;
+      transition: none !important;
+      
+      &:hover {
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      
+      &:focus,
+      &:focus-within {
+        outline: none !important;
+        box-shadow: none !important;
       }
     }
     
@@ -1453,10 +1486,10 @@ onMounted(() => {
 
   .el-button {
     border-radius: 6px !important;
-    font-size: 15px !important; // 增大按钮字体
-    padding: 12px 28px !important; // 增大按钮内边距
+    font-size: 14px !important;
+    padding: 8px 20px !important;
     height: auto !important; // 自动高度
-    min-height: 44px !important; // 最小高度
+    min-height: 36px !important;
     
     // 取消按钮样式
     &.el-button--default {

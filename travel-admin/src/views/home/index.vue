@@ -205,9 +205,9 @@
       :model="passwordForm"
       label-position="left"
       class="password-form-minimal"
-      :hide-required-asterisk="true"
+      :hide-required-asterisk="false"
     >
-      <el-form-item label="原密码">
+      <el-form-item label="原密码" required>
         <el-input
           v-model="passwordForm.oldPassword"
           type="password"
@@ -218,7 +218,7 @@
           @blur="validateOldPassword"
         />
       </el-form-item>
-      <el-form-item label="新密码">
+      <el-form-item label="新密码" required>
         <el-input
           v-model="passwordForm.newPassword"
           type="password"
@@ -229,7 +229,7 @@
           @blur="validateNewPasswordInput"
         />
       </el-form-item>
-      <el-form-item label="确认新密码">
+      <el-form-item label="确认新密码" required>
         <el-input
           v-model="passwordForm.confirmPassword"
           type="password"
@@ -1834,8 +1834,8 @@ watch(
             background: white !important;
             border: 1px solid #e4e7ed !important;
             border-color: #e4e7ed !important;
-            padding: 14px 18px !important;
-            min-height: 50px !important;
+            padding: 10px 16px !important;
+            min-height: 36px !important;
             outline: none !important;
             
             &:hover {
@@ -1974,6 +1974,12 @@ watch(
           align-items: center !important;
         }
         
+        &.is-required .el-form-item__label::before {
+          content: '*' !important;
+          color: #f56c6c !important;
+          margin-right: 4px;
+        }
+        
         .el-form-item__content {
           .el-input {
             // 覆盖 Element Plus CSS 变量
@@ -1988,8 +1994,8 @@ watch(
               background: white !important;
               border: 1px solid #e4e7ed !important;
               border-color: #e4e7ed !important;
-              padding: 8px 12px !important;
-              min-height: 40px !important;
+              padding: 6px 12px !important;
+              min-height: 36px !important;
               outline: none !important;
               
               &:hover {
@@ -2041,71 +2047,75 @@ watch(
     .password-dialog-footer-minimal {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: 14px;
       
       .el-button {
-        min-width: 120px;
-        min-height: 48px;
-        padding: 12px 24px;
-        border-radius: 8px;
+        min-width: 100px;
+        min-height: 36px;
+        padding: 8px 20px;
+        border-radius: 6px;
         font-weight: 500;
-        font-size: 16px;
+        font-size: 14px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         transition: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       
-      // 取消按钮：白色系
+      // 取消按钮：灰色系
       .el-button:first-child {
-        border: 1px solid #e4e7ed;
-        background-color: white;
-        color: #606266;
+        border: 1px solid #dcdfe6;
+        background-color: #f5f7fa;
+        color: #909399;
         
         &:hover {
-          border-color: #e4e7ed;
-          color: #606266;
-          background-color: white;
+          border-color: #c0c4cc;
+          color: #909399;
+          background-color: #ebeef5;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
-          border-color: #e4e7ed;
-          color: #606266;
-          background-color: white;
+          border-color: #c0c4cc;
+          color: #909399;
+          background-color: #e4e7ed;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
-          border-color: #e4e7ed;
-          color: #606266;
-          background-color: white;
+          border-color: #c0c4cc;
+          color: #909399;
+          background-color: #f5f7fa;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
       
-      // 确定按钮：白色系
+      // 确定按钮：灰色系
       .el-button--primary {
-        background-color: white;
-        border: 1px solid #e4e7ed;
-        color: #606266;
+        background-color: #f5f7fa;
+        border: 1px solid #dcdfe6;
+        color: #909399;
         
         &:hover {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          background-color: #ebeef5;
+          border-color: #c0c4cc;
+          color: #909399;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          background-color: #e4e7ed;
+          border-color: #c0c4cc;
+          color: #909399;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          background-color: #f5f7fa;
+          border-color: #c0c4cc;
+          color: #909399;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
@@ -2281,70 +2291,74 @@ watch(
   .deactivate-dialog-footer {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 14px;
     
     .el-button {
-      min-width: 120px;
-      min-height: 48px;
-      padding: 12px 24px;
-      border-radius: 8px;
+      min-width: 100px;
+      min-height: 36px;
+      padding: 8px 20px;
+      border-radius: 6px;
       font-weight: 500;
-      font-size: 16px;
+      font-size: 14px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       transition: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       
-      // 取消按钮：白色系
+      // 取消按钮：灰色系
       &:first-child {
-        border: 1px solid #e4e7ed;
-        background-color: white;
-        color: #606266;
+        border: 1px solid #dcdfe6;
+        background-color: #f5f7fa;
+        color: #909399;
         
         &:hover {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          border-color: #c0c4cc;
+          color: #909399;
+          background-color: #ebeef5;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          border-color: #c0c4cc;
+          color: #909399;
+          background-color: #e4e7ed;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          border-color: #c0c4cc;
+          color: #909399;
+          background-color: #f5f7fa;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
       
-      // 确认注销按钮：白色系
+      // 确认注销按钮：灰色系
       &:last-child {
-        border: 1px solid #e4e7ed;
-        background-color: white;
-        color: #606266;
+        border: 1px solid #dcdfe6;
+        background-color: #f5f7fa;
+        color: #909399;
         
         &:hover {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          background-color: #ebeef5;
+          border-color: #c0c4cc;
+          color: #909399;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          background-color: #e4e7ed;
+          border-color: #c0c4cc;
+          color: #909399;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
-          background-color: white;
-          border-color: #e4e7ed;
-          color: #606266;
+          background-color: #f5f7fa;
+          border-color: #c0c4cc;
+          color: #909399;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }

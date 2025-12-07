@@ -246,30 +246,25 @@
         <el-form-item label="攻略标签">
           <div class="tag-container">
             <!-- 已选标签 -->
-            <el-tag
+            <span
               v-for="tag in planForm.tags"
               :key="tag"
-              closable
-              @close="removeTag(tag)"
-              type="primary"
-              effect="plain"
-              style="margin-right: 10px; margin-bottom: 10px;"
+              class="tag-item tag-selected"
+              @click="removeTag(tag)"
             >
-              {{ tag }}
-            </el-tag>
+              #{{ tag }}
+            </span>
             <!-- 可选标签列表 -->
             <div class="tag-selector">
-              <el-tag
-                v-for="tag in availableTags"
-                :key="tag"
-                v-if="!planForm.tags.includes(tag)"
-                @click="addTag(tag)"
-                effect="plain"
-                style="margin-right: 10px; margin-bottom: 10px; cursor: pointer;"
-                :class="{ 'tag-available': true }"
-              >
-                {{ tag }}
-              </el-tag>
+              <template v-for="tag in availableTags" :key="tag">
+                <span
+                  v-if="!planForm.tags.includes(tag)"
+                  @click="addTag(tag)"
+                  class="tag-item tag-available"
+                >
+                  #{{ tag }}
+                </span>
+              </template>
             </div>
           </div>
         </el-form-item>
@@ -969,20 +964,45 @@ onMounted(() => {
       }
       
       .tag-container {
-        .tag-selector {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px dashed #e4e7ed;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        
+        .tag-item {
+          display: inline-block;
+          padding: 4px 12px;
+          font-size: 14px;
+          color: #909399;
+          background: #f5f7fa;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s;
+          user-select: none;
           
-          .tag-available {
-            transition: all 0.2s;
+          &.tag-selected {
+            color: #606266;
+            background: #e4e7ed;
             
             &:hover {
-              background-color: #ecf5ff;
-              border-color: #b3d8ff;
-              color: #409eff;
+              background: #dcdfe6;
+              color: #303133;
             }
           }
+          
+          &.tag-available {
+            &:hover {
+              background: #ebeef5;
+              color: #606266;
+            }
+          }
+        }
+        
+        .tag-selector {
+          margin-top: 0;
+          padding-top: 0;
+          border-top: none;
         }
       }
       

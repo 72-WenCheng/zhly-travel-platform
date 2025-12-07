@@ -291,15 +291,15 @@
         
         <view class="form-item">
           <view class="tag-selector">
-            <view 
+            <text 
               v-for="tag in planTags" 
               :key="tag"
-              class="tag-option"
+              class="tag-item"
               :class="{ active: selectedTags.includes(tag) }"
               @click="toggleTag(tag)"
             >
-              <text class="tag-text">{{ tag }}</text>
-            </view>
+              #{{ tag }}
+            </text>
           </view>
         </view>
       </view>
@@ -973,25 +973,25 @@ const publishPlan = async () => {
   flex-wrap: wrap;
   gap: 16rpx;
   
-  .tag-option {
-    padding: 12rpx 24rpx;
-    background: #f5f5f5;
-    border-radius: 50rpx;
-    border: 2px solid transparent;
-    
-    .tag-text {
-      font-size: 26rpx;
-      color: #666;
-    }
+  .tag-item {
+    display: inline-block;
+    padding: 8rpx 20rpx;
+    font-size: 26rpx;
+    color: #909399;
+    background: #f5f7fa;
+    border: none;
+    border-radius: 8rpx;
+    cursor: pointer;
+    transition: all 0.2s;
     
     &.active {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-color: #667eea;
-      
-      .tag-text {
-        color: #fff;
-        font-weight: bold;
-      }
+      color: #606266;
+      background: #e4e7ed;
+    }
+    
+    &:active {
+      background: #dcdfe6;
+      color: #303133;
     }
   }
 }

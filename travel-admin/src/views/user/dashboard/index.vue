@@ -6073,7 +6073,7 @@ onMounted(() => {
   :deep(.el-dialog__header) {
     padding: 16px 20px !important;
     background: #ffffff !important;
-    border-bottom: 1px solid #e5e7eb !important;
+    border-bottom: 1px solid #f0f0f0 !important;
     margin: 0 !important;
     
     .el-dialog__title {
@@ -6106,10 +6106,8 @@ onMounted(() => {
   :deep(.el-dialog__footer) {
     padding: 10px 20px 16px !important;
     background: #ffffff !important;
-    border-top: 1px solid #e5e7eb !important;
+    border-top: 1px solid #f0f0f0 !important;
     margin: 0 !important;
-    border-top-width: 1px !important;
-    border-top-style: solid !important;
   }
   
   .location-selector-content {
@@ -6146,8 +6144,8 @@ onMounted(() => {
             background: white !important;
             border: 1px solid #e4e7ed !important;
             border-color: #e4e7ed !important;
-            padding: 12px 16px !important;
-            min-height: 48px !important;
+            padding: 10px 16px !important;
+            min-height: 42px !important;
             outline: none !important;
             
             &:hover {
@@ -6192,47 +6190,50 @@ onMounted(() => {
   .location-dialog-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    align-items: center;
+    gap: 14px;
     
     .location-dialog-btn {
-      min-width: 120px;
-      min-height: 48px;
-      padding: 12px 24px;
-      border-radius: 8px;
+      min-width: 100px;
+      min-height: 36px;
+      padding: 8px 20px;
+      border-radius: 6px;
       font-weight: 500;
-      font-size: 16px;
+      font-size: 14px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       transition: none;
-      border: 1px solid #e4e7ed;
-      background-color: white;
-      color: #606266;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #dcdfe6;
+      background-color: #f5f7fa;
+      color: #909399;
       
       &:hover {
-        background-color: white;
-        border-color: #e4e7ed;
-        color: #606266;
+        border-color: #c0c4cc;
+        color: #909399;
+        background-color: #ebeef5;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       
       &:active {
-        background-color: white;
-        border-color: #e4e7ed;
-        color: #606266;
+        border-color: #c0c4cc;
+        color: #909399;
+        background-color: #e4e7ed;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       
       &:focus {
-        background-color: white;
-        border-color: #e4e7ed;
-        color: #606266;
+        border-color: #c0c4cc;
+        color: #909399;
+        background-color: #f5f7fa;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-        outline: none;
       }
       
       &.is-loading {
-        border-color: #e4e7ed;
-        background: white;
-        color: #606266;
+        border-color: #dcdfe6;
+        background: #f5f7fa;
+        color: #909399;
       }
     }
   }
