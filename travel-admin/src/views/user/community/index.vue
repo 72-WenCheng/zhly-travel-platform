@@ -147,19 +147,6 @@
               <template #prefix>
                 <el-icon><Search /></el-icon>
               </template>
-              <template #suffix>
-                <div class="suffix-actions">
-                  <el-button 
-                    type="text"
-                    :icon="Close"
-                    circle
-                    size="small"
-                    class="clear-btn"
-                    :class="{ 'is-visible': searchKeyword }"
-                    @click="clearSearchKeyword"
-                  />
-                </div>
-              </template>
             </el-input>
           </div>
         </div>
@@ -174,28 +161,60 @@
               :class="`featured-${index + 1}`"
               @click="viewDetail(plan)"
             >
+              <!-- 图片区域 -->
               <div class="featured-image">
                 <img :src="plan.coverImage || '/default-cover.jpg'" :alt="plan.title" />
-                <div class="featured-overlay"></div>
                 <div class="featured-badge" v-if="index === 0">
                   <el-icon><Trophy /></el-icon>
                   <span>最热</span>
                 </div>
               </div>
+              
+              <!-- 内容区域 -->
               <div class="featured-content">
-                <h3 class="featured-title">{{ plan.title }}</h3>
+                <div class="featured-header">
+                  <h3 class="featured-title">{{ plan.title }}</h3>
+                  <div class="featured-destination" v-if="plan.destination">
+                    <el-icon v-if="plan.destination"><Location /></el-icon>
+                    <span v-if="plan.destination">{{ plan.destination }}</span>
+                  </div>
+                </div>
+                
+                <!-- 作者和统计 -->
                 <div class="featured-meta">
-                  <span class="featured-author">
-                    <el-avatar :size="20" :src="plan.authorAvatar">{{ plan.authorName?.charAt(0) }}</el-avatar>
-                    {{ plan.authorName }}
+                  <div class="featured-author">
+                    <el-avatar :size="28" :src="plan.authorAvatar">{{ plan.authorName?.charAt(0) }}</el-avatar>
+                    <span class="author-name">{{ plan.authorName }}</span>
+                  </div>
+                  <div class="featured-stats-group">
+                    <span class="featured-stats" title="浏览量">
+                      <el-icon><View /></el-icon>
+                      {{ formatNumber(plan.viewCount) }}
+                    </span>
+                    <span class="featured-stats" title="评论数">
+                      <el-icon><ChatDotRound /></el-icon>
+                      {{ formatNumber(plan.commentCount) }}
+                    </span>
+                    <span class="featured-stats" v-if="plan.likeCount > 0" title="点赞数">
+                      <el-icon><Star /></el-icon>
+                      {{ formatNumber(plan.likeCount) }}
+                    </span>
+                    <span class="featured-stats" v-if="plan.collectCount > 0" title="收藏数">
+                      <el-icon><Collection /></el-icon>
+                      {{ formatNumber(plan.collectCount) }}
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- 底部信息 -->
+                <div class="featured-footer">
+                  <span class="featured-budget" v-if="plan.budget !== undefined">
+                    <el-icon><Money /></el-icon>
+                    ¥{{ plan.budget || 0 }}
                   </span>
-                  <span class="featured-stats">
-                    <el-icon><View /></el-icon>
-                    {{ formatNumber(plan.viewCount) }}
-                  </span>
-                  <span class="featured-stats">
-                    <el-icon><ChatDotRound /></el-icon>
-                    {{ formatNumber(plan.commentCount) }}
+                  <span class="featured-time" v-if="plan.createTime">
+                    <el-icon><Clock /></el-icon>
+                    {{ formatTime(plan.createTime) }}
                   </span>
                 </div>
               </div>
@@ -310,11 +329,11 @@
           
           <div class="card-meta">
             <div class="meta-stats">
-              <div class="stat-item">
+              <div class="stat-item" title="浏览量">
                 <el-icon><View /></el-icon>
                 <span>{{ formatNumber(plan.viewCount) }}</span>
               </div>
-              <div class="stat-item">
+              <div class="stat-item" title="评论数">
                 <el-icon><ChatDotRound /></el-icon>
                 <span>{{ formatNumber(plan.commentCount) }}</span>
               </div>
@@ -322,20 +341,26 @@
                 class="stat-item like-action"
                 :class="{ 'is-liked': plan.isLiked }"
                 @click.stop="toggleLike(plan)"
+                title="点赞数"
               >
                 <el-icon v-if="plan.isLiked"><StarFilled /></el-icon>
                 <el-icon v-else><Star /></el-icon>
                 <span>{{ formatNumber(plan.likeCount) }}</span>
+              </div>
+              <div class="stat-item" v-if="plan.collectCount > 0" title="收藏数">
+                <el-icon><Collection /></el-icon>
+                <span>{{ formatNumber(plan.collectCount) }}</span>
               </div>
             </div>
             
             <div class="card-budget">
               <span class="budget-label">预算</span>
               <span class="budget-value">
-                {{ plan.budget && plan.budget > 0 ? `¥${plan.budget}` : '免费' }}
+                ¥{{ plan.budget || 0 }}
               </span>
             </div>
           </div>
+          
         </div>
       </div>
     </div>
@@ -530,12 +555,13 @@ import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
 import { getLevelByPoints } from '@/utils/level'
+import { getCurrentUserId } from '@/utils/user'
 import { planTagOptions, planTagPalette } from '@/constants/tags'
 import {
   Search, Location, Calendar, View, ChatDotRound, Star, StarFilled,
   Loading, TrendCharts, Medal, Money, Trophy, ArrowUp, ArrowDown,
   UserFilled, Plus, Document, Compass, Edit, PriceTag, LocationFilled,
-  Clock, DataAnalysis, Connection, Close, Sunny
+  Clock, DataAnalysis, Connection, Close, Sunny, Collection
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -632,23 +658,23 @@ const hotTopicLinks = ref(
 )
 
 const defaultTopicPalette = {
-  text: '#409eff',
-  bg: 'linear-gradient(120deg, rgba(64,158,255,0.08), rgba(64,158,255,0.16))',
-  hoverBg: 'linear-gradient(120deg, rgba(64,158,255,0.16), rgba(64,158,255,0.28))',
-  border: 'rgba(64,158,255,0.3)',
-  shadow: '0 6px 16px rgba(64,158,255,0.12)',
-  hoverShadow: '0 12px 24px rgba(64,158,255,0.18)'
+  text: '#606266',
+  bg: '#f5f7fa',
+  hoverBg: '#e4e7ed',
+  border: '#e4e7ed',
+  shadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+  hoverShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
 }
 
 const getTopicStyle = (tag: string) => {
-  const palette = planTagPalette[tag] || defaultTopicPalette
+  // 统一使用白灰色系
   return {
-    '--topic-color': palette.text,
-    '--topic-bg': palette.bg,
-    '--topic-hover-bg': palette.hoverBg,
-    '--topic-border-color': palette.border,
-    '--topic-shadow': palette.shadow,
-    '--topic-hover-shadow': palette.hoverShadow
+    '--topic-color': defaultTopicPalette.text,
+    '--topic-bg': defaultTopicPalette.bg,
+    '--topic-hover-bg': defaultTopicPalette.hoverBg,
+    '--topic-border-color': defaultTopicPalette.border,
+    '--topic-shadow': defaultTopicPalette.shadow,
+    '--topic-hover-shadow': defaultTopicPalette.hoverShadow
   }
 }
 
@@ -865,15 +891,88 @@ const loadPlans = async () => {
         response.data.list = featuredList
       }
     } else if (activeCategory.value === 'followed') {
-      // 关注动态：暂时使用最新排序（需要后端支持关注关系）
-      const params = {
-        page: currentPage.value,
-        size: pageSize.value,
-        status: 1, // 严格要求：只查询已发布状态
-        keyword: keywordParam,
-        destination: selectedDestination.value || undefined
+      // 关注动态：只显示关注的作者的攻略，排除自己的攻略
+      const currentUserId = getCurrentUserId()
+      
+      if (!currentUserId) {
+        // 未登录，返回空列表
+        response = { code: 200, data: { list: [], total: 0 } }
+      } else {
+        // 获取关注的用户列表（静默处理，不显示错误）
+        let followedUserIds: number[] = []
+        try {
+          // 使用 axios 直接调用，避免触发全局错误处理
+          const axios = (await import('axios')).default
+          const token = sessionStorage.getItem('travel_token') || localStorage.getItem('travel_token')
+          const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+          
+          try {
+            const followResponse = await axios.get(`${baseURL}/user/follow/following-list`, {
+              params: {
+                userId: currentUserId,
+                page: 1,
+                limit: 1000
+              },
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              validateStatus: () => true // 不抛出任何HTTP状态码错误
+            })
+            
+            // 检查响应数据
+            if (followResponse.data && followResponse.data.code === 200 && Array.isArray(followResponse.data.data)) {
+              followedUserIds = followResponse.data.data
+                .map((item: any) => item.followeeId)
+                .filter((id: any) => id && typeof id === 'number')
+            }
+          } catch (err) {
+            // 完全静默，不输出任何错误
+            followedUserIds = []
+          }
+        } catch (error) {
+          // 完全静默，不输出任何错误
+          followedUserIds = []
+        }
+        
+        if (followedUserIds.length === 0) {
+          // 没有关注任何用户，返回空列表（静默处理，不报错）
+          response = { code: 200, data: { list: [], total: 0 } }
+        } else {
+          // 获取攻略列表
+          try {
+            const params = {
+              page: currentPage.value,
+              size: pageSize.value * 2, // 获取更多数据，因为需要过滤
+              status: 1, // 严格要求：只查询已发布状态
+              keyword: keywordParam,
+              destination: selectedDestination.value || undefined
+            }
+            response = await request.get('/travel-plan/list', { params }).catch(() => {
+              // 获取攻略列表失败，返回空列表
+              return { code: 200, data: { list: [], total: 0 } }
+            })
+            
+            // 前端过滤：只显示关注的用户的攻略，排除自己的攻略
+            if (response && response.code === 200 && response.data?.list) {
+              response.data.list = response.data.list.filter((plan: any) => {
+                const planAuthorId = plan.authorId || plan.userId
+                // 只显示关注的用户的攻略，且不是自己的攻略
+                return planAuthorId && 
+                       followedUserIds.includes(planAuthorId) && 
+                       planAuthorId !== currentUserId
+              })
+              // 更新总数
+              if (response.data.total !== undefined) {
+                response.data.total = response.data.list.length
+              }
+            } else {
+              // 响应格式不正确，返回空列表
+              response = { code: 200, data: { list: [], total: 0 } }
+            }
+          } catch (error) {
+            // 获取攻略列表出错，静默处理
+            response = { code: 200, data: { list: [], total: 0 } }
+          }
+        }
       }
-      response = await request.get('/travel-plan/list', { params })
     }
     
     if (response && response.code === 200 && response.data) {
@@ -1027,74 +1126,9 @@ const loadPlans = async () => {
   } catch (error) {
     console.error('加载攻略失败:', error)
     ElMessage.error(error?.message || '加载失败，请稍后重试')
-    
-    // 如果API失败，可以选择使用模拟数据作为降级方案
-    // const mockData = generateMockPlans()
-    // if (currentPage.value === 1) {
-    //   plans.value = mockData
-    // } else {
-    //   plans.value.push(...mockData)
-    // }
   } finally {
     loading.value = false
   }
-}
-
-// 生成模拟数据
-const generateMockPlans = () => {
-  const mockPlans = []
-  const titles = [
-    '重庆三日游完美攻略',
-    '成都美食之旅',
-    '西安古都文化体验',
-    '云南大理洱海骑行',
-    '青海湖环湖游',
-    '西藏拉萨朝圣之旅',
-    '新疆独库公路自驾',
-    '内蒙古草原深度游',
-    '海南三亚度假攻略',
-    '杭州西湖诗意之旅'
-  ]
-  
-  const destinations = ['重庆', '成都', '西安', '大理', '青海', '西藏', '新疆', '内蒙古', '三亚', '杭州']
-  const descriptions = [
-    '探索山城魅力，品尝正宗火锅，欣赏绝美夜景',
-    '慢生活体验，寻找最地道的川味小吃',
-    '穿越千年历史，感受古都文化魅力',
-    '骑行洱海，邂逅诗和远方',
-    '环湖骑行，感受高原湖泊之美',
-    '朝圣之旅，感受信仰的力量',
-    '自驾天路，穿越最美风景',
-    '草原深度游，体验蒙古族风情',
-    '海岛度假，享受阳光沙滩',
-    '西湖漫步，品味江南水乡'
-  ]
-  
-  const authors = ['旅行达人小王', '摄影师老李', '背包客小张', '美食探索者', '自驾游爱好者']
-  
-  for (let i = 0; i < 10; i++) {
-    const randomIndex = Math.floor(Math.random() * titles.length)
-    mockPlans.push({
-      id: currentPage.value * 100 + i,
-      title: titles[randomIndex],
-      destination: destinations[randomIndex],
-      description: descriptions[randomIndex],
-      coverImage: `https://picsum.photos/400/${240 + Math.floor(Math.random() * 80)}?random=${currentPage.value * 10 + i}`,
-      imageHeight: 240 + Math.floor(Math.random() * 80),
-      days: Math.floor(Math.random() * 7) + 1,
-      budget: Math.floor(Math.random() * 5000) + 500,
-      authorName: authors[Math.floor(Math.random() * authors.length)],
-      authorAvatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
-      viewCount: Math.floor(Math.random() * 10000),
-      commentCount: Math.floor(Math.random() * 500),
-      likeCount: Math.floor(Math.random() * 1000),
-      isLiked: false,
-      isFeatured: Math.random() > 0.7,
-      createTime: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
-    })
-  }
-  
-  return mockPlans
 }
 
 // 查看详情
@@ -1297,6 +1331,14 @@ const loadFeaturedPlans = async () => {
               coverImage = imageList[0]
             }
           }
+          // 处理标签
+          let tags = plan.tags || []
+          if (typeof tags === 'string') {
+            tags = tags.split(',').filter(Boolean).map((t: string) => t.trim())
+          } else if (!Array.isArray(tags)) {
+            tags = []
+          }
+          
           return {
             id: plan.id,
             title: plan.title,
@@ -1304,7 +1346,14 @@ const loadFeaturedPlans = async () => {
             authorName: plan.author || plan.authorName || '匿名用户',
             authorAvatar: plan.authorAvatar || '',
             viewCount: plan.viewCount || 0,
-            commentCount: plan.commentCount || 0
+            commentCount: plan.commentCount || 0,
+            likeCount: plan.likeCount || 0,
+            collectCount: plan.collectCount || 0,
+            destination: plan.destination || '',
+            days: plan.days || 0,
+            budget: plan.budget || 0,
+            tags: tags,
+            createTime: plan.createTime || plan.publishTime || ''
           }
         })
     }
@@ -2200,11 +2249,18 @@ watch(statsPeriod, () => {
           white-space: nowrap;
           display: inline-flex;
           align-items: center;
-          font-weight: 600;
-          color: var(--topic-color, #409eff);
-          background: var(--topic-bg, rgba(64, 158, 255, 0.1));
-          border: 1px solid var(--topic-border-color, rgba(64, 158, 255, 0.3));
-          box-shadow: var(--topic-shadow, 0 6px 12px rgba(0, 0, 0, 0.08));
+          font-weight: 500;
+          color: var(--topic-color, #606266);
+          background: var(--topic-bg, #f5f7fa);
+          border: 1px solid var(--topic-border-color, #e4e7ed);
+          box-shadow: var(--topic-shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
+          transition: all 0.2s;
+
+          &:hover {
+            background: var(--topic-hover-bg, #e4e7ed);
+            box-shadow: var(--topic-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
+            border-color: #d3d6db;
+          }
 
           .topic-label {
             letter-spacing: 0.5px;
@@ -2221,31 +2277,40 @@ watch(statsPeriod, () => {
             max-width: 100%;
             
             :deep(.el-input__wrapper) {
-              border-radius: 14px;
-              border: 1px solid #e4e7ed;
-              background-color: #ffffff;
-              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-              padding: 6px 12px;
-              min-height: 42px;
-              transition: border-color 0.25s, box-shadow 0.25s, background-color 0.25s;
+              border-radius: 8px;
+              border: 1px solid #e4e7ed !important;
+              background-color: white !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+              padding: 0 16px !important;
+              min-height: 44px !important;
+              transition: none !important;
 
-              &:hover {
-                border-color: #dcdfe6;
-                background-color: #fafafa;
+              .el-input__inner {
+                height: 44px !important;
+                line-height: 44px !important;
+                font-size: 15px !important;
               }
-
-              &.is-focus {
-                border-color: #c0c4cc;
-                background-color: #ffffff;
-                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+              
+              // 移除所有 hover 和 focus 效果
+              &:hover,
+              &:focus,
+              &:focus-visible,
+              &.is-focus,
+              &.is-focus:hover,
+              &:hover.is-focus {
+                border: 1px solid #e4e7ed !important;
+                border-color: #e4e7ed !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+                outline: none !important;
+                background: white !important;
               }
             }
 
           :deep(.el-input__inner) {
             color: #303133;
-            font-size: 14px;
-            line-height: 28px;
-            height: 28px;
+            font-size: 15px !important;
+            line-height: 44px !important;
+            height: 44px !important;
           
             &::placeholder {
               color: #c0c4cc;
@@ -2329,47 +2394,37 @@ watch(statsPeriod, () => {
         gap: 16px;
 
         .featured-plan-card {
-          position: relative;
+          background: white;
           border-radius: 12px;
           overflow: hidden;
           cursor: pointer;
           transition: all 0.3s;
           box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          display: flex;
+          flex-direction: column;
+          border: 1px solid #f0f0f0;
 
           &:hover {
             transform: translateY(-4px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            border-color: #e4e7ed;
           }
 
           &.featured-1 {
             grid-column: 1 / -1;
-            height: 280px;
-          }
-
-          &:not(.featured-1) {
-            height: 200px;
           }
 
           .featured-image {
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: relative;
             width: 100%;
-            height: 100%;
+            height: 200px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f0f0f0, #e8e8e8);
 
             img {
               width: 100%;
               height: 100%;
               object-fit: cover;
-            }
-
-            .featured-overlay {
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              height: 60%;
-              background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
             }
 
             .featured-badge {
@@ -2386,46 +2441,148 @@ watch(statsPeriod, () => {
               font-size: 12px;
               font-weight: 600;
               z-index: 2;
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             }
           }
 
           .featured-content {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 20px;
-            z-index: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
 
-            .featured-title {
-              margin: 0 0 12px 0;
-              font-size: 18px;
-              font-weight: 700;
-              color: white;
-              line-height: 1.4;
-              display: -webkit-box;
-              -webkit-line-clamp: 2;
-              -webkit-box-orient: vertical;
-              overflow: hidden;
+            .featured-header {
+              .featured-title {
+                margin: 0 0 8px 0;
+                font-size: 18px;
+                font-weight: 700;
+                color: #1f2937;
+                line-height: 1.4;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+              }
+
+              .featured-destination {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                color: #667eea;
+                font-weight: 500;
+                
+                .el-icon {
+                  font-size: 14px;
+                }
+                
+                .featured-days {
+                  margin-left: 4px;
+                  padding: 2px 8px;
+                  background: rgba(102, 126, 234, 0.1);
+                  border-radius: 12px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: #667eea;
+                }
+              }
+            }
+            
+            .featured-tags {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              flex-wrap: wrap;
+              
+              .featured-tag {
+                padding: 3px 10px;
+                background: #f5f7fa;
+                border-radius: 12px;
+                font-size: 11px;
+                color: #4b5563;
+                font-weight: 500;
+                border: 1px solid #e4e7ed;
+                transition: all 0.2s;
+                
+                &:hover {
+                  background: #e4e7ed;
+                  border-color: #cbd5e1;
+                }
+              }
             }
 
             .featured-meta {
               display: flex;
               align-items: center;
-              gap: 16px;
-              font-size: 13px;
-              color: rgba(255, 255, 255, 0.9);
+              justify-content: space-between;
+              gap: 12px;
+              padding-top: 8px;
+              border-top: 1px solid #f0f0f0;
 
               .featured-author {
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
+                
+                .author-name {
+                  font-size: 13px;
+                  color: #4b5563;
+                  font-weight: 500;
+                }
+              }
+              
+              .featured-stats-group {
+                display: flex;
+                align-items: center;
+                gap: 12px;
               }
 
               .featured-stats {
                 display: flex;
                 align-items: center;
                 gap: 4px;
+                font-size: 12px;
+                color: #6b7280;
+                
+                .el-icon {
+                  font-size: 14px;
+                  color: #9ca3af;
+                }
+              }
+            }
+            
+            .featured-footer {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 12px;
+              padding-top: 8px;
+              border-top: 1px solid #f0f0f0;
+              font-size: 12px;
+              
+              .featured-budget {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-weight: 600;
+                color: #1f2937;
+                
+                .el-icon {
+                  font-size: 14px;
+                  color: #f59e0b;
+                }
+              }
+              
+              .featured-time {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                color: #9ca3af;
+                
+                .el-icon {
+                  font-size: 12px;
+                }
               }
             }
           }
@@ -3019,6 +3176,55 @@ watch(statsPeriod, () => {
       }
     }
   }
+}
+</style>
+
+<style lang="scss">
+// 全局覆盖社区页面搜索框样式 - 确保优先级最高
+.community-page .search-right .inline-search .el-input__wrapper,
+.community-page .search-right .inline-search .el-input .el-input__wrapper,
+body .community-page .search-right .inline-search .el-input__wrapper,
+body .community-page .search-right .inline-search .el-input .el-input__wrapper {
+  border-radius: 8px !important;
+  border: 1px solid #e4e7ed !important;
+  background-color: white !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  padding: 0 16px !important;
+  min-height: 44px !important;
+  transition: none !important;
+  
+  .el-input__inner {
+    height: 44px !important;
+    line-height: 44px !important;
+    font-size: 15px !important;
+  }
+  
+  // 移除所有 hover 和 focus 效果
+  &:hover,
+  &:focus,
+  &:focus-visible,
+  &.is-focus,
+  &.is-focus:hover,
+  &:hover.is-focus {
+    border: 1px solid #e4e7ed !important;
+    border-color: #e4e7ed !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    outline: none !important;
+    background: white !important;
+  }
+}
+
+// 覆盖所有可能的选择器组合
+.community-page .search-right .inline-search .el-input__wrapper.is-focus,
+.community-page .search-right .inline-search .el-input.is-focus .el-input__wrapper,
+.community-page .search-right .inline-search .el-input .el-input__wrapper.is-focus,
+body .community-page .search-right .inline-search .el-input__wrapper.is-focus,
+body .community-page .search-right .inline-search .el-input.is-focus .el-input__wrapper {
+  border: 1px solid #e4e7ed !important;
+  border-color: #e4e7ed !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  outline: none !important;
+  background: white !important;
 }
 </style>
 

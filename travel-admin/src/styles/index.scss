@@ -592,5 +592,107 @@ body .el-dialog__wrapper .agreement-dialog-dark,
   }
 }
 
-
-
+/* 强制覆盖城市选择框的样式 - 简化交互，减少视觉变化 */
+.recommendations-page .location-filter .el-select.location-select-black-focus,
+.recommendations-page .location-filter .location-select-black-focus,
+body .recommendations-page .location-filter .el-select.location-select-black-focus,
+body .recommendations-page .location-filter .location-select-black-focus {
+  .el-input__wrapper,
+  .el-input .el-input__wrapper,
+  .el-select__wrapper {
+    // 覆盖所有 Element Plus 默认的蓝色主题色
+    --el-input-focus-border-color: #909399 !important;
+    --el-border-color: #909399 !important;
+    --el-color-primary: #909399 !important;
+    
+    // 默认状态：统一的浅灰色边框，白色背景
+    border: 1px solid #e4e7ed !important;
+    border-color: #e4e7ed !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    background: white !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+    
+    // 防止抖动和收缩
+    transform: none !important;
+    scale: 1 !important;
+    width: 180px !important;
+    min-width: 180px !important;
+    max-width: 180px !important;
+    
+    // 移除所有可能的双重边框（outline）
+    outline: none !important;
+    outline-color: transparent !important;
+    outline-width: 0 !important;
+    outline-style: none !important;
+    
+    // 简化过渡，只保留边框颜色变化
+    transition: border-color 0.15s ease !important;
+    
+    // Hover 状态：保持完全相同的样式，不变化
+    &:hover:not(.is-focus) {
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      background: white !important;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+      outline: none !important;
+    }
+    
+    // Focus 状态：只改变边框颜色为稍深的灰色
+    &.is-focus,
+    &:focus,
+    &:focus-visible,
+    &:focus-within {
+      --el-input-focus-border-color: #909399 !important;
+      --el-border-color: #909399 !important;
+      border-color: #909399 !important;
+      border: 1px solid #909399 !important;
+      background: white !important;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+      transform: none !important;
+      scale: 1 !important;
+      outline: none !important;
+    }
+    
+    // Hover + Focus 组合：保持与 focus 相同的样式
+    &:hover.is-focus,
+    &.is-focus:hover,
+    &.is-focus:focus,
+    &.is-focus:focus-visible {
+      --el-input-focus-border-color: #909399 !important;
+      --el-border-color: #909399 !important;
+      border-color: #909399 !important;
+      border: 1px solid #909399 !important;
+      background: white !important;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+      transform: none !important;
+      scale: 1 !important;
+      outline: none !important;
+    }
+  }
+  
+  // 当 el-select 本身获得焦点时
+  &.is-focus,
+  &:focus,
+  &:focus-within {
+    .el-input__wrapper,
+    .el-input .el-input__wrapper {
+      --el-input-focus-border-color: #909399 !important;
+      --el-border-color: #909399 !important;
+      border-color: #909399 !important;
+      border: 1px solid #909399 !important;
+      background: white !important;
+      transform: none !important;
+      scale: 1 !important;
+      outline: none !important;
+    }
+  }
+  
+  // 确保没有嵌套元素造成双重边框
+  * {
+    outline: none !important;
+    outline-color: transparent !important;
+    outline-width: 0 !important;
+    outline-style: none !important;
+  }
+}

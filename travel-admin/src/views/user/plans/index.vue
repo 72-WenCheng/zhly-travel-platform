@@ -131,8 +131,9 @@
             placeholder="选择审核状态" 
             clearable 
             size="large"
-            style="width: 220px"
-            popper-class="audit-status-select"
+            style="width: 180px"
+            class="audit-status-select"
+            popper-class="audit-status-select-dropdown"
           >
             <el-option :value="null">
               <div class="status-option-item all-status">
@@ -334,9 +335,6 @@ const userStore = useUserStore()
 const loading = ref(false)
 const defaultCover = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600&h=400&fit=crop'
 
-// 是否使用模拟数据
-const useMockData = ref(false)
-
 // 统计数据
 const stats = reactive({
   total: 0,
@@ -360,8 +358,6 @@ const searchForm = reactive<{
 
 // 攻略列表
 const planList = ref<any[]>([])
-// 所有模拟数据（用于筛选）
-const allMockPlans = ref<any[]>([])
 // 刷新键，用于强制重新渲染
 const refreshKey = ref(0)
 
@@ -382,20 +378,6 @@ const loadPlans = async (reset: boolean = false) => {
   } else {
     if (loadingMore.value || !hasMore.value) return
     loadingMore.value = true
-  }
-  
-  // 使用模拟数据
-  if (useMockData.value) {
-    setTimeout(() => {
-      loadMockData()
-      filterMockData(reset)
-      if (reset) {
-        loading.value = false
-      } else {
-        loadingMore.value = false
-      }
-    }, 300) // 模拟加载延迟
-    return
   }
   
   // 使用真实API
@@ -472,10 +454,8 @@ const loadPlans = async (reset: boolean = false) => {
       console.log('✅ 攻略列表加载成功，当前', planList.value.length, '条，总共', totalCount.value, '条，还有更多:', hasMore.value, '当前页码:', currentPage.value)
     }
   } catch (error) {
-    console.error('加载攻略列表失败，切换到模拟数据:', error)
-    useMockData.value = true
-    loadMockData()
-    filterMockData(reset)
+    console.error('加载攻略列表失败:', error)
+    ElMessage.error('加载攻略列表失败，请稍后重试')
   } finally {
     if (reset) {
       loading.value = false
@@ -489,11 +469,6 @@ const loadPlans = async (reset: boolean = false) => {
 
 // 加载统计数据
 const loadStats = async () => {
-  // 使用模拟数据时直接返回
-  if (useMockData.value) {
-    return
-  }
-  
   try {
     // 优先从userStore获取当前标签页的用户信息
     let userInfo = userStore.userInfo
@@ -542,119 +517,6 @@ const loadStats = async () => {
   } catch (error) {
     console.error('加载统计数据失败:', error)
   }
-}
-
-// 加载模拟数据
-const loadMockData = () => {
-  // 只在第一次加载时初始化数据
-  if (allMockPlans.value.length === 0) {
-    allMockPlans.value = [
-      {
-        id: 1,
-        title: '重庆三日游攻略',
-        destination: '重庆',
-        description: '探索山城魅力，品尝正宗火锅，欣赏绝美夜景',
-        coverImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop',
-        days: 3,
-        budget: 1500,
-        status: 1,
-        viewCount: 1256,
-        likeCount: 89,
-        collectCount: 45,
-        createTime: '2025-10-20 10:30:00'
-      },
-      {
-        id: 2,
-        title: '成都休闲游',
-        destination: '成都',
-        description: '慢生活体验，熊猫基地，宽窄巷子，春熙路',
-        coverImage: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=600&h=400&fit=crop',
-        days: 2,
-        budget: 800,
-        status: 0,
-        viewCount: 0,
-        likeCount: 0,
-        collectCount: 0,
-        createTime: '2025-10-22 14:20:00'
-      },
-      {
-        id: 3,
-        title: '西安历史文化之旅',
-        destination: '西安',
-        description: '探索古都文化，兵马俑，大雁塔，回民街美食',
-        coverImage: 'https://images.unsplash.com/photo-1564415637254-92c66292cd4e?w=600&h=400&fit=crop',
-        days: 4,
-        budget: 2000,
-        status: 2,
-        viewCount: 0,
-        likeCount: 0,
-        collectCount: 0,
-        createTime: '2025-10-23 09:15:00'
-      }
-    ]
-    
-    stats.total = 3
-    // 模拟数据统计
-    stats.draft = allMockPlans.value.filter((p: any) => !p.auditStatus || p.auditStatus === null).length
-    stats.pending = allMockPlans.value.filter((p: any) => Number(p.auditStatus) === 0).length
-    stats.published = allMockPlans.value.filter((p: any) => Number(p.auditStatus) === 1 && Number(p.status) === 1).length
-    stats.unpublished = allMockPlans.value.filter((p: any) => Number(p.auditStatus) === 1 && Number(p.status) === 0).length
-    stats.rejected = allMockPlans.value.filter((p: any) => Number(p.auditStatus) === 2).length
-  }
-}
-
-// 筛选模拟数据
-const filterMockData = (reset: boolean = false) => {
-  let filtered = [...allMockPlans.value]
-  
-  // 按标题筛选
-  if (searchForm.keyword) {
-    filtered = filtered.filter(plan => 
-      plan.title.toLowerCase().includes(searchForm.keyword.toLowerCase())
-    )
-  }
-  
-  // 按目的地筛选
-  if (searchForm.destination) {
-    filtered = filtered.filter(plan => 
-      plan.destination.toLowerCase().includes(searchForm.destination.toLowerCase())
-    )
-  }
-  
-  // 按审核状态筛选
-  if (searchForm.auditStatus !== null && searchForm.auditStatus !== undefined) {
-    filtered = filtered.filter(plan => plan.auditStatus === searchForm.auditStatus)
-  }
-  
-  // 更新总数
-  totalCount.value = filtered.length
-  
-  // 分页处理
-  if (reset) {
-    const start = 0
-    const end = pageSize.value
-    planList.value = filtered.slice(start, end)
-    hasMore.value = filtered.length > pageSize.value
-    // 更新页码（只有在还有更多数据时才更新）
-    if (hasMore.value && planList.value.length > 0) {
-      currentPage.value = 2 // 下次加载第2页
-    } else {
-      currentPage.value = 1
-    }
-  } else {
-    const start = planList.value.length
-    const end = start + pageSize.value
-    const newPlans = filtered.slice(start, end)
-    planList.value = [...planList.value, ...newPlans]
-    hasMore.value = planList.value.length < filtered.length
-    
-    // 更新页码（只有在还有更多数据时才更新）
-    if (hasMore.value && newPlans.length > 0) {
-      currentPage.value++
-    }
-  }
-  
-  console.log('✅ 模拟数据筛选完成，当前', planList.value.length, '条，总共', totalCount.value, '条，还有更多:', hasMore.value, '当前页码:', currentPage.value)
 }
 
 // 创建攻略
@@ -1325,54 +1187,104 @@ onUnmounted(() => {
         margin-bottom: 0;
       }
       
+      // 输入框样式 - 移除所有交互效果，只保留默认阴影，增大尺寸
       :deep(.el-input) {
         .el-input__wrapper {
-          border-radius: 10px;
-          box-shadow: 0 0 0 1px #e4e7ed inset;
-          transition: all 0.3s;
+          border-radius: 8px;
+          border: 1px solid #e4e7ed !important;
+          background: white !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+          transition: none !important;
+          min-height: 44px !important;
+          padding: 0 16px !important;
           
-          &:hover {
-            box-shadow: 0 0 0 1px #c0c4cc inset;
+          .el-input__inner {
+            height: 44px !important;
+            line-height: 44px !important;
+            font-size: 15px !important;
           }
           
-          &.is-focus {
-            box-shadow: 0 0 0 1px #909399 inset !important;
-            border-color: #909399 !important;
-          }
-        }
-        
-      }
-      
-      :deep(.el-select) {
-        // 禁用所有默认的 focus 效果
-        .el-select__wrapper,
-        .el-input__wrapper {
-          border-radius: 10px;
-          box-shadow: 0 0 0 1px #e4e7ed inset;
-          transition: border-color 0.3s, box-shadow 0.3s;
-          border: none !important;
-          
-          &:hover {
-            box-shadow: 0 0 0 1px #c0c4cc inset;
-          }
-          
-          // 禁用所有默认的 focus 样式
+          // 移除所有 hover 和 focus 效果
+          &:hover,
           &:focus,
           &:focus-visible,
-          &.is-focus {
+          &.is-focus,
+          &.is-focus:hover,
+          &:hover.is-focus {
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
             outline: none !important;
-            box-shadow: 0 0 0 1px #303133 inset !important;
-            border: none !important;
+            background: white !important;
+          }
+        }
+      }
+      
+      // 选择框样式 - 移除所有交互效果，只保留默认阴影，增大尺寸
+      :deep(.el-select) {
+        .el-select__wrapper,
+        .el-input__wrapper,
+        .el-input .el-input__wrapper {
+          border-radius: 8px;
+          border: 1px solid #e4e7ed !important;
+          background: white !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+          transition: none !important;
+          min-height: 44px !important;
+          padding: 0 16px !important;
+          
+          .el-input__inner {
+            height: 44px !important;
+            line-height: 44px !important;
+            font-size: 15px !important;
+          }
+      }
+      
+      // 审核状态选择框特殊样式 - 高度更大，宽度更小
+      :deep(.audit-status-select) {
+        .el-select__wrapper,
+        .el-input__wrapper,
+        .el-input .el-input__wrapper {
+          min-height: 50px !important;
+          
+          .el-input__inner {
+            height: 50px !important;
+            line-height: 50px !important;
+          }
+        }
+          
+          // 移除所有 hover 和 focus 效果
+          &:hover,
+          &:focus,
+          &:focus-visible,
+          &.is-focus,
+          &.is-focus:hover,
+          &:hover.is-focus {
+            --el-input-focus-border-color: #e4e7ed !important;
+            --el-border-color: #e4e7ed !important;
+            --el-color-primary: #e4e7ed !important;
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            outline: none !important;
+            background: white !important;
           }
         }
         
-        // 当 el-select 获得焦点时
-        &.is-focus {
+        // 当 el-select 获得焦点时，保持默认样式
+        &.is-focus,
+        &:focus,
+        &:focus-within {
           .el-select__wrapper,
-          .el-input__wrapper {
-            box-shadow: 0 0 0 1px #303133 inset !important;
-            border: none !important;
+          .el-input__wrapper,
+          .el-input .el-input__wrapper {
+            --el-input-focus-border-color: #e4e7ed !important;
+            --el-border-color: #e4e7ed !important;
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
             outline: none !important;
+            background: white !important;
           }
         }
       }
@@ -1643,6 +1555,23 @@ onUnmounted(() => {
       .el-empty__description p {
         color: #909399;
         font-size: 14px;
+      }
+      
+      .el-button--primary {
+        background: #ffffff;
+        border: 1px solid #e4e7ed;
+        color: #606266;
+        
+        &:hover {
+          background: #f5f7fa;
+          border-color: #dcdfe6;
+          color: #303133;
+        }
+        
+        &:active {
+          background: #ebedf0;
+          border-color: #c0c4cc;
+        }
       }
     }
   }
@@ -1968,6 +1897,9 @@ onUnmounted(() => {
 
 // 审核状态下拉框样式
 .audit-status-select {
+  min-width: 200px !important;
+  max-width: 220px !important;
+  
   .el-select-dropdown__item {
     height: auto !important;
     padding: 0 !important;
@@ -1980,13 +1912,14 @@ onUnmounted(() => {
     .status-option-item {
       display: flex;
       align-items: center;
+      justify-content: center;
       padding: 12px 16px;
       transition: all 0.3s;
       border-radius: 6px;
       margin: 4px 8px;
       
       .status-text {
-        flex: 1;
+        text-align: center;
         width: 100%;
         
         .status-label {
@@ -2087,31 +2020,73 @@ onUnmounted(() => {
   }
 }
 
-// 完全禁用 Element Plus 默认的蓝色 focus 样式，重新写为黑色
+// 完全移除所有交互效果，只保留默认阴影
+.user-plans-new .filter-card .el-input__wrapper,
+.user-plans-new .filter-card .el-input__wrapper.is-focus,
+.user-plans-new .filter-card .el-input__wrapper:hover {
+  border: 1px solid #e4e7ed !important;
+  border-color: #e4e7ed !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  outline: none !important;
+  background: white !important;
+}
+
 .user-plans-new .filter-card .el-select {
-  // 禁用所有默认的 focus 效果
   .el-select__wrapper,
-  .el-input__wrapper {
+  .el-input__wrapper,
+  .el-input .el-input__wrapper {
+    border: 1px solid #e4e7ed !important;
+    border-color: #e4e7ed !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    background: white !important;
+    outline: none !important;
+    
+    // 移除所有交互效果
+    &:hover,
     &:focus,
     &:focus-visible,
     &.is-focus {
-      --el-input-focus-border-color: #303133 !important;
-      --el-border-color: #303133 !important;
-      border: none !important;
-      box-shadow: 0 0 0 1px #303133 inset !important;
+      --el-input-focus-border-color: #e4e7ed !important;
+      --el-border-color: #e4e7ed !important;
+      --el-color-primary: #e4e7ed !important;
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
       outline: none !important;
+      background: white !important;
     }
   }
   
-  // 当 el-select 获得焦点时
-  &.is-focus {
+  // 当 el-select 获得焦点时，保持默认样式
+  &.is-focus,
+  &:focus,
+  &:focus-within {
     .el-select__wrapper,
-    .el-input__wrapper {
-      --el-input-focus-border-color: #303133 !important;
-      --el-border-color: #303133 !important;
-      border: none !important;
-      box-shadow: 0 0 0 1px #303133 inset !important;
+    .el-input__wrapper,
+    .el-input .el-input__wrapper {
+      --el-input-focus-border-color: #e4e7ed !important;
+      --el-border-color: #e4e7ed !important;
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
       outline: none !important;
+      background: white !important;
+    }
+  }
+}
+
+// 审核状态选择框特殊样式 - 高度更大，宽度更小
+.user-plans-new .filter-card .audit-status-select {
+  width: 180px !important;
+  
+  .el-select__wrapper,
+  .el-input__wrapper,
+  .el-input .el-input__wrapper {
+    min-height: 50px !important;
+    
+    .el-input__inner {
+      height: 50px !important;
+      line-height: 50px !important;
     }
   }
 }

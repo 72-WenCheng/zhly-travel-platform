@@ -80,7 +80,9 @@
             v-model="searchForm.keyword" 
             placeholder="搜索收藏内容" 
             clearable 
-            style="width: 300px;"
+            size="large"
+            style="width: 350px;"
+            class="search-input-large"
             @change="handleSearch"
           >
             <template #prefix>
@@ -94,8 +96,9 @@
             v-model="searchForm.collectType" 
             placeholder="收藏类型" 
             clearable
-            style="width: 200px;"
-            class="collect-type-select"
+            size="large"
+            style="width: 250px;"
+            class="collect-type-select collect-type-select-large"
             @change="handleSearch"
             @visible-change="handleSelectVisibleChange"
           >
@@ -172,7 +175,7 @@
       description="暂无收藏"
       :image-size="120"
     >
-      <el-button type="primary" @click="$router.push('/home/user/recommendations')">
+      <el-button class="discover-btn" @click="$router.push('/home/user/recommendations')">
         去发现景点
       </el-button>
     </el-empty>
@@ -1048,90 +1051,128 @@ const handleDelete = async (item: any) => {
         margin-bottom: 0;
       }
 
-      // 输入框focus样式 - 黑色边框
-      :deep(.el-input) {
+      // 输入框样式 - 移除所有交互效果，只保留默认阴影，增大尺寸
+      :deep(.el-input),
+      :deep(.search-input-large) {
         .el-input__wrapper {
           border-radius: 8px;
+          border: 1px solid #e4e7ed !important;
+          background: white !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+          transition: none !important;
+          min-height: 44px !important;
+          padding: 0 16px !important;
           
+          .el-input__inner {
+            height: 44px !important;
+            line-height: 44px !important;
+            font-size: 15px !important;
+          }
+          
+          // 移除所有 hover 和 focus 效果
+          &:hover,
+          &:focus,
+          &:focus-visible,
           &.is-focus,
-          &.is-focus:hover {
-            border-color: #303133 !important;
-            box-shadow: 0 0 0 1px #303133 inset !important;
+          &.is-focus:hover,
+          &:hover.is-focus {
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            outline: none !important;
+            background: white !important;
           }
         }
       }
       
-      // 选择框focus样式 - 黑色边框（覆盖所有可能的状态）
-      :deep(.el-select) {
-        // 禁用所有默认的 focus 效果，使用CSS变量覆盖
+      // 选择框样式 - 移除所有交互效果，只保留默认阴影，增大尺寸
+      :deep(.el-select),
+      :deep(.collect-type-select-large) {
         .el-select__wrapper,
-        .el-input__wrapper {
+        .el-input__wrapper,
+        .el-input .el-input__wrapper {
           border-radius: 8px;
-          border: none !important;
+          border: 1px solid #e4e7ed !important;
+          background: white !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+          transition: none !important;
+          min-height: 44px !important;
+          padding: 0 16px !important;
           
+          .el-input__inner {
+            height: 44px !important;
+            line-height: 44px !important;
+            font-size: 15px !important;
+          }
+          
+          // 移除所有 hover 和 focus 效果
+          &:hover,
           &:focus,
           &:focus-visible,
           &.is-focus,
-          &.is-focus:hover {
-            --el-input-focus-border-color: #303133 !important;
-            --el-border-color: #303133 !important;
-            border: none !important;
-            box-shadow: 0 0 0 1px #303133 inset !important;
+          &.is-focus:hover,
+          &:hover.is-focus {
+            --el-input-focus-border-color: #e4e7ed !important;
+            --el-border-color: #e4e7ed !important;
+            --el-color-primary: #e4e7ed !important;
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
             outline: none !important;
+            background: white !important;
           }
         }
         
+        // 当 el-select 获得焦点时，保持默认样式
+        &.is-focus,
+        &:focus,
+        &:focus-within {
+          .el-select__wrapper,
+          .el-input__wrapper,
+          .el-input .el-input__wrapper {
+            --el-input-focus-border-color: #e4e7ed !important;
+            --el-border-color: #e4e7ed !important;
+            border: 1px solid #e4e7ed !important;
+            border-color: #e4e7ed !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+            outline: none !important;
+            background: white !important;
+          }
+        }
+        
+        // 覆盖所有可能的组合，都保持默认样式
         &.is-focus .el-input__wrapper,
         &.is-focus .el-input__wrapper:hover,
         &.is-focus .el-input .el-input__wrapper,
-        &.is-focus .el-input .el-input__wrapper:hover {
-          --el-input-focus-border-color: #303133 !important;
-          --el-border-color: #303133 !important;
-          border: none !important;
-          box-shadow: 0 0 0 1px #303133 inset !important;
-          outline: none !important;
-        }
-        
+        &.is-focus .el-input .el-input__wrapper:hover,
         .el-input.is-focus .el-input__wrapper,
-        .el-input.is-focus .el-input__wrapper:hover {
-          --el-input-focus-border-color: #303133 !important;
-          --el-border-color: #303133 !important;
-          border: none !important;
-          box-shadow: 0 0 0 1px #303133 inset !important;
-          outline: none !important;
-        }
-        
-        // 覆盖所有可能的组合
+        .el-input.is-focus .el-input__wrapper:hover,
         .el-input .el-input__wrapper.is-focus,
         .el-input .el-input__wrapper.is-focus:hover {
-          --el-input-focus-border-color: #303133 !important;
-          --el-border-color: #303133 !important;
-          border: none !important;
-          box-shadow: 0 0 0 1px #303133 inset !important;
+          --el-input-focus-border-color: #e4e7ed !important;
+          --el-border-color: #e4e7ed !important;
+          border: 1px solid #e4e7ed !important;
+          border-color: #e4e7ed !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
           outline: none !important;
-        }
-        
-        // 当 el-select 获得焦点时
-        &.is-focus {
-          .el-select__wrapper,
-          .el-input__wrapper {
-            --el-input-focus-border-color: #303133 !important;
-            --el-border-color: #303133 !important;
-            border: none !important;
-            box-shadow: 0 0 0 1px #303133 inset !important;
-            outline: none !important;
-          }
+          background: white !important;
         }
       }
     }
     
-    // 全局覆盖 - 使用更具体的选择器（覆盖所有可能的状态）
-    :deep(.el-input__wrapper.is-focus) {
-      border-color: #303133 !important;
-      box-shadow: 0 0 0 1px #303133 inset !important;
+    // 全局覆盖 - 确保所有状态都保持默认样式
+    :deep(.el-input__wrapper),
+    :deep(.el-input__wrapper.is-focus),
+    :deep(.el-input__wrapper:hover),
+    :deep(.el-input__wrapper.is-focus:hover) {
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      outline: none !important;
     }
     
-    // el-select的所有可能组合
+    // el-select的所有可能组合，都保持默认样式
+    :deep(.el-select .el-input__wrapper),
     :deep(.el-select .el-input__wrapper.is-focus),
     :deep(.el-select.is-focus .el-input__wrapper),
     :deep(.el-select .el-input.is-focus .el-input__wrapper),
@@ -1140,8 +1181,10 @@ const handleDelete = async (item: any) => {
     :deep(.el-select.is-focus .el-input .el-input__wrapper.is-focus),
     :deep(.el-select:hover .el-input__wrapper.is-focus),
     :deep(.el-select.is-focus:hover .el-input__wrapper) {
-      border-color: #303133 !important;
-      box-shadow: 0 0 0 1px #303133 inset !important;
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      outline: none !important;
     }
   }
 
@@ -1567,6 +1610,33 @@ const handleDelete = async (item: any) => {
       font-size: 14px;
     }
   }
+
+  // 去发现景点按钮 - 白色系样式
+  .discover-btn {
+    background: white !important;
+    border: 1px solid #e4e7ed !important;
+    color: #606266 !important;
+    border-radius: 6px !important;
+    padding: 10px 24px !important;
+    font-weight: 500 !important;
+    transition: border-color 0.15s ease, background 0.15s ease !important;
+    
+    &:hover {
+      background: #f5f7fa !important;
+      border-color: #dcdfe6 !important;
+      color: #303133 !important;
+    }
+    
+    &:active {
+      background: #f0f0f0 !important;
+      border-color: #c0c4cc !important;
+    }
+    
+    &:focus {
+      outline: none !important;
+      box-shadow: 0 0 0 1px rgba(144, 147, 153, 0.2) !important;
+    }
+  }
 }
 </style>
 
@@ -1614,77 +1684,92 @@ const handleDelete = async (item: any) => {
   }
 }
 
-// 收藏页面输入框和选择框focus样式 - 黑色边框（全局样式，确保优先级）
+// 收藏页面输入框和选择框样式 - 移除所有交互效果，只保留默认阴影（全局样式，确保优先级）
+.user-collect .filter-card .el-input__wrapper,
 .user-collect .filter-card .el-input__wrapper.is-focus,
+.user-collect .filter-card .el-input__wrapper:hover,
 .user-collect .filter-card .el-input__wrapper.is-focus:hover {
-  border-color: #303133 !important;
-  box-shadow: 0 0 0 1px #303133 inset !important;
+  border: 1px solid #e4e7ed !important;
+  border-color: #e4e7ed !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  outline: none !important;
+  background: white !important;
 }
 
-// el-select的所有可能组合（全局样式，使用CSS变量和最高优先级）
+// el-select的所有可能组合（全局样式，移除所有交互效果）
 .user-collect .filter-card .el-select.collect-type-select,
 .user-collect .filter-card .collect-type-select {
-  // 禁用所有默认的 focus 效果
   .el-select__wrapper,
   .el-input__wrapper,
   .el-input .el-input__wrapper {
+    border: 1px solid #e4e7ed !important;
+    border-color: #e4e7ed !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    background: white !important;
+    outline: none !important;
+    
+    // 移除所有交互效果
+    &:hover,
     &:focus,
     &:focus-visible,
     &.is-focus,
     &.custom-black-focus.is-focus {
-      --el-input-focus-border-color: #303133 !important;
-      --el-border-color: #303133 !important;
-      --el-color-primary: #303133 !important;
-      border: none !important;
-      border-color: #303133 !important;
-      box-shadow: 0 0 0 1px #303133 inset !important;
+      --el-input-focus-border-color: #e4e7ed !important;
+      --el-border-color: #e4e7ed !important;
+      --el-color-primary: #e4e7ed !important;
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
       outline: none !important;
+      background: white !important;
     }
   }
   
-  // 当 el-select 获得焦点时
+  // 当 el-select 获得焦点时，保持默认样式
   &.is-focus,
   &:focus,
   &:focus-within {
     .el-select__wrapper,
     .el-input__wrapper,
     .el-input .el-input__wrapper {
-      --el-input-focus-border-color: #303133 !important;
-      --el-border-color: #303133 !important;
-      --el-color-primary: #303133 !important;
-      border: none !important;
-      border-color: #303133 !important;
-      box-shadow: 0 0 0 1px #303133 inset !important;
+      --el-input-focus-border-color: #e4e7ed !important;
+      --el-border-color: #e4e7ed !important;
+      border: 1px solid #e4e7ed !important;
+      border-color: #e4e7ed !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
       outline: none !important;
+      background: white !important;
     }
   }
   
-  // 所有可能的选择器组合（最高优先级）
+  // 所有可能的选择器组合，都保持默认样式
   .el-input__wrapper.is-focus,
   .el-input.is-focus .el-input__wrapper,
   .el-input .el-input__wrapper.is-focus,
   &.is-focus .el-input__wrapper,
   &.is-focus .el-input .el-input__wrapper,
   .custom-black-focus.is-focus {
-    --el-input-focus-border-color: #303133 !important;
-    --el-border-color: #303133 !important;
-    --el-color-primary: #303133 !important;
-    border: none !important;
-    border-color: #303133 !important;
-    box-shadow: 0 0 0 1px #303133 inset !important;
+    --el-input-focus-border-color: #e4e7ed !important;
+    --el-border-color: #e4e7ed !important;
+    --el-color-primary: #e4e7ed !important;
+    border: 1px solid #e4e7ed !important;
+    border-color: #e4e7ed !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
     outline: none !important;
+    background: white !important;
   }
 }
 
-// 使用属性选择器确保最高优先级
+// 使用属性选择器确保最高优先级，保持默认样式
 .user-collect .filter-card .el-select.collect-type-select .el-input__wrapper[class*="is-focus"],
 .user-collect .filter-card .collect-type-select .el-input__wrapper[class*="is-focus"] {
-  --el-input-focus-border-color: #303133 !important;
-  --el-border-color: #303133 !important;
-  --el-color-primary: #303133 !important;
-  border: none !important;
-  border-color: #303133 !important;
-  box-shadow: 0 0 0 1px #303133 inset !important;
+  --el-input-focus-border-color: #e4e7ed !important;
+  --el-border-color: #e4e7ed !important;
+  --el-color-primary: #e4e7ed !important;
+  border: 1px solid #e4e7ed !important;
+  border-color: #e4e7ed !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
   outline: none !important;
+  background: white !important;
 }
 </style>

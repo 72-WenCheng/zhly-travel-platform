@@ -6,7 +6,7 @@
       <div class="conversation-panel">
         <div class="panel-header">
           <div class="title">
-            <el-icon><MessageBox /></el-icon>
+            <el-icon :size="20"><MessageBox /></el-icon>
             <span>会话列表</span>
           </div>
         </div>
@@ -21,7 +21,7 @@
           >
             <div class="conversation-main">
               <el-avatar
-                :size="44"
+                :size="52"
                 :src="conversation.targetAvatar || '/default-avatar.png'"
                 class="conversation-avatar"
               >
@@ -765,9 +765,14 @@ onBeforeUnmount(() => {
     .title {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-weight: 600;
       color: #0f2b46;
+      font-size: 16px;
+      
+      .el-icon {
+        font-size: 20px;
+      }
     }
   }
 
@@ -780,8 +785,8 @@ onBeforeUnmount(() => {
   .conversation-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 12px 12px 8px;
+    gap: 14px;
+    padding: 14px 14px 14px 10px;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -803,6 +808,8 @@ onBeforeUnmount(() => {
     gap: 12px;
     flex: 1;
     align-items: center;
+    min-width: 0; // 确保flex子元素可以收缩
+    overflow: hidden; // 防止内容溢出
   }
 
   .conversation-delete {
@@ -820,6 +827,8 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0; // 确保flex子元素可以收缩
+    overflow: hidden; // 防止内容溢出
   }
 
   .conversation-top,
@@ -828,16 +837,25 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    min-width: 0; // 确保flex子元素可以收缩
+    overflow: hidden; // 防止内容溢出
   }
 
   .conversation-name {
     font-weight: 600;
     color: #0f2b46;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .conversation-time {
     font-size: 12px;
     color: #8b99ad;
+    flex-shrink: 0; // 时间不收缩
+    white-space: nowrap;
   }
 
   .conversation-preview {
@@ -847,6 +865,7 @@ onBeforeUnmount(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0; // 确保可以收缩
   }
 }
 

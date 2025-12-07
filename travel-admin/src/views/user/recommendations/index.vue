@@ -10,7 +10,7 @@
           <el-icon :size="48"><TrendCharts /></el-icon>
         </div>
         <div class="header-text">
-          <h2>景点推荐</h2>
+          <h2>景点社区</h2>
           <p class="page-desc">基于您的用户画像和浏览偏好，为您智能推荐心仪的旅游景点</p>
         </div>
       </div>
@@ -27,9 +27,7 @@
           v-model="searchKeyword"
           placeholder="在所有景点中搜索...（支持搜索名称、位置、描述、标签、价格等）"
           size="large"
-          clearable
           @input="handleAutoSearch"
-          @clear="handleAutoSearch"
           @keyup.enter="handleCustomSearch"
         >
           <template #prefix>
@@ -64,10 +62,11 @@
       
       <!-- 地区选择器 -->
       <div class="location-filter">
+        <span class="location-label">请选择城市</span>
         <el-select 
           ref="locationSelectRef"
           v-model="selectedLocation" 
-          placeholder="选择目的地" 
+          placeholder="请选择" 
           clearable
           filterable
           @change="handleLocationChange"
@@ -156,12 +155,41 @@
             <span>{{ attraction.location }}</span>
           </div>
           
+          <!-- 评分和景区级别 -->
+          <div class="card-rating-info" v-if="attraction.rating || attraction.score">
+            <div class="rating-item" v-if="attraction.rating">
+              <span class="rating-label">级别</span>
+              <span class="rating-value">{{ attraction.rating }}A景区</span>
+            </div>
+            <div class="rating-item" v-if="attraction.score && attraction.score > 0">
+              <span class="rating-label">评分</span>
+              <span class="rating-value">{{ attraction.score.toFixed(1) }}</span>
+              <el-icon class="star-icon"><StarFilled /></el-icon>
+            </div>
+          </div>
+          
           <p class="card-desc">{{ attraction.description }}</p>
+          
+          <!-- 额外信息 -->
+          <div class="card-extra-info" v-if="attraction.openTime || attraction.bestSeason || attraction.avgStayTime > 0">
+            <div class="extra-info-item" v-if="attraction.openTime">
+              <el-icon><Clock /></el-icon>
+              <span>{{ attraction.openTime }}</span>
+            </div>
+            <div class="extra-info-item" v-if="attraction.bestSeason">
+              <el-icon><Sunny /></el-icon>
+              <span>最佳：{{ attraction.bestSeason }}</span>
+            </div>
+            <div class="extra-info-item" v-if="attraction.avgStayTime > 0">
+              <el-icon><Timer /></el-icon>
+              <span>建议游玩：{{ Math.round(attraction.avgStayTime / 60) }}分钟</span>
+            </div>
+          </div>
           
           <div class="card-meta">
             <div class="meta-tags">
               <span 
-                v-for="tag in attraction.tags.slice(0, 3)" 
+                v-for="tag in attraction.tags.slice(0, 5)" 
                 :key="tag" 
                 class="meta-tag"
               >
@@ -173,6 +201,10 @@
               <div class="action-item">
                 <el-icon><View /></el-icon>
                 <span>{{ formatNumber(attraction.views) }}</span>
+              </div>
+              <div class="action-item" v-if="attraction.commentCount > 0">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>{{ formatNumber(attraction.commentCount) }}</span>
               </div>
               <div 
                 class="action-item favorite-action"
@@ -233,7 +265,10 @@ const searchKeyword = ref('')
 const activeCategory = ref('recommend')  // 默认显示推荐（基于用户画像）
 
 // 选中的地区
-const selectedLocation = ref('')
+const selectedLocation = ref<string | null>(null)
+
+// 城市选择框的引用
+const locationSelectRef = ref(null)
 
 // 分类列表（与管理平台创建景点的类型对应）
 const categories = ref([
@@ -505,202 +540,6 @@ const noMore = ref(false)
 const page = ref(1)
 const pageSize = ref(12)
 
-// 模拟景点数据
-const mockAttractions = [
-  {
-    id: 1,
-    name: '洪崖洞民俗风貌区',
-    location: '重庆·渝中区',
-    description: '重庆标志性景点，夜景绚丽，巴渝传统建筑和民俗风貌，千与千寻现实版',
-    image: 'https://picsum.photos/400/500?random=1',
-    rating: 4.8,
-    price: 0,
-    type: 'culture',
-    typeName: '人文历史',
-    tags: ['网红打卡', '夜景灯光', '民俗文化'],
-    views: 352000,
-    favorites: 28500,
-    isFavorite: false,
-    imageHeight: 280  // 卡片图片高度
-  },
-  {
-    id: 2,
-    name: '武隆天生三桥',
-    location: '重庆·武隆区',
-    description: '世界自然遗产，壮观的喀斯特地貌，《满城尽带黄金甲》取景地',
-    image: 'https://picsum.photos/400/500?random=2',
-    rating: 4.9,
-    price: 135,
-    type: 'nature',
-    typeName: '自然风光',
-    tags: ['世界遗产', '自然奇观', '摄影打卡'],
-    views: 486000,
-    favorites: 42300,
-    isFavorite: false,
-    imageHeight: 320
-  },
-  {
-    id: 3,
-    name: '磁器口古镇',
-    location: '重庆·沙坪坝区',
-    description: '千年古镇，巴渝文化的活化石，美食街和手工艺品应有尽有',
-    image: 'https://picsum.photos/400/500?random=3',
-    rating: 4.6,
-    price: 0,
-    type: 'culture',
-    typeName: '人文历史',
-    tags: ['古镇古村', '美食天堂', '文化体验'],
-    views: 521000,
-    favorites: 35800,
-    isFavorite: false,
-    imageHeight: 260
-  },
-  {
-    id: 4,
-    name: '长江索道',
-    location: '重庆·渝中区',
-    description: '重庆特色交通工具，横跨长江，俯瞰山城两岸美景',
-    image: 'https://picsum.photos/400/500?random=4',
-    rating: 4.7,
-    price: 20,
-    type: 'city',
-    typeName: '城市观光',
-    tags: ['城市地标', '江景', '特色体验'],
-    views: 698000,
-    favorites: 52100,
-    isFavorite: true,
-    imageHeight: 300
-  },
-  {
-    id: 5,
-    name: '大足石刻',
-    location: '重庆·大足区',
-    description: '世界文化遗产，唐宋时期精美石窟艺术，历史价值极高',
-    image: 'https://picsum.photos/400/500?random=5',
-    rating: 4.8,
-    price: 120,
-    type: 'culture',
-    typeName: '人文历史',
-    tags: ['世界遗产', '历史文化', '石窟艺术'],
-    views: 235000,
-    favorites: 18600,
-    isFavorite: false,
-    imageHeight: 240
-  },
-  {
-    id: 6,
-    name: '四面山风景区',
-    location: '重庆·江津区',
-    description: '原始森林和瀑布群，生态旅游胜地，夏季避暑圣地',
-    image: 'https://picsum.photos/400/500?random=6',
-    rating: 4.5,
-    price: 110,
-    type: 'nature',
-    typeName: '自然风光',
-    tags: ['瀑布溪流', '森林氧吧', '避暑胜地'],
-    views: 168000,
-    favorites: 13200,
-    isFavorite: false,
-    imageHeight: 290
-  },
-  {
-    id: 7,
-    name: '解放碑步行街',
-    location: '重庆·渝中区',
-    description: '重庆最繁华的商业中心，购物美食娱乐一站式体验',
-    image: 'https://picsum.photos/400/500?random=7',
-    rating: 4.6,
-    price: 0,
-    type: 'city',
-    typeName: '城市观光',
-    tags: ['购物天堂', '美食天堂', '城市地标'],
-    views: 825000,
-    favorites: 46300,
-    isFavorite: false,
-    imageHeight: 270
-  },
-  {
-    id: 8,
-    name: '金佛山',
-    location: '重庆·南川区',
-    description: '国家级自然保护区，四季景色各异，冬季滑雪胜地',
-    image: 'https://picsum.photos/400/500?random=8',
-    rating: 4.7,
-    price: 90,
-    type: 'nature',
-    typeName: '自然风光',
-    tags: ['登山徒步', '滑雪', '四季美景'],
-    views: 293000,
-    favorites: 22700,
-    isFavorite: false,
-    imageHeight: 310
-  },
-  {
-    id: 9,
-    name: '仙女山国家森林公园',
-    location: '重庆·武隆区',
-    description: '高山草原风光，夏季纳凉避暑，冬季赏雪滑雪',
-    image: 'https://picsum.photos/400/500?random=9',
-    rating: 4.6,
-    price: 60,
-    type: 'nature',
-    typeName: '自然风光',
-    tags: ['草原风光', '避暑胜地', '亲子游玩'],
-    views: 378000,
-    favorites: 31200,
-    isFavorite: false,
-    imageHeight: 250
-  },
-  {
-    id: 10,
-    name: '南山一棵树观景台',
-    location: '重庆·南岸区',
-    description: '重庆最佳观景平台，俯瞰山城夜景，璀璨迷人',
-    image: 'https://picsum.photos/400/500?random=10',
-    rating: 4.8,
-    price: 30,
-    type: 'city',
-    typeName: '城市观光',
-    tags: ['夜景灯光', '摄影打卡', '浪漫约会'],
-    views: 612000,
-    favorites: 48900,
-    isFavorite: false,
-    imageHeight: 285
-  },
-  {
-    id: 11,
-    name: '白公馆·渣滓洞',
-    location: '重庆·沙坪坝区',
-    description: '红色教育基地，革命先烈英勇事迹，历史教育意义深远',
-    image: 'https://picsum.photos/400/500?random=11',
-    rating: 4.7,
-    price: 0,
-    type: 'culture',
-    typeName: '人文历史',
-    tags: ['红色旅游', '历史文化', '爱国教育'],
-    views: 198000,
-    favorites: 15600,
-    isFavorite: false,
-    imageHeight: 265
-  },
-  {
-    id: 12,
-    name: '缙云山',
-    location: '重庆·北碚区',
-    description: '佛教圣地，古树参天，空气清新，禅意静心好去处',
-    image: 'https://picsum.photos/400/500?random=12',
-    rating: 4.5,
-    price: 15,
-    type: 'nature',
-    typeName: '自然风光',
-    tags: ['寺庙祈福', '禅意静心', '森林氧吧'],
-    views: 142000,
-    favorites: 11800,
-    isFavorite: false,
-    imageHeight: 295
-  }
-]
-
 // 切换分类
 const switchCategory = (category) => {
   activeCategory.value = category
@@ -720,6 +559,110 @@ const handleLocationChange = () => {
   }
 }
 
+// 诊断函数：检查所有应用的样式
+const diagnoseSelectStyles = (element: HTMLElement) => {
+  const styles = window.getComputedStyle(element)
+  const allStyles: Record<string, string> = {}
+  
+  // 检查所有相关样式属性
+  const styleProps = [
+    'border-color', 'border-width', 'border-style', 'border',
+    'outline', 'outline-color', 'outline-width', 'outline-style',
+    'transform', 'scale', 'width', 'min-width', 'max-width',
+    'box-shadow', 'background', 'transition'
+  ]
+  
+  styleProps.forEach(prop => {
+    allStyles[prop] = styles.getPropertyValue(prop)
+  })
+  
+  // 检查 CSS 变量
+  const cssVars = [
+    '--el-input-focus-border-color',
+    '--el-border-color',
+    '--el-color-primary',
+    '--el-color-primary-light-3',
+    '--el-color-primary-light-5',
+    '--el-color-primary-light-7',
+    '--el-color-primary-light-8',
+    '--el-color-primary-light-9',
+    '--el-color-primary-dark-2'
+  ]
+  
+  cssVars.forEach(varName => {
+    allStyles[varName] = styles.getPropertyValue(varName)
+  })
+  
+  // 检查内联样式
+  allStyles['inline-style'] = element.getAttribute('style') || 'none'
+  
+  // 检查类名
+  allStyles['class-list'] = Array.from(element.classList).join(' ')
+  
+  // 检查是否有双重边框（检查父元素和子元素）
+  const parent = element.parentElement
+  const children = Array.from(element.children) as HTMLElement[]
+  
+  console.group('🔍 城市选择框样式诊断')
+  console.log('元素:', element)
+  console.log('父元素:', parent)
+  console.log('子元素数量:', children.length)
+  console.table(allStyles)
+  
+  // 检查父元素的边框
+  if (parent) {
+    const parentStyles = window.getComputedStyle(parent)
+    const parentBorder = parentStyles.border || parentStyles.getPropertyValue('border')
+    const parentOutline = parentStyles.outline || parentStyles.getPropertyValue('outline')
+    if (parentBorder && parentBorder !== 'none' && parentBorder !== '0px none rgb(0, 0, 0)') {
+      console.warn('⚠️ 父元素有边框:', parentBorder)
+    }
+    if (parentOutline && parentOutline !== 'none' && parentOutline !== '0px none rgb(0, 0, 0)') {
+      console.warn('⚠️ 父元素有 outline:', parentOutline)
+    }
+  }
+  
+  // 检查子元素的边框
+  children.forEach((child, index) => {
+    const childStyles = window.getComputedStyle(child)
+    const childBorder = childStyles.border || childStyles.getPropertyValue('border')
+    const childOutline = childStyles.outline || childStyles.getPropertyValue('outline')
+    if (childBorder && childBorder !== 'none' && childBorder !== '0px none rgb(0, 0, 0)') {
+      console.warn(`⚠️ 子元素 ${index} 有边框:`, childBorder, child)
+    }
+    if (childOutline && childOutline !== 'none' && childOutline !== '0px none rgb(0, 0, 0)') {
+      console.warn(`⚠️ 子元素 ${index} 有 outline:`, childOutline, child)
+    }
+  })
+  
+  // 检查是否有蓝色边框
+  const borderColor = styles.borderColor || styles.getPropertyValue('border-color')
+  if (borderColor.includes('rgb') && !borderColor.includes('48, 49, 51') && !borderColor.includes('228, 231, 237')) {
+    console.warn('⚠️ 检测到非预期边框颜色:', borderColor)
+  }
+  
+  // 检查是否有透明边框（可能导致双重边框视觉效果）
+  if (borderColor.includes('rgba') && borderColor.includes('0, 0, 0, 0')) {
+    console.warn('⚠️ 检测到透明边框，可能导致双重边框视觉效果')
+  }
+  
+  // 检查是否有 transform/scale 变化
+  const transform = styles.transform
+  if (transform && transform !== 'none' && transform !== 'matrix(1, 0, 0, 1, 0, 0)') {
+    console.warn('⚠️ 检测到 transform 变化:', transform)
+  }
+  
+  // 检查 outline（双重边框的常见原因）
+  const outline = styles.outline || styles.getPropertyValue('outline')
+  if (outline && outline !== 'none' && outline !== '0px none rgb(0, 0, 0)') {
+    console.warn('⚠️ 检测到 outline（可能导致双重边框）:', outline)
+  }
+  
+  console.groupEnd()
+  
+  return allStyles
+}
+
 // 强制应用黑色边框样式
 const applyLocationSelectBlackBorder = () => {
   nextTick(() => {
@@ -728,35 +671,122 @@ const applyLocationSelectBlackBorder = () => {
       if (selectEl) {
         const inputWrapper = selectEl.querySelector?.('.el-input__wrapper') as HTMLElement
         if (inputWrapper) {
-          // 直接应用样式
+          // 诊断：首次检查样式
+          console.log('📋 初始化样式诊断')
+          diagnoseSelectStyles(inputWrapper)
+          
+          // 直接应用样式 - 优化：移除收缩效果和蓝色
           const applyStyle = () => {
+            // 移除所有蓝色相关的 CSS 变量
             inputWrapper.style.setProperty('--el-input-focus-border-color', '#303133', 'important')
             inputWrapper.style.setProperty('--el-border-color', '#303133', 'important')
             inputWrapper.style.setProperty('--el-color-primary', '#303133', 'important')
-            inputWrapper.style.setProperty('border-color', '#303133', 'important')
-            inputWrapper.style.setProperty('border', '2px solid #303133', 'important')
-            inputWrapper.style.setProperty('box-shadow', '0 8px 25px rgba(48, 49, 51, 0.25), 0 0 0 4px rgba(48, 49, 51, 0.1)', 'important')
+            inputWrapper.style.setProperty('--el-color-primary-light-3', '#303133', 'important')
+            inputWrapper.style.setProperty('--el-color-primary-light-5', '#303133', 'important')
+            inputWrapper.style.setProperty('--el-color-primary-light-7', '#303133', 'important')
+            inputWrapper.style.setProperty('--el-color-primary-light-8', '#303133', 'important')
+            inputWrapper.style.setProperty('--el-color-primary-light-9', '#303133', 'important')
+            inputWrapper.style.setProperty('--el-color-primary-dark-2', '#303133', 'important')
+            // 设置边框和样式 - 简化样式，减少变化
+            // 确保只有一个边框，移除所有可能的双重边框
+            inputWrapper.style.setProperty('border-color', '#909399', 'important')
+            inputWrapper.style.setProperty('border', '1px solid #909399', 'important')
+            inputWrapper.style.setProperty('border-width', '1px', 'important')
+            inputWrapper.style.setProperty('border-style', 'solid', 'important')
+            inputWrapper.style.setProperty('box-shadow', '0 1px 4px rgba(0, 0, 0, 0.08)', 'important')
+            inputWrapper.style.setProperty('transform', 'none', 'important')
+            inputWrapper.style.setProperty('scale', '1', 'important')
+            inputWrapper.style.setProperty('transition', 'border-color 0.15s ease', 'important')
+            inputWrapper.style.setProperty('background', 'white', 'important')
+            // 移除所有可能的双重边框（outline）
             inputWrapper.style.setProperty('outline', 'none', 'important')
+            inputWrapper.style.setProperty('outline-color', 'transparent', 'important')
+            inputWrapper.style.setProperty('outline-width', '0', 'important')
+            inputWrapper.style.setProperty('outline-style', 'none', 'important')
+            inputWrapper.style.setProperty('background', 'white', 'important')
+            // 检查是否有 box-shadow 造成的视觉边框
+            const computedStyle = window.getComputedStyle(inputWrapper)
+            const boxShadow = computedStyle.boxShadow
+            if (boxShadow && boxShadow !== 'none' && !boxShadow.includes('rgba(48, 49, 51')) {
+              // 如果 box-shadow 不是我们设置的，可能需要调整
+              console.log('检测到 box-shadow:', boxShadow)
+            }
+            // 防止宽度变化
+            const currentWidth = inputWrapper.offsetWidth || 180
+            inputWrapper.style.setProperty('width', `${currentWidth}px`, 'important')
+            inputWrapper.style.setProperty('min-width', `${currentWidth}px`, 'important')
+            inputWrapper.style.setProperty('max-width', `${currentWidth}px`, 'important')
           }
           
           // 立即应用一次
           applyStyle()
           
-          // 使用MutationObserver监听类变化
-          const observer = new MutationObserver(() => {
-            if (inputWrapper.classList.contains('is-focus')) {
-              applyStyle()
-            }
+          // 使用MutationObserver监听类变化 - 更频繁地检查
+          const observer = new MutationObserver((mutations) => {
+            applyStyle() // 任何变化都重新应用
+            
+            // 如果检测到 is-focus 类变化，进行诊断
+            mutations.forEach(mutation => {
+              if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                const target = mutation.target as HTMLElement
+                if (target.classList.contains('is-focus')) {
+                  console.log('🔍 Focus 状态变化，诊断样式:')
+                  diagnoseSelectStyles(target)
+                }
+              }
+            })
           })
           
           observer.observe(inputWrapper, {
             attributes: true,
-            attributeFilter: ['class']
+            attributeFilter: ['class', 'style']
           })
           
-          // 监听focus事件
-          inputWrapper.addEventListener('focus', applyStyle, true)
-          inputWrapper.addEventListener('focusin', applyStyle, true)
+          // 监听所有可能的事件
+          const eventHandler = (event: Event) => {
+            applyStyle()
+            // 诊断点击/聚焦时的样式
+            setTimeout(() => {
+              console.log(`🔍 ${event.type} 事件后样式诊断:`)
+              diagnoseSelectStyles(inputWrapper)
+            }, 10)
+          }
+          
+          inputWrapper.addEventListener('focus', eventHandler, true)
+          inputWrapper.addEventListener('focusin', eventHandler, true)
+          inputWrapper.addEventListener('click', eventHandler, true)
+          inputWrapper.addEventListener('mousedown', eventHandler, true)
+          
+          // 使用 requestAnimationFrame 持续检查（仅在 focus 时）
+          let rafId: number | null = null
+          const checkAndApply = () => {
+            if (inputWrapper.classList.contains('is-focus')) {
+              applyStyle()
+              rafId = requestAnimationFrame(checkAndApply)
+            } else {
+              if (rafId) {
+                cancelAnimationFrame(rafId)
+                rafId = null
+              }
+            }
+          }
+          
+          // 监听 focus 状态变化
+          const focusObserver = new MutationObserver(() => {
+            if (inputWrapper.classList.contains('is-focus')) {
+              checkAndApply()
+            } else {
+              if (rafId) {
+                cancelAnimationFrame(rafId)
+                rafId = null
+              }
+            }
+          })
+          
+          focusObserver.observe(inputWrapper, {
+            attributes: true,
+            attributeFilter: ['class']
+          })
         }
       }
     }
@@ -1060,8 +1090,12 @@ const loadAttractions = async () => {
             views: item.viewCount || item.views || 0,
             favorites: item.collectCount || item.favorites || 0,
             isFavorite: item.isFavorite || false,
-            rating: item.score || 0,
-            avgStayTime: item.avgStayTime || 0 // 平均停留时间（秒），如果没有则默认为0
+            rating: item.rating || item.score || 0, // 景区级别（1-5）
+            score: item.score || 0, // 评分
+            commentCount: item.commentCount || item.comments || 0, // 评论数
+            avgStayTime: item.avgStayTime || 0, // 平均停留时间（秒），如果没有则默认为0
+            openTime: item.openTime || item.openingHours || '', // 开放时间
+            bestSeason: item.bestSeason || '' // 最佳季节
           }
         })
         
@@ -1275,31 +1309,32 @@ onMounted(() => {
     
     :deep(.el-input) {
       .el-input__wrapper {
-        border-radius: 28px;
-        padding: 10px 24px;
+        border-radius: 8px;
+        padding: 0 16px;
         background: white;
-        box-shadow: 
-          0 2px 8px rgba(0, 0, 0, 0.08),
-          inset 0 1px 2px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         border: 1px solid #e4e7ed;
+        min-height: 44px;
+        transition: none;
         
-        &:hover {
-          box-shadow: 
-            0 2px 8px rgba(0, 0, 0, 0.08),
-            inset 0 1px 2px rgba(0, 0, 0, 0.03);
+        .el-input__inner {
+          height: 44px;
+          line-height: 44px;
+          font-size: 15px;
+        }
+        
+        // 移除所有 hover 和 focus 效果
+        &:hover,
+        &:focus,
+        &:focus-visible,
+        &.is-focus,
+        &.is-focus:hover,
+        &:hover.is-focus {
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
           border-color: #e4e7ed;
-        }
-        
-        &.is-focus {
-          box-shadow: 
-            0 2px 8px rgba(0, 0, 0, 0.08),
-            inset 0 1px 2px rgba(0, 0, 0, 0.03);
-          border-color: #909399;
+          border: 1px solid #e4e7ed;
           outline: none;
-        }
-        
-        &:focus {
-          outline: none;
+          background: white;
         }
       }
       
@@ -1434,68 +1469,152 @@ onMounted(() => {
   
   .location-filter {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .location-label {
+      font-size: 14px;
+      color: #606266;
+      font-weight: 500;
+      white-space: nowrap;
+    }
     
     :deep(.el-select) {
       width: 180px;
       
       .el-input__wrapper {
         border-radius: 25px;
-        background: linear-gradient(135deg, #f8f9ff, #faf8ff);
-        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.08);
-        border: 2px solid transparent;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background: white !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+        // 默认状态：统一的浅灰色边框
+        border: 1px solid #e4e7ed !important;
+        // 简化过渡，只保留边框颜色变化
+        transition: border-color 0.15s ease !important;
+        transform: none !important;
+        width: 180px !important;
+        min-width: 180px !important;
+        max-width: 180px !important;
+        // 确保没有双重边框
+        outline: none !important;
+        outline-color: transparent !important;
+        outline-width: 0 !important;
+        outline-style: none !important;
         
+        // Hover 状态：保持完全相同的样式，不变化
         &:hover:not(.is-focus) {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.12));
-          border-color: rgba(102, 126, 234, 0.3);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+          background: white !important;
+          border: 1px solid #e4e7ed !important;
+          border-color: #e4e7ed !important;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+          transform: none !important;
+          outline: none !important;
         }
         
+        // Focus 状态：只改变边框颜色，其他保持不变
         &.is-focus,
         &:focus,
-        &:focus-visible {
-          --el-input-focus-border-color: #303133 !important;
-          --el-border-color: #303133 !important;
-          --el-color-primary: #303133 !important;
+        &:focus-visible,
+        &:focus-within {
+          --el-input-focus-border-color: #909399 !important;
+          --el-border-color: #909399 !important;
+          --el-color-primary: #909399 !important;
           background: white !important;
-          border-color: #303133 !important;
-          border: 2px solid #303133 !important;
-          transform: translateY(-2px);
-          box-shadow: 
-            0 8px 25px rgba(48, 49, 51, 0.25),
-            0 0 0 4px rgba(48, 49, 51, 0.1) !important;
-          // 移除所有蓝色
-          border-color: #303133 !important;
+          border-color: #909399 !important;
+          border: 1px solid #909399 !important;
+          border-width: 1px !important;
+          transform: none !important;
+          scale: 1 !important;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+          outline: none !important;
+          outline-color: transparent !important;
+          outline-width: 0 !important;
+          width: 180px !important;
+          min-width: 180px !important;
+          max-width: 180px !important;
         }
         
-        // 移除hover时的蓝色
+        // Hover + Focus 组合：保持与 focus 相同的样式
         &:hover.is-focus,
-        &.is-focus:hover {
-          border-color: #303133 !important;
-          box-shadow: 
-            0 8px 25px rgba(48, 49, 51, 0.25),
-            0 0 0 4px rgba(48, 49, 51, 0.1) !important;
+        &.is-focus:hover,
+        &.is-focus:focus,
+        &.is-focus:focus-visible {
+          --el-input-focus-border-color: #909399 !important;
+          --el-border-color: #909399 !important;
+          background: white !important;
+          border-color: #909399 !important;
+          border: 1px solid #909399 !important;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+          transform: none !important;
+          scale: 1 !important;
+          outline: none !important;
+          width: 180px !important;
+          min-width: 180px !important;
+          max-width: 180px !important;
         }
       }
       
       &.is-focus .el-input__wrapper,
       &.is-focus .el-input .el-input__wrapper,
-      .el-input.is-focus .el-input__wrapper {
+      .el-input.is-focus .el-input__wrapper,
+      &:focus .el-input__wrapper,
+      &:focus-within .el-input__wrapper {
         --el-input-focus-border-color: #303133 !important;
         --el-border-color: #303133 !important;
         --el-color-primary: #303133 !important;
+        --el-color-primary-light-3: #303133 !important;
+        --el-color-primary-light-5: #303133 !important;
+        --el-color-primary-light-7: #303133 !important;
+        --el-color-primary-light-8: #303133 !important;
+        --el-color-primary-light-9: #303133 !important;
+        --el-color-primary-dark-2: #303133 !important;
         background: white !important;
         border-color: #303133 !important;
         border: 2px solid #303133 !important;
-        box-shadow: 
-          0 8px 25px rgba(48, 49, 51, 0.25),
-          0 0 0 4px rgba(48, 49, 51, 0.1) !important;
+        border-width: 2px !important;
+        transform: none !important;
+        scale: 1 !important;
+        box-shadow: 0 2px 10px rgba(48, 49, 51, 0.15) !important;
+        outline: none !important;
+        outline-color: transparent !important;
+        width: 180px !important;
+        min-width: 180px !important;
+        max-width: 180px !important;
       }
       
       .el-input__inner {
         font-weight: 600;
         color: #606266;
+        
+        &::placeholder {
+          color: #909399 !important;
+          opacity: 1 !important;
+          font-weight: 500;
+        }
+      }
+      
+      // 确保 placeholder 在未选择时显示 - 使用 :deep() 穿透
+      :deep(.el-select__placeholder) {
+        color: #909399 !important;
+        opacity: 1 !important;
+        font-weight: 500 !important;
+        display: block !important;
+      }
+      
+      // 当没有选中值时，确保 placeholder 可见
+      &:not(.is-focus) {
+        :deep(.el-select__placeholder) {
+          color: #909399 !important;
+          opacity: 1 !important;
+        }
+      }
+      
+      // 确保输入框为空时显示 placeholder
+      .el-input__wrapper:not(.has-value) {
+        :deep(.el-select__placeholder) {
+          color: #909399 !important;
+          opacity: 1 !important;
+        }
       }
       
       .el-input__prefix {
@@ -2090,8 +2209,8 @@ onMounted(() => {
   .el-select__wrapper,
   .el-input__wrapper,
   .el-input .el-input__wrapper {
-    // 禁止任何缩放或大小动画，避免点击时“抖动”
-    transition: border-color 0.2s ease !important;
+    // 禁止任何缩放或大小动画，避免点击时"抖动"
+    transition: border-color 0.2s ease, background 0.2s ease !important;
     transform: none !important;
 
     &:focus,
@@ -2101,10 +2220,10 @@ onMounted(() => {
       --el-input-focus-border-color: #303133 !important;
       --el-border-color: #303133 !important;
       --el-color-primary: #303133 !important;
-      border-width: 1px !important; // 保持与未聚焦时一致，避免“放大抖动”
+      border-width: 2px !important; // 保持与未聚焦时一致，避免"放大抖动"
       border-style: solid !important;
       border-color: #303133 !important;
-      box-shadow: none !important;  // 去掉额外阴影
+      box-shadow: 0 2px 10px rgba(48, 49, 51, 0.15) !important;  // 轻微阴影，不变化
       transform: none !important;
       outline: none !important;
     }
@@ -2120,10 +2239,11 @@ onMounted(() => {
       --el-input-focus-border-color: #303133 !important;
       --el-border-color: #303133 !important;
       --el-color-primary: #303133 !important;
-      border-width: 1px !important;
+      border-width: 2px !important;
       border-style: solid !important;
       border-color: #303133 !important;
-      box-shadow: none !important;
+      box-shadow: 0 2px 10px rgba(48, 49, 51, 0.15) !important;
+      transform: none !important;
       outline: none !important;
     }
   }
@@ -2139,25 +2259,105 @@ onMounted(() => {
     --el-input-focus-border-color: #303133 !important;
     --el-border-color: #303133 !important;
     --el-color-primary: #303133 !important;
-    border-width: 1px !important;
+    border-width: 2px !important;
     border-style: solid !important;
     border-color: #303133 !important;
-    box-shadow: none !important;
+    box-shadow: 0 2px 10px rgba(48, 49, 51, 0.15) !important;
+    transform: none !important;
     outline: none !important;
   }
 }
 
 // 使用属性选择器确保最高优先级，移除所有蓝色
 .recommendations-page .location-filter .el-select.location-select-black-focus .el-input__wrapper[class*="is-focus"],
-.recommendations-page .location-filter .location-select-black-focus .el-input__wrapper[class*="is-focus"] {
+.recommendations-page .location-filter .location-select-black-focus .el-input__wrapper[class*="is-focus"],
+.recommendations-page .location-filter .el-select.location-select-black-focus .el-input__wrapper,
+.recommendations-page .location-filter .location-select-black-focus .el-input__wrapper {
   --el-input-focus-border-color: #303133 !important;
   --el-border-color: #303133 !important;
   --el-color-primary: #303133 !important;
-  border-width: 1px !important;
+  --el-color-primary-light-3: #303133 !important;
+  --el-color-primary-light-5: #303133 !important;
+  --el-color-primary-light-7: #303133 !important;
+  --el-color-primary-light-8: #303133 !important;
+  --el-color-primary-light-9: #303133 !important;
+  --el-color-primary-dark-2: #303133 !important;
+  border-width: 2px !important;
   border-style: solid !important;
   border-color: #303133 !important;
-  box-shadow: none !important;
+  box-shadow: 0 2px 10px rgba(48, 49, 51, 0.15) !important;
+  transform: none !important;
   outline: none !important;
+  transition: border-color 0.2s ease, background 0.2s ease !important;
+}
+
+// 确保城市选择框的 placeholder 显示
+.recommendations-page .location-filter .el-select.location-select-black-focus {
+  :deep(.el-select__placeholder) {
+    color: #909399 !important;
+    opacity: 1 !important;
+    font-weight: 500 !important;
+    visibility: visible !important;
+    display: inline-block !important;
+  }
+  
+  // 当没有选中值时
+  &:not(.has-value) {
+    :deep(.el-select__placeholder) {
+      color: #909399 !important;
+      opacity: 1 !important;
+    }
+  }
+  
+  // 确保输入框为空时显示
+  .el-input__wrapper:not(:has(.el-select__selected-item)) {
+    :deep(.el-select__placeholder) {
+      color: #909399 !important;
+      opacity: 1 !important;
+    }
+  }
+}
+
+// 最高优先级：强制覆盖所有可能的蓝色和收缩效果
+body .recommendations-page .location-filter .el-select.location-select-black-focus .el-input__wrapper,
+body .recommendations-page .location-filter .location-select-black-focus .el-input__wrapper,
+.recommendations-page .location-filter .el-select.location-select-black-focus .el-input__wrapper.is-focus,
+.recommendations-page .location-filter .location-select-black-focus .el-input__wrapper.is-focus,
+// 覆盖 Element Plus 默认样式
+.el-select.location-select-black-focus .el-input__wrapper,
+.el-select.location-select-black-focus .el-input.is-focus .el-input__wrapper,
+.el-select.location-select-black-focus .el-input__wrapper.is-focus,
+// 覆盖所有可能的组合
+.recommendations-page .location-filter .el-select.location-select-black-focus .el-input .el-input__wrapper,
+.recommendations-page .location-filter .el-select.location-select-black-focus .el-input.is-focus .el-input__wrapper,
+.recommendations-page .location-filter .el-select.location-select-black-focus .el-input__wrapper.is-focus:hover,
+.recommendations-page .location-filter .el-select.location-select-black-focus.is-focus .el-input__wrapper,
+.recommendations-page .location-filter .el-select.location-select-black-focus:focus .el-input__wrapper,
+.recommendations-page .location-filter .el-select.location-select-black-focus:focus-within .el-input__wrapper {
+  --el-input-focus-border-color: #303133 !important;
+  --el-border-color: #303133 !important;
+  --el-color-primary: #303133 !important;
+  --el-color-primary-light-3: #303133 !important;
+  --el-color-primary-light-5: #303133 !important;
+  --el-color-primary-light-7: #303133 !important;
+  --el-color-primary-light-8: #303133 !important;
+  --el-color-primary-light-9: #303133 !important;
+  --el-color-primary-dark-2: #303133 !important;
+  border: 2px solid #303133 !important;
+  border-color: #303133 !important;
+  border-width: 2px !important;
+  border-style: solid !important;
+  box-shadow: 0 2px 10px rgba(48, 49, 51, 0.15) !important;
+  transform: none !important;
+  scale: 1 !important;
+  transition: border-color 0.2s ease, background 0.2s ease !important;
+  outline: none !important;
+  outline-color: transparent !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  width: 180px !important;
+  min-width: 180px !important;
+  max-width: 180px !important;
 }
 </style>
 

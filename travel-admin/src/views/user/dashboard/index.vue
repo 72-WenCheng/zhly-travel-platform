@@ -179,8 +179,6 @@
           <div class="news-header">
             <div>
               <div class="news-kicker">公告中心</div>
-              <h3>最新系统通知</h3>
-              <p>切换标签即可查看系统、活动、功能与维护公告。</p>
             </div>
           </div>
           <div class="news-tabs">
@@ -225,7 +223,7 @@
     <!-- 公告详情对话框 -->
     <el-dialog 
       v-model="announcementDialogVisible" 
-      width="800px"
+      width="750px"
       :close-on-click-modal="true"
       class="announcement-detail-dialog"
       :show-close="true"
@@ -265,7 +263,7 @@
           核心功能
         </h2>
         <p class="section-subtitle">
-          探索AI智能规划、景点推荐、攻略社区等核心功能
+          探索AI智能规划、景点社区、攻略社区、文旅体验、用户画像、升级指南等核心功能
         </p>
         <div class="features-grid">
           <div 
@@ -307,14 +305,18 @@
                 <div class="space-badge" v-if="item.count > 0">{{ item.count }}</div>
               </div>
               <p class="space-desc">{{ item.desc }}</p>
-              <div class="space-stats">
+              <div class="space-stats" v-if="item.title !== '个人资料'">
                 <span class="stat-item">
                   <el-icon><Document /></el-icon>
                   <span>{{ item.stats.total }}</span>
                 </span>
-                <span class="stat-item">
+                <span v-if="item.title === '我的攻略'" class="stat-item">
                   <el-icon><View /></el-icon>
                   <span>{{ item.stats.views }}</span>
+                </span>
+                <span v-if="item.title === '我的攻略'" class="stat-item">
+                  <el-icon><ChatDotRound /></el-icon>
+                  <span>{{ item.stats.comments || 0 }}</span>
                 </span>
               </div>
             </div>
@@ -458,7 +460,6 @@
                 </span>
               </div>
               <div class="recommendation-footer">
-                <span v-if="item.price > 0" class="price">¥{{ item.price }}</span>
                 <div class="stats-group">
                   <span class="favorites">
                     <el-icon><Star /></el-icon>
@@ -467,6 +468,10 @@
                   <span class="views">
                     <el-icon><View /></el-icon>
                     {{ formatNumber(item.views) }}
+                  </span>
+                  <span class="comments">
+                    <el-icon><ChatDotRound /></el-icon>
+                    {{ formatNumber(item.comments || item.commentCount || 0) }}
                   </span>
                 </div>
               </div>
@@ -984,8 +989,8 @@ const features = ref([
   },
   {
     icon: Location,
-    title: '景点推荐',
-    desc: '基于画像推荐景点',
+    title: '景点社区',
+    desc: '探索精彩景点社区',
     gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
     path: '/home/user/recommendations'
   },
@@ -1002,6 +1007,20 @@ const features = ref([
     desc: '预订特色文旅项目',
     gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
     path: '/home/user/culture'
+  },
+  {
+    icon: DataAnalysis,
+    title: '用户画像',
+    desc: '查看您的用户画像分析',
+    gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+    path: '/home/user/portrait'
+  },
+  {
+    icon: TrophyBase,
+    title: '升级指南',
+    desc: '了解等级升级规则',
+    gradient: 'linear-gradient(135deg, #ffd89b 0%, #19547b 100%)',
+    path: '/home/user/level-guide'
   }
 ])
 
@@ -1016,7 +1035,8 @@ const mySpace = ref([
     count: 0, // 待审核攻略数量
     stats: {
       total: 0, // 总攻略数
-      views: 0  // 总浏览量
+      views: 0,  // 已发布攻略的总浏览量
+      comments: 0 // 已发布攻略的总评论数
     }
   },
   {
@@ -1025,10 +1045,22 @@ const mySpace = ref([
     desc: '收藏的景点和攻略',
     gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
     path: '/home/user/collect',
-    count: 0,  // 收藏总数，从API加载
+    count: 0,  // 不显示红色圆点，设为0
     stats: {
       total: 0,  // 收藏总数
-      views: 0   // 总浏览量，从API加载
+      views: 0   // 不显示浏览量
+    }
+  },
+  {
+    icon: UserFilled,
+    title: '个人资料',
+    desc: '管理个人信息和设置',
+    gradient: 'linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%)',
+    path: '/home/user/profile-edit',
+    count: 0,
+    stats: {
+      total: 0,
+      views: 0
     }
   }
 ])
@@ -1284,6 +1316,14 @@ const formatAttraction = function(attraction) {
   
   // 直接使用景区级别字段（rating）显示，和详情页保持一致
   const badge = attraction.rating ? attraction.rating + 'A景区' : '热门'
+  
+  // 处理价格：确保转换为数字，处理BigDecimal类型
+  let price = 0
+  if (attraction.price !== null && attraction.price !== undefined) {
+    price = typeof attraction.price === 'number' ? attraction.price : Number(attraction.price) || 0
+  } else if (attraction.ticketPrice !== null && attraction.ticketPrice !== undefined) {
+    price = typeof attraction.ticketPrice === 'number' ? attraction.ticketPrice : Number(attraction.ticketPrice) || 0
+  }
         
         return {
           id: attraction.id,
@@ -1292,10 +1332,11 @@ const formatAttraction = function(attraction) {
           title: attraction.name || '景点名称',
           location: location,
     rating: attraction.rating || null, // 景区级别（1-5的整数），score是评分（可能是小数）
-    price: attraction.price || attraction.ticketPrice || 0,
+    price: price,
     views: attraction.views || attraction.viewCount || 0,
     favorites: attraction.favorites || attraction.collectCount || 0,
     collectCount: attraction.favorites || attraction.collectCount || 0,
+    comments: attraction.comments || attraction.commentCount || 0,
           tags: tags.length > 0 ? tags : ['自然风光'],
           badge: badge
   }
@@ -1364,6 +1405,14 @@ const loadRecommendations = async () => {
             8: '购物娱乐'
           }
           
+          // 处理价格：确保转换为数字，处理BigDecimal类型
+          let price = 0
+          if (item.ticketPrice !== null && item.ticketPrice !== undefined) {
+            price = typeof item.ticketPrice === 'number' ? item.ticketPrice : Number(item.ticketPrice) || 0
+          } else if (item.price !== null && item.price !== undefined) {
+            price = typeof item.price === 'number' ? item.price : Number(item.price) || 0
+          }
+          
           return {
             id: item.id,
             name: item.name || '',
@@ -1373,9 +1422,10 @@ const loadRecommendations = async () => {
             image: imageUrl,
             typeName: typeNameMap[item.type] || '其他',
             tags: tags,
-            price: item.ticketPrice || item.price || 0,
+            price: price,
             views: item.viewCount || item.views || 0,
             favorites: item.collectCount || item.favorites || 0,
+            comments: item.commentCount || item.comments || 0,
             isFavorite: item.isFavorite || false,
             rating: item.rating || null // 使用景区级别字段（1-5的整数），不是score
           }
@@ -3233,9 +3283,19 @@ const loadMyPlansStats = async () => {
         return plan.auditStatus === 0
       }).length
       
-      // 统计总浏览量
-      const totalViews = allPlans.reduce(function(sum, plan) {
+      // 只统计已发布攻略（auditStatus === 1）的浏览量和评论数
+      const publishedPlans = allPlans.filter(function(plan) {
+        return plan.auditStatus === 1
+      })
+      
+      // 统计已发布攻略的总浏览量
+      const totalViews = publishedPlans.reduce(function(sum, plan) {
         return sum + (plan.viewCount || 0)
+      }, 0)
+      
+      // 统计已发布攻略的总评论数
+      const totalComments = publishedPlans.reduce(function(sum, plan) {
+        return sum + (plan.commentCount || 0)
       }, 0)
       
       // 更新"我的攻略"卡片数据
@@ -3245,7 +3305,8 @@ const loadMyPlansStats = async () => {
       if (myPlansCard) {
         myPlansCard.count = pendingCount // 右上角红色数字：待审核数量
         myPlansCard.stats.total = totalPlans // 总攻略数
-        myPlansCard.stats.views = totalViews // 总浏览量
+        myPlansCard.stats.views = totalViews // 已发布攻略的总浏览量
+        myPlansCard.stats.comments = totalComments // 已发布攻略的总评论数
       }
     }
   } catch (error) {
@@ -3302,20 +3363,10 @@ const loadMyCollectStats = async () => {
       console.log('✅ 收藏总数（从列表API）:', totalCount)
       console.log('📋 收藏列表数据:', collects)
       
-      // 更新收藏总数
-      collectCard.count = totalCount
+      // 更新收藏总数（不显示红色圆点，count设为0）
+      collectCard.count = 0
       collectCard.stats.total = totalCount
       console.log('✅ 已更新收藏卡片数据 - count:', collectCard.count, 'total:', collectCard.stats.total)
-      
-      // 计算总浏览量（如果收藏项有viewCount字段）
-      let totalViews = 0
-      if (collects.length > 0) {
-        totalViews = collects.reduce(function(sum, item) {
-          return sum + (item.viewCount || 0)
-        }, 0)
-        console.log('✅ 总浏览量:', totalViews)
-        collectCard.stats.views = totalViews
-      }
     } else {
       console.warn('⚠️ 收藏列表API返回错误，尝试使用统计API')
       
@@ -3330,7 +3381,7 @@ const loadMyCollectStats = async () => {
           
           console.log('✅ 收藏总数（从统计API）:', totalCount)
           
-          collectCard.count = totalCount
+          collectCard.count = 0 // 不显示红色圆点
           collectCard.stats.total = totalCount
           console.log('✅ 已更新收藏卡片数据 - count:', collectCard.count, 'total:', collectCard.stats.total)
         }
@@ -3459,10 +3510,11 @@ onMounted(() => {
   }
 
   .news-kicker {
-    font-size: 12px;
-    letter-spacing: 0.2em;
-    color: #a0a7b3;
-    text-transform: uppercase;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2a37;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   .news-view-all {
@@ -3486,16 +3538,18 @@ onMounted(() => {
   }
 
   .news-tab {
-    border: 1px solid #e4e7ed;
-    border-radius: 12px;
-    padding: 8px 14px;
+    border: none;
+    border-radius: 0;
+    padding: 8px 12px;
     background: transparent;
-    color: #6b7280;
-    font-size: 13px;
+    color: #9ca3af;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: color 0.2s ease, border-color 0.2s ease;
+    transition: all 0.2s ease;
     box-shadow: none;
+    position: relative;
+    border-bottom: 2px solid transparent;
 
     &:focus,
     &:active {
@@ -3504,46 +3558,38 @@ onMounted(() => {
     }
 
     &.tab-system {
-      color: #4c7dff;
-      border-color: rgba(76, 125, 255, 0.4);
+      color: #9ca3af;
 
       &.active {
-        background: transparent;
-        color: #1d4aff;
-        border-color: #1d4aff;
+        color: #3c5ed4;
+        border-bottom-color: #3c5ed4;
       }
     }
 
     &.tab-activity {
-      color: #f08b32;
-      border-color: rgba(240, 139, 50, 0.4);
+      color: #9ca3af;
 
       &.active {
-        background: transparent;
-        color: #c8680f;
-        border-color: #c8680f;
+        color: #d26a18;
+        border-bottom-color: #d26a18;
       }
     }
 
     &.tab-feature {
-      color: #2f9f61;
-      border-color: rgba(47, 159, 97, 0.4);
+      color: #9ca3af;
 
       &.active {
-        background: transparent;
-        color: #197443;
-        border-color: #197443;
+        color: #1c9150;
+        border-bottom-color: #1c9150;
       }
     }
 
     &.tab-maintain {
-      color: #d85149;
-      border-color: rgba(216, 81, 73, 0.4);
+      color: #9ca3af;
 
       &.active {
-        background: transparent;
-        color: #b02c24;
-        border-color: #b02c24;
+        color: #c3473c;
+        border-bottom-color: #c3473c;
       }
     }
   }
@@ -4641,103 +4687,149 @@ onMounted(() => {
         position: absolute;
         width: 100%;
         height: 100%;
+        // 底部渐变遮罩，让文字更清晰，同时突出图片
         background: linear-gradient(
-          90deg, 
-          rgba(0, 0, 0, 0.65) 0%, 
-          rgba(0, 0, 0, 0.25) 70%,
-          transparent 100%
+          to top,
+          rgba(0, 0, 0, 0.5) 0%,
+          rgba(0, 0, 0, 0.2) 30%,
+          transparent 60%
         );
         transition: all 0.4s ease;
       }
       
       .carousel-content {
-        position: relative;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
         z-index: 2;
-        padding-left: 70px;
+        padding: 50px 60px;
         color: white;
-        max-width: 620px;
+        // 文字靠左对齐，不遮挡图片中心
         
         .carousel-badge {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 18px;
-          background: rgba(255, 255, 255, 0.25);
-          backdrop-filter: blur(12px);
-          border-radius: 24px;
-          font-size: 13px;
+          gap: 6px;
+          padding: 4px 12px;
+          background: transparent;
+          border-radius: 16px;
+          font-size: 12px;
           font-weight: 500;
-          margin-bottom: 20px;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          margin-bottom: 16px;
+          opacity: 0.9;
+          letter-spacing: 0.5px;
           
           .badge-windmill {
             display: inline-block;
-            font-size: 14px;
+            font-size: 12px;
             animation: windmill-spin 3s linear infinite;
           }
         }
         
         .carousel-title {
-          font-size: 48px;
+          font-size: 42px;
           font-weight: 700;
-          margin: 0 0 16px 0;
-          text-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-          line-height: 1.2;
-          transition: transform 0.3s ease;
+          margin: 0 0 12px 0;
+          text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+          line-height: 1.3;
+          letter-spacing: -0.5px;
+          // 限制最大宽度，避免遮挡图片
+          max-width: 70%;
         }
         
         .carousel-subtitle {
-          font-size: 17px;
-          opacity: 0.92;
-          margin: 0 0 28px 0;
-          line-height: 1.7;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          font-size: 16px;
+          opacity: 0.95;
+          margin: 0 0 24px 0;
+          line-height: 1.6;
+          text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+          font-weight: 400;
+          // 限制最大宽度
+          max-width: 60%;
         }
         
         .carousel-link {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           color: white;
-          font-size: 16px;
-          font-weight: 600;
+          font-size: 15px;
+          font-weight: 500;
           cursor: pointer;
-          position: relative;
-          padding-bottom: 4px;
+          padding: 10px 20px;
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(8px);
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
           transition: all 0.3s ease;
           
-          &::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: white;
-            transition: width 0.3s ease;
-          }
-          
           .link-text {
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
           }
           
           .link-arrow {
-            font-size: 18px;
+            font-size: 16px;
             transition: transform 0.3s ease;
           }
           
           &:hover {
-            gap: 12px;
-            
-            &::after {
-              width: 100%;
-            }
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
             
             .link-arrow {
-              transform: translateX(4px);
+              transform: translateX(3px);
             }
           }
         }
+      }
+    }
+  }
+  
+  // 响应式优化：小屏幕设备
+  @media (max-width: 768px) {
+    .carousel-content {
+      padding: 30px 24px !important;
+      
+      .carousel-badge {
+        font-size: 11px;
+        padding: 3px 10px;
+        margin-bottom: 12px;
+      }
+      
+      .carousel-title {
+        font-size: 28px !important;
+        max-width: 90% !important;
+        margin-bottom: 10px;
+      }
+      
+      .carousel-subtitle {
+        font-size: 14px !important;
+        max-width: 85% !important;
+        margin-bottom: 20px;
+      }
+      
+      .carousel-link {
+        font-size: 14px;
+        padding: 8px 16px;
+      }
+    }
+  }
+  
+  // 中等屏幕优化
+  @media (max-width: 1200px) {
+    .carousel-content {
+      padding: 40px 40px;
+      
+      .carousel-title {
+        font-size: 36px;
+        max-width: 75%;
+      }
+      
+      .carousel-subtitle {
+        font-size: 15px;
+        max-width: 65%;
       }
     }
   }
@@ -5312,6 +5404,11 @@ onMounted(() => {
           gap: 6px;
           font-size: 15px;
           color: #909399;
+          
+          .el-icon {
+            display: flex;
+            align-items: center;
+          }
           margin-bottom: 16px;
         }
         
@@ -5376,6 +5473,8 @@ onMounted(() => {
               
               .el-icon {
                 color: #FFD700;
+                display: flex;
+                align-items: center;
               }
             }
             
@@ -5385,6 +5484,24 @@ onMounted(() => {
               gap: 4px;
               font-size: 13px;
               color: #909399;
+              
+              .el-icon {
+                display: flex;
+                align-items: center;
+              }
+            }
+            
+            .comments {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 13px;
+              color: #909399;
+              
+              .el-icon {
+                display: flex;
+                align-items: center;
+              }
             }
           }
         }
@@ -5877,7 +5994,7 @@ onMounted(() => {
     align-items: center;
     gap: 8px;
     margin-bottom: 20px;
-    font-size: 12px;
+    font-size: 14px;
     
     a {
       color: #606266;
@@ -5897,7 +6014,7 @@ onMounted(() => {
   
   .footer-info {
     text-align: center;
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.8;
     color: #909399;
     
@@ -5912,12 +6029,12 @@ onMounted(() => {
     padding: 30px 20px 20px;
     
     .footer-links {
-      font-size: 11px;
+      font-size: 13px;
       gap: 6px;
     }
     
     .footer-info {
-      font-size: 10px;
+      font-size: 12px;
     }
   }
 }
@@ -6157,19 +6274,23 @@ onMounted(() => {
       border-radius: 12px !important;
       overflow: hidden;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+      max-height: 75vh !important;
+      display: flex !important;
+      flex-direction: column !important;
     }
     
     :deep(.el-dialog__header) {
-      padding: 24px 24px 20px !important;
+      padding: 24px 28px 20px !important;
       border-bottom: none !important;
       margin-right: 0 !important;
       margin: 0 !important;
+      flex-shrink: 0 !important;
       
       .dialog-header-custom {
         width: 100%;
         
         .dialog-title {
-          font-size: 20px !important;
+          font-size: 28px !important;
           font-weight: 600 !important;
           color: #303133 !important;
           line-height: 1.4;
@@ -6178,14 +6299,18 @@ onMounted(() => {
     }
     
     :deep(.el-dialog__body) {
-      padding: 0 24px 24px !important;
+      padding: 0 28px 28px !important;
       background: #fff !important;
+      flex: 1 !important;
+      overflow-y: auto !important;
+      min-height: 300px !important;
     }
     
     :deep(.el-dialog__footer) {
-      padding: 20px 24px !important;
+      padding: 20px 28px !important;
       border-top: 1px solid #ebeef5 !important;
       margin: 0 !important;
+      flex-shrink: 0 !important;
     }
   }
   
@@ -6200,8 +6325,8 @@ onMounted(() => {
         flex-wrap: wrap;
         
         .type-tag {
-          font-size: 13px;
-          padding: 6px 14px;
+          font-size: 15px;
+          padding: 8px 18px;
           border-radius: 6px;
           font-weight: 500;
           height: auto;
@@ -6217,11 +6342,11 @@ onMounted(() => {
           align-items: center;
           gap: 8px;
           color: #606266;
-          font-size: 14px;
+          font-size: 16px;
           line-height: 1.5;
           
           .date-icon {
-            font-size: 14px;
+            font-size: 16px;
             color: #909399;
             display: inline-flex;
             align-items: center;
@@ -6236,15 +6361,15 @@ onMounted(() => {
     }
     
     .announcement-content {
-      min-height: 80px;
-      padding-top: 4px;
+      min-height: 250px;
+      padding-top: 8px;
       
       .content-text {
         line-height: 2;
         color: #303133;
-        font-size: 15px;
+        font-size: 18px;
         word-wrap: break-word;
-        letter-spacing: 0.2px;
+        letter-spacing: 0.3px;
         
         :deep(p) {
           margin: 0 0 0 0;
@@ -6273,7 +6398,8 @@ onMounted(() => {
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 10px 20px;
+      padding: 12px 28px;
+      font-size: 16px;
       border-radius: 4px;
       border: 1px solid #dcdfe6 !important;
       background: #fff !important;
@@ -6341,6 +6467,8 @@ onMounted(() => {
       background: #fff !important;
       background-color: #fff !important;
       color: #606266 !important;
+      font-size: 16px !important;
+      padding: 12px 28px !important;
       
       &,
       &:focus,
@@ -6352,6 +6480,8 @@ onMounted(() => {
         color: #606266 !important;
         box-shadow: none !important;
         outline: none !important;
+        font-size: 16px !important;
+        padding: 12px 28px !important;
       }
       
       &:hover {
@@ -6360,6 +6490,8 @@ onMounted(() => {
         background-color: #fff !important;
         color: #606266 !important;
         box-shadow: none !important;
+        font-size: 16px !important;
+        padding: 12px 28px !important;
       }
       
       &:focus,
@@ -6369,6 +6501,8 @@ onMounted(() => {
         background-color: #fff !important;
         color: #606266 !important;
         box-shadow: none !important;
+        font-size: 16px !important;
+        padding: 12px 28px !important;
       }
     }
   }
@@ -6381,34 +6515,38 @@ onMounted(() => {
     border-radius: 12px !important;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+    max-height: 75vh !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   
   .el-dialog__header {
-    padding: 24px 24px 20px !important;
+    padding: 24px 28px 20px !important;
     border-bottom: none !important;
     margin-right: 0 !important;
     margin: 0 !important;
+    flex-shrink: 0 !important;
     
     .dialog-header-custom {
       width: 100%;
       
       .dialog-title {
-        font-size: 20px !important;
+        font-size: 28px !important;
         font-weight: 600 !important;
         color: #303133 !important;
         line-height: 1.4;
-        margin-bottom: 4px;
+        margin-bottom: 8px;
       }
 
       .dialog-subtitle {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-top: 4px;
+        gap: 16px;
+        margin-top: 8px;
 
         .type-tag {
-          font-size: 12px;
-          padding: 4px 10px;
+          font-size: 15px;
+          padding: 8px 18px;
           border: 1px solid transparent;
           border-radius: 999px;
           background: transparent;
@@ -6417,12 +6555,12 @@ onMounted(() => {
         .announcement-date {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          font-size: 12px;
+          gap: 6px;
+          font-size: 16px;
           color: #909399;
 
           .date-icon {
-            font-size: 14px;
+            font-size: 16px;
           }
         }
       }
@@ -6430,14 +6568,18 @@ onMounted(() => {
   }
   
   .el-dialog__body {
-    padding: 0 24px 24px !important;
+    padding: 0 28px 28px !important;
     background: #fff !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 300px !important;
   }
   
   .el-dialog__footer {
-    padding: 20px 24px !important;
+    padding: 20px 28px !important;
     border-top: 1px solid #ebeef5 !important;
     margin: 0 !important;
+    flex-shrink: 0 !important;
     
     .dialog-footer {
       .close-btn {
@@ -6446,6 +6588,8 @@ onMounted(() => {
         background: #fff !important;
         background-color: #fff !important;
         color: #606266 !important;
+        font-size: 16px !important;
+        padding: 12px 28px !important;
         
         // 覆盖 Element Plus 按钮的所有可能样式
         &,
@@ -6462,10 +6606,13 @@ onMounted(() => {
           color: #606266 !important;
           box-shadow: none !important;
           outline: none !important;
+          font-size: 16px !important;
+          padding: 12px 28px !important;
         }
         
         :deep(.el-button__inner) {
           color: #606266 !important;
+          font-size: 16px !important;
         }
         
         &:hover {

@@ -98,11 +98,15 @@
               <el-button
                 class="light-button"
                 :class="{ 'is-active': isCollected }"
+                :disabled="!isPublished"
                 @click="handleCollect">
                 <el-icon><Star /></el-icon>
                 {{ isCollected ? '已收藏' : '收藏' }}
               </el-button>
-              <el-button class="light-button" @click="handleShare">
+              <el-button 
+                class="light-button" 
+                :disabled="!isPublished"
+                @click="handleShare">
                 <el-icon><Share /></el-icon>
                 分享
               </el-button>
@@ -252,9 +256,16 @@
 
           <!-- 评论区 -->
           <CommentSection 
+            v-if="isPublished"
             content-type="PLAN" 
             :content-id="planId"
             @comment-count-changed="handleCommentCountChanged" />
+          <el-card v-else class="content-card" shadow="never">
+            <div class="disabled-hint">
+              <el-icon><InfoFilled /></el-icon>
+              <span>该攻略尚未发布，暂不支持评论</span>
+            </div>
+          </el-card>
         </el-col>
 
         <!-- 右侧边栏 -->
@@ -444,6 +455,15 @@ const perPersonBudget = computed(() => {
   return personCount > 0 ? Math.round(total / personCount) : total;
 });
 
+// 判断攻略是否已发布（只有已发布状态才能评论、收藏、分享）
+const isPublished = computed(() => {
+  const status = planDetail.value.status;
+  const auditStatus = planDetail.value.auditStatus;
+  
+  // 已发布：status = 1 且 auditStatus = 1
+  return status === 1 && auditStatus === 1;
+});
+
 // 作者等级信息
 const authorLevelInfo = computed(() => {
   // 优先使用作者积分计算等级
@@ -530,7 +550,9 @@ const loadPlanDetail = async () => {
         travelMode: data.travelType || '自由行',
         suitableFor: data.suitableFor || '所有人',
         difficulty: data.difficultyLevel || 3,
-        personCount: data.personCount || 1
+        personCount: data.personCount || 1,
+        status: data.status, // 发布状态：0-草稿，1-已发布，2-已下架
+        auditStatus: data.auditStatus // 审核状态：NULL-草稿，0-待审核，1-通过，2-拒绝
       };
       
       // 解析图片（支持images和coverImage两种字段）
@@ -1089,6 +1111,12 @@ const checkCollectStatus = async () => {
 
 // 收藏/取消收藏
 const handleCollect = async () => {
+  // 如果未发布，不允许收藏
+  if (!isPublished.value) {
+    ElMessage.warning('该攻略尚未发布，无法收藏');
+    return;
+  }
+  
   try {
     if (isCollected.value) {
       // 取消收藏
@@ -1130,6 +1158,12 @@ const handleCommentCountChanged = (count: number) => {
 
 // 分享
 const handleShare = async () => {
+  // 如果未发布，不允许分享
+  if (!isPublished.value) {
+    ElMessage.warning('该攻略尚未发布，无法分享');
+    return;
+  }
+  
   const url = window.location.href;
   
   // 复制到剪贴板
@@ -2015,6 +2049,21 @@ onUnmounted(() => {
         margin-bottom: 12px;
       }
     }
+  }
+}
+
+.disabled-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: #909399;
+  font-size: 14px;
+  
+  .el-icon {
+    font-size: 20px;
+    color: #c0c4cc;
   }
 }
 </style>

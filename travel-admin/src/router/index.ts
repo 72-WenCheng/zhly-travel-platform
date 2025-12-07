@@ -534,12 +534,7 @@ router.beforeEach(async (to, from, next) => {
       
       // 管理员访问 /home/user/* 路径时，重定向到管理平台
       if (role === 1 && to.path.startsWith('/home/user')) {
-        // 避免重复重定向：如果目标路径已经是正确的，直接放行
-        if (from.path === '/home/admin/dashboard' || to.path === '/home/admin/dashboard') {
-          next()
-          return
-        }
-        console.log('管理员尝试访问用户平台，重定向到管理平台')
+        console.log('管理员账号无法访问用户平台')
         isNavigating = true
         next('/home/admin/dashboard')
         setTimeout(() => { isNavigating = false }, 100)

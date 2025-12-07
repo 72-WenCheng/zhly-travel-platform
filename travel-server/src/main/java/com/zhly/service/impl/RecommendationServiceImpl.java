@@ -1059,6 +1059,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         item.put("rating", attraction.getRating()); // 景区级别：1-5星
         item.put("viewCount", attraction.getViewCount());
         item.put("collectCount", attraction.getCollectCount());
+        item.put("commentCount", attraction.getCommentCount() != null ? attraction.getCommentCount() : 0);
         item.put("tags", attraction.getTags());
         
         // 检查收藏状态

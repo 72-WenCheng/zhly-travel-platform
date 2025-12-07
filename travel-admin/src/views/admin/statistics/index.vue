@@ -201,6 +201,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, PieChart, BarChart } from 'echarts/charts'
@@ -354,15 +355,11 @@ const loadStatistics = async () => {
   try {
     // TODO: 调用API获取统计数据
     console.log('加载统计数据')
-    
-    // 模拟数据
-    detailData.value = [
-      { date: '2024-01-01', newUsers: 120, newPlans: 45, newAttractions: 8, aiRequests: 156, pageViews: 1250, activeUsers: 890, conversionRate: 12.5 },
-      { date: '2024-01-02', newUsers: 135, newPlans: 52, newAttractions: 12, aiRequests: 189, pageViews: 1420, activeUsers: 950, conversionRate: 13.2 },
-      { date: '2024-01-03', newUsers: 98, newPlans: 38, newAttractions: 6, aiRequests: 134, pageViews: 1180, activeUsers: 820, conversionRate: 11.8 }
-    ]
+    // 移除模拟数据，等待后端API实现
+    detailData.value = []
   } catch (error) {
     console.error('加载统计数据失败:', error)
+    ElMessage.error('加载统计数据失败，请稍后重试')
   } finally {
     loading.value = false
   }

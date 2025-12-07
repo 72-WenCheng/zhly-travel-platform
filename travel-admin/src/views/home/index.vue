@@ -152,7 +152,7 @@
                   <el-avatar :size="42" :src="userAvatar" class="user-avatar">
                     {{ userName?.charAt(0) }}
                   </el-avatar>
-                  <div class="avatar-status"></div>
+                  <div class="avatar-status" :class="{ 'status-active': isUserActive, 'status-inactive': !isUserActive }"></div>
                 </div>
                 <div class="user-text">
                   <span class="user-name">{{ userName }}</span>
@@ -163,15 +163,15 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu class="user-dropdown-menu">
-                <el-dropdown-item command="user-profile" v-if="!isAdmin">
+                <el-dropdown-item divided command="user-profile" v-if="!isAdmin && !isAdminRoute">
                   <el-icon><User /></el-icon>
-                  <span>用户资料</span>
+                  <span>个人资料</span>
                 </el-dropdown-item>
-                <el-dropdown-item command="change-password">
+                <el-dropdown-item divided command="change-password">
                   <el-icon><Lock /></el-icon>
                   <span>修改密码</span>
                 </el-dropdown-item>
-                <el-dropdown-item divided command="deactivate" v-if="!isAdmin">
+                <el-dropdown-item divided command="deactivate" v-if="!isAdmin && !isAdminRoute">
                   <el-icon><CircleClose /></el-icon>
                   <span>注销账号</span>
                 </el-dropdown-item>
@@ -300,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSystemStore } from '@/stores/system'
@@ -333,6 +333,34 @@ const isCollapse = ref(false)
 const userName = ref('')
 const userAvatar = ref('')
 const systemTitle = ref('')
+
+// 用户活跃状态监控
+const isUserActive = ref(true) // 默认活跃（绿色）
+let inactivityTimer: NodeJS.Timeout | null = null
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000 // 5分钟 = 300000毫秒
+
+// 重置不活跃定时器
+const resetInactivityTimer = () => {
+  // 清除现有定时器
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+    inactivityTimer = null
+  }
+  
+  // 设置为活跃状态
+  isUserActive.value = true
+  
+  // 设置新的定时器，5分钟后设置为不活跃
+  inactivityTimer = setTimeout(() => {
+    isUserActive.value = false
+    inactivityTimer = null
+  }, INACTIVITY_TIMEOUT)
+}
+
+// 用户活动事件处理函数
+const handleUserActivity = () => {
+  resetInactivityTimer()
+}
 
 // 修改密码相关
 const changePasswordDialogVisible = ref(false)
@@ -410,8 +438,8 @@ const userNavMenus = [
   { label: '攻略社区', path: '/home/user/community', icon: ChatDotRound },
   { label: '私信', path: '/home/user/messages', icon: Message },
   { label: '我的攻略', path: '/home/user/plans', icon: Document },
-  { label: '智能推荐', path: '/home/user/recommendations', icon: TrendCharts },
-  { label: '文旅对接', path: '/home/user/culture', icon: Shop },
+  { label: '景点社区', path: '/home/user/recommendations', icon: TrendCharts },
+  { label: '文旅体验', path: '/home/user/culture', icon: Shop },
   { label: 'AI助手', path: '/home/user/ai', icon: MagicStick },
   { label: '我的收藏', path: '/home/user/collect', icon: Star },
   { label: '用户画像', path: '/home/user/portrait', icon: DataAnalysis },
@@ -550,7 +578,18 @@ const adminMenuActionMap: Record<string, MenuUsageMeta> = {
 
 // 计算属性
 const isAdmin = computed(() => {
-  // 优先从sessionStorage获取当前标签页的用户信息
+  // 优先从 userStore 获取
+  if (userStore.userInfo && userStore.userInfo.role === 1) {
+    return true
+  }
+  
+  // 其次从 getCurrentUserInfo 获取
+  const currentUserInfo = getCurrentUserInfo()
+  if (currentUserInfo && currentUserInfo.role === 1) {
+    return true
+  }
+  
+  // 最后从 sessionStorage/localStorage 获取
   let savedUserInfo = sessionStorage.getItem('travel_user_info')
   if (!savedUserInfo) {
     savedUserInfo = localStorage.getItem('travel_user_info')
@@ -567,6 +606,7 @@ const isAdmin = computed(() => {
   }
   return false
 })
+
 
 // 判断当前路由是否为管理路由
 const isAdminRoute = computed(() => {
@@ -690,6 +730,7 @@ const viewUserProfile = () => {
   }
 }
 
+
 const handleLogout = async () => {
   try {
     await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
@@ -789,6 +830,15 @@ onMounted(() => {
   }
   console.log('当前标签页的用户信息:', savedUserInfo)
   
+  // 初始化用户活跃状态监控
+  resetInactivityTimer()
+  
+  // 监听用户活动事件
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
+  events.forEach(event => {
+    document.addEventListener(event, handleUserActivity, { passive: true })
+  })
+  
   // 如果userStore中有用户信息，优先使用
   if (userStore.userInfo) {
     const userInfo = userStore.userInfo
@@ -820,6 +870,21 @@ onMounted(() => {
     console.log('没有用户信息，跳转到登录页')
     router.push('/')
   }
+})
+
+// 清理用户活跃状态监控
+onUnmounted(() => {
+  // 清除定时器
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer)
+    inactivityTimer = null
+  }
+  
+  // 移除事件监听器
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
+  events.forEach(event => {
+    document.removeEventListener(event, handleUserActivity)
+  })
 })
 
 // 路由变化时，将当前布局内的滚动容器滚动到顶部
@@ -1451,9 +1516,17 @@ watch(
           right: -2px;
           width: 12px;
           height: 12px;
-          background: #10b981;
           border-radius: 50%;
           border: 2px solid rgba(52, 73, 94, 0.9);
+          transition: background-color 0.3s ease;
+          
+          &.status-active {
+            background: #10b981; // 绿色 - 活跃
+          }
+          
+          &.status-inactive {
+            background: #ef4444; // 红色 - 不活跃
+          }
         }
       }
       
@@ -1540,12 +1613,18 @@ watch(
   
   :deep(.el-dropdown-menu__item) {
       border-radius: 8px;
-      margin: 4px 0;
-      padding: 10px 14px;
+      margin: 0;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
       transition: all 0.2s ease;
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      
+      &:first-child {
+        border-top: none;
+      }
       
       .el-icon {
         font-size: 18px;

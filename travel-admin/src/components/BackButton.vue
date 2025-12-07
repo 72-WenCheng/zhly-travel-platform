@@ -29,11 +29,11 @@ const goBack = () => {
     gap: 2px;
     padding: 8px 14px;
     font-size: 14px;
-    color: #667eea;
+    color: #606266;
     background: white;
     border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e4e7ed;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     transition: all 0.2s ease;
     overflow: hidden;
     
@@ -41,6 +41,7 @@ const goBack = () => {
       font-size: 16px;
       line-height: 1;
       animation: conveyorBelt 1.5s ease-in-out infinite;
+      color: #606266;
       
       &:nth-child(1) {
         animation-delay: 0s;
@@ -67,12 +68,13 @@ const goBack = () => {
     }
     
     &:hover {
-      color: white;
-      background: #667eea;
-      border-color: #667eea;
-      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+      color: #303133;
+      background: #f5f7fa;
+      border-color: #dcdfe6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       
       :deep(.el-icon) {
+        color: #303133;
         animation: conveyorBeltFast 0.8s ease-in-out infinite;
       }
     }

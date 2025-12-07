@@ -77,6 +77,7 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
+                <!-- 管理平台（/dashboard）不应该显示切换到用户端，因为管理员不应该访问用户平台 -->
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
                   <span>个人中心</span>
@@ -111,7 +112,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSystemStore } from '@/stores/system'
 import { storeToRefs } from 'pinia'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { getCurrentUserInfo } from '@/utils/user'
 import { 
   Fold, Expand, Setting, Odometer, User, Document, Location, 
   MagicStick, Shop, ArrowDown, SwitchButton
@@ -178,6 +180,7 @@ const handleCommand = async (command: string) => {
       break
   }
 }
+
 
 onMounted(() => {
   // 组件挂载时的初始化逻辑

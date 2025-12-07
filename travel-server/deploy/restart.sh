@@ -17,3 +17,7 @@ sleep 2
 # 启动
 "$SCRIPT_DIR/start.sh" "$ENV"
 
+
+
+
+

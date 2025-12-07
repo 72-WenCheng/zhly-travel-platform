@@ -696,17 +696,15 @@ const loadPointsLog = async () => {
           await loadPointsLogForUser(userResponse.data.id)
         }
       } catch (error) {
-        console.warn('获取用户ID失败，使用模拟数据:', error)
-        // 降级方案：使用模拟数据
-        useMockPointsLog()
+        console.error('获取用户ID失败:', error)
+        ElMessage.error('获取用户信息失败，请稍后重试')
       }
     } else {
       await loadPointsLogForUser(userId)
     }
   } catch (error) {
     console.error('加载积分记录失败:', error)
-    // 降级方案：使用模拟数据
-    useMockPointsLog()
+    ElMessage.error('加载积分记录失败，请稍后重试')
   }
 }
 
@@ -787,46 +785,7 @@ const loadPointsLogForUser = async (userId) => {
     }
   } catch (error) {
     console.error('加载积分记录失败:', error)
-    useMockPointsLog()
-  }
-}
-
-// 使用模拟数据（降级方案）
-const useMockPointsLog = () => {
-  pointsLog.value = [
-    {
-      actionType: 1,
-      actionDesc: '每日登录',
-      points: 5,
-      balanceAfter: currentPoints.value,
-      createTime: new Date().toISOString(),
-      relatedType: null,
-      relatedId: null
-    },
-    {
-      actionType: 2,
-      actionDesc: '发布攻略',
-      points: 20,
-      balanceAfter: currentPoints.value - 5,
-      createTime: new Date(Date.now() - 86400000).toISOString(),
-      relatedType: 'plan',
-      relatedId: 1
-    },
-    {
-      actionType: 3,
-      actionDesc: '发表评论',
-      points: 2,
-      balanceAfter: currentPoints.value - 25,
-      createTime: new Date(Date.now() - 172800000).toISOString(),
-      relatedType: 'plan',
-      relatedId: 2
-    }
-  ]
-  // 模拟数据时，设置total为实际数据长度，用于分页显示
-  total.value = pointsLog.value.length
-  // 如果数据超过一页，需要分页显示
-  if (pointsLog.value.length > pageSize.value) {
-    pointsLog.value = pointsLog.value.slice(0, pageSize.value)
+    ElMessage.error('加载积分记录失败，请稍后重试')
   }
 }
 
