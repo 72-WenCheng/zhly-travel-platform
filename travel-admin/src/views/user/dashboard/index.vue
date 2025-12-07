@@ -57,7 +57,7 @@
             <div class="weather-main">
               <div class="weather-icon-wrapper">
                 <span class="weather-icon">{{ weatherIcon }}</span>
-                <div class="weather-temp">{{ weatherTemperature }}</div>
+                <div class="weather-temp">{{ weatherTemp }}</div>
               </div>
               <div class="weather-details">
                 <div class="weather-location">
@@ -94,7 +94,7 @@
                 <span class="metric-icon">🌫️</span>
                 <div class="metric-info">
                   <span class="metric-label">空气质量</span>
-                  <span class="metric-value" :class="`aqi-${weather.aqiLevel}`">{{ weather.aqi }}</span>
+                  <span class="metric-value" :class="aqiClass">{{ weather.aqi }}</span>
                 </div>
               </div>
               <div class="metric-item">
@@ -649,7 +649,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
@@ -817,14 +817,18 @@ const weatherIcon = computed(() => {
   return '🌤️'
 })
 
-const weatherTemperature = computed(() => {
+const weatherTemp = computed(() => {
   if (weather.value.temperature !== null) {
-    return `${weather.value.temperature}°C`
+    return weather.value.temperature + '°C'
   }
   if (weatherLoading.value) {
     return '加载中...'
   }
   return '--'
+})
+
+const aqiClass = computed(() => {
+  return `aqi-${weather.value.aqiLevel}`
 })
 
 const weatherAdvice = computed(() => {
@@ -4733,7 +4737,7 @@ onMounted(() => {
           padding: 4px 12px;
           background: transparent;
           border-radius: 16px;
-          font-size: 12px;
+          font-size: 14px;
           font-weight: 500;
           margin-bottom: 16px;
           opacity: 0.9;
@@ -4741,13 +4745,13 @@ onMounted(() => {
           
           .badge-windmill {
             display: inline-block;
-            font-size: 12px;
+            font-size: 14px;
             animation: windmill-spin 3s linear infinite;
           }
         }
         
         .carousel-title {
-          font-size: 42px;
+          font-size: 52px;
           font-weight: 700;
           margin: 0 0 12px 0;
           text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
@@ -4758,7 +4762,7 @@ onMounted(() => {
         }
         
         .carousel-subtitle {
-          font-size: 16px;
+          font-size: 20px;
           opacity: 0.95;
           margin: 0 0 24px 0;
           line-height: 1.6;
@@ -4812,19 +4816,19 @@ onMounted(() => {
       padding: 30px 24px !important;
       
       .carousel-badge {
-        font-size: 11px;
+        font-size: 13px;
         padding: 3px 10px;
         margin-bottom: 12px;
       }
       
       .carousel-title {
-        font-size: 28px !important;
+        font-size: 32px !important;
         max-width: 90% !important;
         margin-bottom: 10px;
       }
       
       .carousel-subtitle {
-        font-size: 14px !important;
+        font-size: 16px !important;
         max-width: 85% !important;
         margin-bottom: 20px;
       }
@@ -4842,12 +4846,12 @@ onMounted(() => {
       padding: 40px 40px;
       
       .carousel-title {
-        font-size: 36px;
+        font-size: 44px;
         max-width: 75%;
       }
       
       .carousel-subtitle {
-        font-size: 15px;
+        font-size: 18px;
         max-width: 65%;
       }
     }
@@ -6069,7 +6073,7 @@ onMounted(() => {
   :deep(.el-dialog__header) {
     padding: 16px 20px !important;
     background: #ffffff !important;
-    border-bottom: 1px solid #f0f0f0 !important;
+    border-bottom: 1px solid #e5e7eb !important;
     margin: 0 !important;
     
     .el-dialog__title {
@@ -6104,6 +6108,8 @@ onMounted(() => {
     background: #ffffff !important;
     border-top: 1px solid #e5e7eb !important;
     margin: 0 !important;
+    border-top-width: 1px !important;
+    border-top-style: solid !important;
   }
   
   .location-selector-content {

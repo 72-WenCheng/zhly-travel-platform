@@ -85,6 +85,18 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             }
         }
         
+        // 3. 检查用户是否已经对同一个内容发布过评论（每个用户只能发布一次评论）
+        LambdaQueryWrapper<Comment> existingCommentQuery = new LambdaQueryWrapper<>();
+        existingCommentQuery.eq(Comment::getUserId, userId)
+                           .eq(Comment::getContentType, comment.getContentType())
+                           .eq(Comment::getContentId, comment.getContentId())
+                           .isNull(Comment::getParentId)  // 只检查顶级评论
+                           .eq(Comment::getStatus, "PUBLISHED");  // 只检查已发布的评论
+        long existingCommentCount = this.count(existingCommentQuery);
+        if (existingCommentCount > 0) {
+            throw new Exception("您已经对该内容发布过评论，每个用户只能发布一次评论");
+        }
+        
         // 设置评论信息
         comment.setUserId(userId);
         comment.setStatus("PUBLISHED");
@@ -134,6 +146,16 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // 禁止三级回复：如果父评论本身是回复（有parentId），则不能再回复
         if (parentComment.getParentId() != null) {
             throw new Exception("不能对回复进行回复，请直接回复原评论");
+        }
+        
+        // 检查用户是否已经对同一条评论回复过（每个用户只能回复一次）
+        LambdaQueryWrapper<Comment> existingReplyQuery = new LambdaQueryWrapper<>();
+        existingReplyQuery.eq(Comment::getUserId, userId)
+                         .eq(Comment::getParentId, parentId)
+                         .eq(Comment::getStatus, "PUBLISHED");  // 只检查已发布的回复
+        long existingReplyCount = this.count(existingReplyQuery);
+        if (existingReplyCount > 0) {
+            throw new Exception("您已经回复过这条评论，每个用户只能回复一次");
         }
         
         // 创建回复评论

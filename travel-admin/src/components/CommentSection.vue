@@ -76,10 +76,14 @@
             <el-icon><CaretTop /></el-icon>
             {{ comment.likeCount || 0 }}
           </el-button>
-          <el-button text @click="handleReply(comment)">
+          <el-button 
+            v-if="!hasUserReplied(comment)"
+            text 
+            @click="handleReply(comment)">
             <el-icon><ChatDotRound /></el-icon>
             回复 ({{ comment.replyCount || 0 }})
           </el-button>
+          <span v-else class="replied-hint">已回复</span>
           <el-button
             v-if="canDelete(comment)"
             text
@@ -161,12 +165,12 @@
           </div>
 
           <!-- 展开/收起回复按钮 -->
-          <div v-if="comment.replies && comment.replies.length > 3" class="view-more-replies">
+          <div v-if="comment.replies && comment.replies.length > 1" class="view-more-replies">
             <el-button 
               text 
               type="primary" 
               @click="toggleReplies(comment)">
-              {{ expandedReplies.has(comment.id) ? '收起回复' : `展开 ${comment.replies.length - 3} 条回复` }}
+              {{ expandedReplies.has(comment.id) ? '收起回复' : `展开 ${comment.replies.length - 1} 条回复` }}
               <el-icon>
                 <ArrowDown v-if="!expandedReplies.has(comment.id)" />
                 <ArrowUp v-else />
@@ -209,7 +213,10 @@
 
     <!-- 加载更多评论 -->
     <div v-if="hasMore" class="load-more">
-      <el-button @click="loadMore" :loading="loading">
+      <el-button 
+        class="load-more-btn"
+        @click="loadMore" 
+        :loading="loading">
         <el-icon v-if="!loading"><ArrowDown /></el-icon>
         加载更多评论
       </el-button>
@@ -265,9 +272,9 @@
     <el-dialog
       v-model="reportDialogVisible"
       title="举报评论"
-      width="500px"
+      width="650px"
       class="report-dialog">
-      <el-form label-width="80px">
+      <el-form label-width="100px">
         <el-form-item label="举报原因">
           <el-select v-model="reportReason" placeholder="请选择举报原因">
             <el-option label="垃圾广告" value="SPAM"></el-option>
@@ -281,7 +288,7 @@
           <el-input
             v-model="reportDescription"
             type="textarea"
-            :rows="4"
+            :rows="6"
             placeholder="请详细描述举报原因（可选）"
             maxlength="200"
             show-word-limit />
@@ -340,7 +347,7 @@ const loading = ref(false);
 const commentList = ref([]);
 const totalCount = ref(0);
 const currentPage = ref(1);
-const pageSize = ref(10);
+const pageSize = ref(5);
 const canComment = ref(true);
 
 // 回复展开状态和加载状态
@@ -385,7 +392,7 @@ const hasMore = computed(() => {
   return commentList.value.length < totalCount.value;
 });
 
-// 获取要显示的回复（默认只显示前3条，展开后显示全部）
+// 获取要显示的回复（默认只显示前1条，展开后显示全部）
 const getDisplayedReplies = (comment) => {
   if (!comment.replies || comment.replies.length === 0) {
     return [];
@@ -396,8 +403,8 @@ const getDisplayedReplies = (comment) => {
     return comment.replies;
   }
   
-  // 否则只显示前3条
-  return comment.replies.slice(0, 3);
+  // 否则只显示前1条
+  return comment.replies.slice(0, 1);
 };
 
 // 判断是否是回复的回复（禁止三级回复）
@@ -447,9 +454,9 @@ const loadComments = async (page = 1) => {
         allRepliesLoaded: (comment.replies || []).length >= (comment.replyCount || 0)
       }));
       
-      // 如果回复数<=3，默认展开；否则默认收起，只显示前3条
+      // 如果回复数<=1，默认展开；否则默认收起，只显示前1条
       processedComments.forEach(comment => {
-        if (comment.replies && comment.replies.length > 0 && comment.replies.length <= 3) {
+        if (comment.replies && comment.replies.length > 0 && comment.replies.length <= 1) {
           expandedReplies.value.add(comment.id);
         }
       });
@@ -459,7 +466,27 @@ const loadComments = async (page = 1) => {
       } else {
         commentList.value.push(...processedComments);
       }
-      totalCount.value = response.data.total || 0;
+      
+      // 计算总评论数：顶级评论数 + 所有回复数
+      // 后端返回的total是顶级评论数，我们需要加上所有顶级评论的回复数
+      const topLevelCount = response.data.total || 0;
+      
+      // 计算所有顶级评论的回复数总和（包括已加载和未加载的）
+      // 由于我们只能知道已加载评论的回复数，这里先计算已加载的
+      // 为了更准确，我们需要遍历所有已加载的顶级评论，累加它们的回复数
+      let totalReplyCount = 0;
+      commentList.value.forEach(comment => {
+        // 只统计顶级评论的回复数（parentId为null的评论）
+        if (!comment.parentId) {
+          totalReplyCount += comment.replyCount || 0;
+        }
+      });
+      
+      // 总评论数 = 顶级评论数 + 所有回复数
+      // 注意：这里计算的是已加载的顶级评论的回复数总和
+      // 如果后端能返回所有顶级评论的回复数总和就更准确
+      totalCount.value = topLevelCount + totalReplyCount;
+      
       currentPage.value = page;
       // 通知父组件评论数变化
       emit('comment-count-changed', totalCount.value);
@@ -565,12 +592,54 @@ const loadCurrentUserPoints = async () => {
 
 // 显示发布对话框
 const showPublishDialog = async () => {
+  // 检查用户是否已经发布过评论
+  if (hasUserCommented()) {
+    ElMessage.warning('您已经对该内容发布过评论，每个用户只能发布一次评论');
+    return;
+  }
+  
   isReply.value = false;
   replyTarget.value = null;
   commentContent.value = '';
   // 打开对话框时获取最新的用户积分
   await loadCurrentUserPoints();
   publishDialogVisible.value = true;
+};
+
+// 检查用户是否已经回复过这条评论
+const hasUserReplied = (comment) => {
+  const currentUserId = userStore.user?.id || userStore.userInfo?.id;
+  if (!currentUserId) {
+    return false;
+  }
+  
+  // 如果comment有replies数组，检查回复列表中是否有当前用户的回复
+  if (comment.replies && Array.isArray(comment.replies)) {
+    return comment.replies.some(reply => reply.userId === currentUserId);
+  }
+  
+  // 如果comment本身是回复，检查是否是当前用户回复的
+  if (comment.userId === currentUserId && comment.parentId) {
+    return true;
+  }
+  
+  return false;
+};
+
+// 检查用户是否已经发布过评论（对同一个内容）
+const hasUserCommented = () => {
+  const currentUserId = userStore.user?.id || userStore.userInfo?.id;
+  if (!currentUserId) {
+    return false;
+  }
+  
+  // 检查评论列表中是否有当前用户发布的顶级评论
+  return commentList.value.some(comment => 
+    comment.userId === currentUserId && 
+    !comment.parentId &&  // 顶级评论
+    comment.contentType === props.contentType &&
+    comment.contentId === props.contentId
+  );
 };
 
 // 处理回复
@@ -583,6 +652,12 @@ const handleReply = async (comment) => {
   // 禁止三级回复：如果comment是回复（有parentId），则不能再回复
   if (isReplyToReply(comment)) {
     ElMessage.warning('不能对回复进行回复，请直接回复原评论');
+    return;
+  }
+  
+  // 检查用户是否已经回复过这条评论（前端预检查，后端会再次验证）
+  if (hasUserReplied(comment)) {
+    ElMessage.warning('您已经回复过这条评论，每个用户只能回复一次');
     return;
   }
   
@@ -664,15 +739,31 @@ const handlePublish = async () => {
   try {
     let response;
     if (isReply.value && replyTarget.value) {
+      // 再次检查用户是否已经回复过（防止并发情况）
+      const parentId = replyTarget.value.parentId || replyTarget.value.id;
+      const parentComment = commentList.value.find(c => c.id === parentId);
+      if (parentComment && hasUserReplied(parentComment)) {
+        ElMessage.warning('您已经回复过这条评论，每个用户只能回复一次');
+        publishing.value = false;
+        return;
+      }
+      
       // 发布回复
       response = await request.post('/user/comment/reply', null, {
         params: {
-          parentId: replyTarget.value.parentId || replyTarget.value.id,
+          parentId: parentId,
           replyToUserId: replyTarget.value.userId,
           content: commentContent.value
         }
       });
     } else {
+      // 再次检查用户是否已经发布过评论（防止并发情况）
+      if (hasUserCommented()) {
+        ElMessage.warning('您已经对该内容发布过评论，每个用户只能发布一次评论');
+        publishing.value = false;
+        return;
+      }
+      
       // 发布评论
       response = await request.post('/user/comment/publish', {
         contentType: props.contentType,
@@ -944,6 +1035,12 @@ onMounted(() => {
           align-items: center;
           gap: 4px;
         }
+        
+        .replied-hint {
+          font-size: 14px;
+          color: #909399;
+          padding: 0 8px;
+        }
       }
 
       .reply-list {
@@ -1008,6 +1105,14 @@ onMounted(() => {
         .view-more-replies {
           padding: 8px 12px;
           text-align: center;
+          
+          :deep(.el-button) {
+            color: #333333 !important;
+            
+            &:hover {
+              color: #1a1a1a !important;
+            }
+          }
         }
       }
     }
@@ -1016,6 +1121,44 @@ onMounted(() => {
   .load-more {
     padding: 20px 0;
     text-align: center;
+    min-height: 60px; // 固定最小高度，防止抖动
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .load-more-btn {
+      background: #ffffff !important;
+      border: 1px solid #e0e0e0 !important;
+      color: #333333 !important;
+      border-radius: 8px !important;
+      padding: 10px 24px !important;
+      height: 40px !important;
+      font-size: 14px !important;
+      transition: all 0.2s ease !important;
+      min-width: 140px; // 固定最小宽度，防止抖动
+      
+      &:hover {
+        background: #f5f5f5 !important;
+        border-color: #d0d0d0 !important;
+        color: #1a1a1a !important;
+      }
+      
+      &:active {
+        background: #eeeeee !important;
+        border-color: #c0c0c0 !important;
+      }
+      
+      .el-icon {
+        font-size: 16px;
+        margin-right: 4px;
+      }
+      
+      &.is-loading {
+        background: #ffffff !important;
+        border-color: #e0e0e0 !important;
+        color: #999999 !important;
+      }
+    }
   }
 }
 
@@ -1077,14 +1220,72 @@ onMounted(() => {
     
     // 发布按钮样式（改为白色系）
     &.el-button--primary {
-      background: #f5f5f5 !important;
+      background: #ffffff !important;
       border: 1px solid #e0e0e0 !important;
       color: #333333 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
       
       &:hover {
-        background: #eeeeee !important;
+        background: #f5f5f5 !important;
         border-color: #d0d0d0 !important;
         color: #1a1a1a !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      }
+      
+      &:active {
+        background: #eeeeee !important;
+        border-color: #c0c0c0 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+      }
+      
+      &.is-loading {
+        background: #ffffff !important;
+        border-color: #e0e0e0 !important;
+        color: #999999 !important;
+      }
+    }
+  }
+  
+  // 输入框样式：去掉hover和focus的transform效果，只保留阴影
+  .el-textarea {
+    // 去掉外层wrapper的默认focus样式
+    &.is-focus {
+      .el-textarea__inner {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        outline: none !important;
+      }
+    }
+    
+    .el-textarea__inner {
+      background: #ffffff !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      outline: none !important;
+      
+      &:hover {
+        border-color: #d0d0d0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      }
+      
+      &:focus {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        outline: none !important;
+      }
+    }
+    
+    // 确保外层wrapper也没有蓝色边框
+    .el-textarea__wrapper {
+      outline: none !important;
+      box-shadow: none !important;
+      
+      &:focus,
+      &:focus-within {
+        outline: none !important;
+        box-shadow: none !important;
       }
     }
   }
@@ -1100,17 +1301,19 @@ onMounted(() => {
   .el-dialog__header {
     background: #ffffff !important;
     border-bottom: 1px solid #f5f5f5 !important;
-    padding: 20px 24px !important;
+    padding: 24px 32px !important;
     margin: 0 !important;
     
     .el-dialog__title {
       color: #333333 !important;
       font-weight: 500 !important;
+      font-size: 18px !important; // 增大标题字体
     }
     
     .el-dialog__headerbtn {
       .el-dialog__close {
         color: #909399 !important;
+        font-size: 20px !important; // 增大关闭按钮
         
         &:hover {
           color: #606266 !important;
@@ -1121,37 +1324,139 @@ onMounted(() => {
 
   .el-dialog__body {
     background: #ffffff !important;
-    padding: 24px !important;
+    padding: 32px !important; // 增大内边距
   }
 
   .el-dialog__footer {
     background: #ffffff !important;
     border-top: 1px solid #f5f5f5 !important;
-    padding: 16px 24px !important;
+    padding: 20px 32px !important; // 增大内边距
     margin: 0 !important;
   }
 
-  .el-form-item__label {
-    color: #666666 !important;
-  }
-
-  .el-select__wrapper,
-  .el-textarea__inner {
-    background: #ffffff !important;
-    border-color: #e0e0e0 !important;
+  .el-form-item {
+    margin-bottom: 24px !important; // 增大表单项间距
+    display: flex !important;
+    align-items: center !important; // 垂直居中对齐
     
-    &:hover {
-      border-color: #c0c0c0 !important;
+    .el-form-item__label {
+      color: #666666 !important;
+      font-size: 15px !important; // 增大标签字体
+      font-weight: 500 !important;
+      line-height: 44px !important; // 与输入框高度一致，实现垂直居中
+      padding-bottom: 0 !important;
+    }
+    
+    .el-form-item__content {
+      display: flex !important;
+      align-items: center !important; // 内容区域也垂直居中
     }
   }
 
-  .el-select.is-focus .el-select__wrapper,
-  .el-textarea.is-focus .el-textarea__inner {
-    border-color: #409eff !important;
+  // 输入框样式：初始状态就有阴影，去掉hover和focus的transform效果，去除蓝色边框
+  .el-select {
+    .el-select__wrapper {
+      background: #ffffff !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; // 初始状态就有阴影
+      transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      outline: none !important;
+      min-height: 44px !important; // 增大输入框高度
+      padding: 10px 14px !important; // 增大内边距
+      
+      .el-select__placeholder {
+        font-size: 15px !important; // 增大占位符字体
+      }
+      
+      .el-select__selected-item {
+        font-size: 15px !important; // 增大选中项字体
+      }
+      
+      &:hover {
+        border-color: #d0d0d0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      }
+      
+      &:focus,
+      &:focus-within {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        outline: none !important;
+      }
+    }
+    
+    // 去掉外层wrapper的默认focus样式
+    &.is-focus {
+      .el-select__wrapper {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        outline: none !important;
+      }
+    }
+  }
+  
+  .el-textarea {
+    .el-textarea__inner {
+      background: #ffffff !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; // 初始状态就有阴影
+      transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      outline: none !important;
+      font-size: 15px !important; // 增大字体
+      line-height: 1.6 !important;
+      padding: 12px 14px !important; // 增大内边距
+      
+      &::placeholder {
+        font-size: 15px !important; // 增大占位符字体
+      }
+      
+      &:hover {
+        border-color: #d0d0d0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      }
+      
+      &:focus {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        outline: none !important;
+      }
+    }
+    
+    // 去掉外层wrapper的默认focus样式
+    &.is-focus {
+      .el-textarea__inner {
+        border-color: #e0e0e0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        outline: none !important;
+      }
+    }
+    
+    // 确保外层wrapper也没有蓝色边框
+    .el-textarea__wrapper {
+      outline: none !important;
+      box-shadow: none !important;
+      
+      &:focus,
+      &:focus-within {
+        outline: none !important;
+        box-shadow: none !important;
+      }
+    }
+    
+    // 增大字数统计字体
+    .el-input__count {
+      font-size: 13px !important;
+    }
   }
 
   .el-button {
-    border-radius: 4px !important;
+    border-radius: 6px !important;
+    font-size: 15px !important; // 增大按钮字体
+    padding: 12px 28px !important; // 增大按钮内边距
+    height: auto !important; // 自动高度
+    min-height: 44px !important; // 最小高度
     
     // 取消按钮样式
     &.el-button--default {
@@ -1168,14 +1473,29 @@ onMounted(() => {
     
     // 提交按钮样式（改为白色系）
     &.el-button--primary {
-      background: #f5f5f5 !important;
+      background: #ffffff !important;
       border: 1px solid #e0e0e0 !important;
       color: #333333 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      font-weight: 500 !important; // 加粗字体
       
       &:hover {
-        background: #eeeeee !important;
+        background: #f5f5f5 !important;
         border-color: #d0d0d0 !important;
         color: #1a1a1a !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      }
+      
+      &:active {
+        background: #eeeeee !important;
+        border-color: #c0c0c0 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+      }
+      
+      &.is-loading {
+        background: #ffffff !important;
+        border-color: #e0e0e0 !important;
+        color: #999999 !important;
       }
     }
   }

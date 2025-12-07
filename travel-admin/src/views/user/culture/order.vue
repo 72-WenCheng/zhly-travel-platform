@@ -434,7 +434,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -572,31 +572,6 @@ const availableCouponsComputed = computed(() => {
     ...coupon,
     available: total >= coupon.minAmount
   }))
-})
-      amount: 50,
-      minAmount: 300,
-      expireDate: '2025-11-30',
-      available: total >= 300
-    },
-    {
-      id: 3,
-      name: '文化体验券',
-      description: '限文化体验类产品',
-      amount: 30,
-      minAmount: 150,
-      expireDate: '2025-10-31',
-      available: total >= 150
-    },
-    {
-      id: 4,
-      name: '周边商品券',
-      description: '限特色周边商品',
-      amount: 15,
-      minAmount: 80,
-      expireDate: '2025-12-15',
-      available: total >= 80
-    }
-  ]
 })
 
 // 购买协议

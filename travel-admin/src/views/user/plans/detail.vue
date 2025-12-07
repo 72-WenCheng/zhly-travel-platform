@@ -1383,11 +1383,6 @@ onUnmounted(() => {
         }
       }
 
-      &:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-      }
-
       .card-content {
         position: relative;
         z-index: 1;

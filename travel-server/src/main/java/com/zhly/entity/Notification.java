@@ -1,6 +1,7 @@
 package com.zhly.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -42,13 +43,16 @@ public class Notification {
     private String content;
     
     /**
-     * 发送者ID
+     * 发送者ID（如果数据库表中没有此字段，使用 @TableField(exist = false) 标记）
      */
+    @TableField(exist = false)
     private Long senderId;
     
     /**
      * 关联类型（COMMENT, PLAN, 等）
+     * 如果数据库表中没有此字段，使用 @TableField(exist = false) 标记
      */
+    @TableField(exist = false)
     private String relatedType;
     
     /**
@@ -58,7 +62,9 @@ public class Notification {
     
     /**
      * 链接地址
+     * 如果数据库表中没有此字段，使用 @TableField(exist = false) 标记
      */
+    @TableField(exist = false)
     private String linkUrl;
     
     /**
