@@ -555,7 +555,7 @@ import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
 import { getLevelByPoints } from '@/utils/level'
-import { getCurrentUserId } from '@/utils/user'
+import { getCurrentUserId, getCurrentUserInfo } from '@/utils/user'
 import { planTagOptions, planTagPalette } from '@/constants/tags'
 import {
   Search, Location, Calendar, View, ChatDotRound, Star, StarFilled,
@@ -799,6 +799,29 @@ const loadMore = () => {
   }
 }
 
+// 记录搜索日志（攻略社区）
+const recordSearchLog = async (keyword: string) => {
+  if (!keyword || !keyword.trim()) {
+    return
+  }
+  try {
+    const userInfo = getCurrentUserInfo()
+    const userId = userInfo?.id || userInfo?.userId || null
+    
+    // 调用搜索接口记录日志（使用travel-plans类型）
+    await request.get('/search/travel-plans', {
+      params: {
+        keyword: keyword.trim(),
+        page: 1,
+        size: 1
+      }
+    })
+  } catch (error) {
+    // 记录搜索日志失败不应该影响搜索功能
+    console.warn('记录搜索日志失败:', error)
+  }
+}
+
 // 加载攻略列表
 const loadPlans = async () => {
   loading.value = true
@@ -811,6 +834,14 @@ const loadPlans = async () => {
       const k = (activeTopic.value || searchKeyword.value || '').trim()
       return k ? k : undefined
     })()
+    
+    // 如果有关键词，记录搜索日志
+    if (keywordParam) {
+      recordSearchLog(keywordParam)
+    } else if (selectedDestination.value) {
+      // 如果只有目的地选择而没有关键词，也将目的地作为关键词记录搜索日志
+      recordSearchLog(selectedDestination.value)
+    }
 
     if (activeCategory.value === 'hot') {
       // 推荐攻略：按浏览量和收藏量综合排序
@@ -1466,6 +1497,8 @@ const searchByDestination = (destName: string) => {
     selectedDestination.value = ''
   } else {
     selectedDestination.value = destName
+    // 记录搜索日志（将目的地作为关键词）
+    recordSearchLog(destName)
   }
   // 点击热门目的地时清空关键字和话题，只按目的地筛选
   searchKeyword.value = ''

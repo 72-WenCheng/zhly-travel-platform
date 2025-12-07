@@ -87,7 +87,7 @@
               <el-option label="已删除" value="DELETED" />
             </el-select>
           </el-form-item>
-          <el-form-item label="关键词" style="flex: 1;">
+          <el-form-item label="关键词">
             <el-input v-model="filters.keyword" placeholder="搜索评论内容或用户名" clearable />
           </el-form-item>
           <el-form-item class="filter-actions">

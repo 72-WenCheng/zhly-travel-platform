@@ -99,7 +99,7 @@
           </el-form-item>
         </div>
         <div class="filter-row">
-          <el-form-item label="创建时间" style="flex: 0 0 320px;">
+          <el-form-item label="创建时间">
             <el-date-picker
               v-model="searchForm.createTimeRange"
               type="daterange"

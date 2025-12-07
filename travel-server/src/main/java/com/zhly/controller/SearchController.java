@@ -4,6 +4,7 @@ import com.zhly.common.Result;
 import com.zhly.service.SearchService;
 import com.zhly.service.impl.SearchServiceImpl;
 import com.zhly.util.JwtUtil;
+import com.zhly.util.IpAddressUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -46,7 +47,8 @@ public class SearchController {
             
             // 计算总结果数并记录搜索日志
             int totalCount = calculateTotalCount(result);
-            searchServiceImpl.recordSearchLog(userId, keyword, "global", totalCount);
+            String clientIp = IpAddressUtils.resolveClientIp(request);
+            searchServiceImpl.recordSearchLog(userId, keyword, "global", totalCount, clientIp);
             
             return Result.success("全局搜索成功", result);
         } catch (Exception e) {
@@ -72,7 +74,8 @@ public class SearchController {
             // 记录搜索日志
             int resultCount = result != null && result.get("total") != null ? 
                 ((Number) result.get("total")).intValue() : 0;
-            searchServiceImpl.recordSearchLog(userId, keyword, "attractions", resultCount);
+            String clientIp = IpAddressUtils.resolveClientIp(request);
+            searchServiceImpl.recordSearchLog(userId, keyword, "attractions", resultCount, clientIp);
             
             return Result.success("搜索景点成功", result);
         } catch (Exception e) {
@@ -98,7 +101,8 @@ public class SearchController {
             // 记录搜索日志
             int resultCount = result != null && result.get("total") != null ? 
                 ((Number) result.get("total")).intValue() : 0;
-            searchServiceImpl.recordSearchLog(userId, keyword, "travel-plans", resultCount);
+            String clientIp = IpAddressUtils.resolveClientIp(request);
+            searchServiceImpl.recordSearchLog(userId, keyword, "travel-plans", resultCount, clientIp);
             
             return Result.success("搜索旅游攻略成功", result);
         } catch (Exception e) {
@@ -124,7 +128,8 @@ public class SearchController {
             // 记录搜索日志
             int resultCount = result != null && result.get("total") != null ? 
                 ((Number) result.get("total")).intValue() : 0;
-            searchServiceImpl.recordSearchLog(userId, keyword, "culture-projects", resultCount);
+            String clientIp = IpAddressUtils.resolveClientIp(request);
+            searchServiceImpl.recordSearchLog(userId, keyword, "culture-projects", resultCount, clientIp);
             
             return Result.success("搜索文旅项目成功", result);
         } catch (Exception e) {
@@ -151,7 +156,8 @@ public class SearchController {
             // 记录搜索日志
             int resultCount = result != null && result.get("total") != null ? 
                 ((Number) result.get("total")).intValue() : 0;
-            searchServiceImpl.recordSearchLog(userId, keyword, "travel-routes", resultCount);
+            String clientIp = IpAddressUtils.resolveClientIp(request);
+            searchServiceImpl.recordSearchLog(userId, keyword, "travel-routes", resultCount, clientIp);
             
             return Result.success("搜索旅游路线成功", result);
         } catch (Exception e) {

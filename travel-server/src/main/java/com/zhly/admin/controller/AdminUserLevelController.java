@@ -3,7 +3,9 @@ package com.zhly.admin.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.zhly.common.R;
 import com.zhly.entity.UserLevel;
+import com.zhly.entity.UserPoints;
 import com.zhly.mapper.UserLevelMapper;
+import com.zhly.mapper.UserPointsMapper;
 import com.zhly.admin.mapper.AdminUserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +30,9 @@ public class AdminUserLevelController {
     
     @Autowired
     private AdminUserMapper adminUserMapper;
+    
+    @Autowired(required = false)
+    private UserPointsMapper userPointsMapper;
     
     /**
      * 获取等级列表
@@ -67,36 +72,46 @@ public class AdminUserLevelController {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            // 统计各等级用户数量（基于sys_user表的level字段）
+            // 统计各等级用户数量（从user_points表查询level_code）
             QueryWrapper<com.zhly.admin.entity.AdminUser> wrapper = new QueryWrapper<>();
             wrapper.eq("deleted", 0);
             
             // 统计各等级（1-6对应青铜到王者）
-            for (int level = 1; level <= 6; level++) {
-                QueryWrapper<com.zhly.admin.entity.AdminUser> levelWrapper = new QueryWrapper<>();
-                levelWrapper.eq("deleted", 0).eq("level", level);
-                Long count = adminUserMapper.selectCount(levelWrapper);
-                
-                switch (level) {
-                    case 1:
-                        result.put("bronze", count != null ? count : 0L);
-                        break;
-                    case 2:
-                        result.put("silver", count != null ? count : 0L);
-                        break;
-                    case 3:
-                        result.put("gold", count != null ? count : 0L);
-                        break;
-                    case 4:
-                        result.put("platinum", count != null ? count : 0L);
-                        break;
-                    case 5:
-                        result.put("diamond", count != null ? count : 0L);
-                        break;
-                    case 6:
-                        result.put("king", count != null ? count : 0L);
-                        break;
+            if (userPointsMapper != null) {
+                for (int level = 1; level <= 6; level++) {
+                    QueryWrapper<UserPoints> levelWrapper = new QueryWrapper<>();
+                    levelWrapper.eq("level_code", level);
+                    Long count = userPointsMapper.selectCount(levelWrapper);
+                    
+                    switch (level) {
+                        case 1:
+                            result.put("bronze", count != null ? count : 0L);
+                            break;
+                        case 2:
+                            result.put("silver", count != null ? count : 0L);
+                            break;
+                        case 3:
+                            result.put("gold", count != null ? count : 0L);
+                            break;
+                        case 4:
+                            result.put("platinum", count != null ? count : 0L);
+                            break;
+                        case 5:
+                            result.put("diamond", count != null ? count : 0L);
+                            break;
+                        case 6:
+                            result.put("king", count != null ? count : 0L);
+                            break;
+                    }
                 }
+            } else {
+                // 如果userPointsMapper不可用，返回默认值
+                result.put("bronze", 0L);
+                result.put("silver", 0L);
+                result.put("gold", 0L);
+                result.put("platinum", 0L);
+                result.put("diamond", 0L);
+                result.put("king", 0L);
             }
             
             // 总用户数

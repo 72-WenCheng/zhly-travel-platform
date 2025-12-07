@@ -2,48 +2,50 @@
   <div class="application-management">
     <BackButton />
     
-    <el-card class="filter-card">
-      <el-form :inline="true" class="filter-form">
-        <el-form-item label="申请编号">
-          <el-input v-model="filters.applicationNo" placeholder="请输入申请编号" clearable />
-        </el-form-item>
-        <el-form-item label="申请人类型">
-          <el-select v-model="filters.applicantType" placeholder="请选择" clearable>
-            <el-option label="全部" value="" />
-            <el-option label="个人" :value="1" />
-            <el-option label="企业" :value="2" />
-            <el-option label="合作社" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="申请状态">
-          <el-select v-model="filters.status" placeholder="请选择" clearable>
-            <el-option label="全部" value="" />
-            <el-option label="待审核" :value="1" />
-            <el-option label="审核中" :value="2" />
-            <el-option label="已通过" :value="3" />
-            <el-option label="已拒绝" :value="4" />
-            <el-option label="已撤回" :value="5" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="提交时间">
-          <el-date-picker
-            v-model="filters.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
+    <el-card class="filter-card-modern" shadow="never">
+      <div class="filter-header">
+        <el-icon><Search /></el-icon>
+        <span>筛选条件</span>
+      </div>
+      <el-form :model="filters" class="filter-form">
+        <div class="filter-row">
+          <el-form-item label="申请编号">
+            <el-input v-model="filters.applicationNo" placeholder="请输入申请编号" clearable />
+          </el-form-item>
+          <el-form-item label="申请人类型">
+            <el-select v-model="filters.applicantType" placeholder="请选择申请人类型" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="个人" :value="1" />
+              <el-option label="企业" :value="2" />
+              <el-option label="合作社" :value="3" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="申请状态">
+            <el-select v-model="filters.status" placeholder="请选择申请状态" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="待审核" :value="1" />
+              <el-option label="审核中" :value="2" />
+              <el-option label="已通过" :value="3" />
+              <el-option label="已拒绝" :value="4" />
+              <el-option label="已撤回" :value="5" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="提交时间">
+            <el-date-picker
+              v-model="filters.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 100%;"
+            />
+          </el-form-item>
+          <el-form-item label=" " class="filter-actions">
+            <el-button class="reset-btn" @click="handleReset">
+              重置筛选
+            </el-button>
+          </el-form-item>
+        </div>
       </el-form>
     </el-card>
 
@@ -659,19 +661,13 @@ onMounted(() => {
 })
 </script>
 
+<style lang="scss">
+@import '@/styles/admin-list.scss';
+</style>
+
 <style scoped lang="scss">
 .application-management {
   padding: 20px;
-
-  .filter-card {
-    margin-bottom: 20px;
-  }
-
-  .filter-form {
-    .el-form-item {
-      margin-bottom: 0;
-    }
-  }
 
   .table-card {
     .table-header {

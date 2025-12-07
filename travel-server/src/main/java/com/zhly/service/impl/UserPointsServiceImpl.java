@@ -165,8 +165,31 @@ public class UserPointsServiceImpl extends ServiceImpl<UserPointsMapper, UserPoi
             throw new RuntimeException("积分不足");
         }
         
+        // 扣除积分（注意：扣除积分不影响总积分，只影响可用积分）
+        // 但如果总积分也需要扣除，则同时更新总积分并重新计算等级
         int newAvailablePoints = userPoints.getAvailablePoints() - points;
+        int newTotalPoints = userPoints.getTotalPoints() - points; // 总积分也扣除
+        
         userPoints.setAvailablePoints(newAvailablePoints);
+        userPoints.setTotalPoints(newTotalPoints);
+        
+        // 根据新总积分自动计算并更新等级（与用户端逻辑一致）
+        UserLevel newLevel = userLevelMapper.getLevelByPoints(newTotalPoints);
+        if (newLevel != null) {
+            // 更新等级信息
+            userPoints.setCurrentLevelId(newLevel.getId());
+            userPoints.setLevelCode(newLevel.getLevelCode());
+            userPoints.setLevelName(newLevel.getLevelName());
+        } else {
+            // 如果没有找到等级，使用默认等级（青铜旅行者，level_code=1）
+            UserLevel defaultLevel = userLevelMapper.getLevelByCode(1);
+            if (defaultLevel != null) {
+                userPoints.setCurrentLevelId(defaultLevel.getId());
+                userPoints.setLevelCode(defaultLevel.getLevelCode());
+                userPoints.setLevelName(defaultLevel.getLevelName());
+            }
+        }
+        
         userPoints.setUpdateTime(LocalDateTime.now());
         userPointsMapper.updateById(userPoints);
         

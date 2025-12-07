@@ -225,16 +225,12 @@
             {{ formatDateTime(row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right" align="center">
+        <el-table-column label="操作" width="320" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="primary" size="small" text @click="viewUserDetail(row)">
                 <el-icon><View /></el-icon>
                 详情
-              </el-button>
-              <el-button type="info" size="small" text @click="editUser(row)">
-                <el-icon><Edit /></el-icon>
-                编辑
               </el-button>
               <el-dropdown @command="(cmd) => handleUserAction(cmd, row)" trigger="click" size="small">
                 <el-button type="warning" size="small" text>
@@ -244,15 +240,7 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="points">
-                      <el-icon><Medal /></el-icon>
-                      调整积分
-                    </el-dropdown-item>
-                    <el-dropdown-item command="level">
-                      <el-icon><Trophy /></el-icon>
-                      调整等级
-                    </el-dropdown-item>
-                    <el-dropdown-item command="loginHistory" divided>
+                    <el-dropdown-item command="loginHistory">
                       <el-icon><Clock /></el-icon>
                       登录历史
                     </el-dropdown-item>
@@ -400,7 +388,6 @@
       :close-on-click-modal="false"
       class="modern-detail-dialog"
     >
-      <div class="dialog-header-decoration"></div>
       <div v-loading="detailLoading" class="user-detail-content">
         <div v-if="userDetail.basicInfo" class="detail-section">
           <h3 class="section-title">基本信息</h3>
@@ -473,9 +460,9 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="pointsDialogVisible = false">取消</el-button>
+        <el-button class="white-btn" @click="pointsDialogVisible = false">取消</el-button>
         <el-button 
-          type="primary" 
+          class="white-btn"
           @click="submitPointsAdjust" 
           :loading="pointsLoading"
           style="--el-button-icon-left: none;"
@@ -541,16 +528,34 @@
         </el-table-column>
         <el-table-column prop="failReason" label="失败原因" show-overflow-tooltip />
       </el-table>
-      <div class="pagination-container-modern" style="margin-top: 20px;">
-        <el-pagination
-          v-model:current-page="loginHistoryPagination.current"
-          v-model:page-size="loginHistoryPagination.size"
-          :page-sizes="[10, 20, 50]"
-          :total="loginHistoryPagination.total"
-          layout="total, sizes, prev, pager, next"
-          @size-change="loadLoginHistory"
-          @current-change="loadLoginHistory"
-        />
+      <div class="pagination-container-modern simple-pagination" style="margin-top: 20px;">
+        <el-button
+          class="page-btn"
+          :disabled="loginHistoryPagination.current <= 1"
+          @click="handleLoginHistoryCurrentChange(loginHistoryPagination.current - 1)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="page-info">
+          {{ loginHistoryPagination.current }} / {{ Math.max(1, Math.ceil(loginHistoryPagination.total / loginHistoryPagination.size || 1)) }}
+        </span>
+        <el-button
+          class="page-btn"
+          :disabled="loginHistoryPagination.current >= Math.ceil(loginHistoryPagination.total / loginHistoryPagination.size || 1)"
+          @click="handleLoginHistoryCurrentChange(loginHistoryPagination.current + 1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+        <div class="page-jump">
+          <span>前往</span>
+          <el-input
+            v-model.number="loginHistoryPageJump"
+            size="small"
+            class="page-jump-input"
+            @input="handleLoginHistoryPageJump"
+          />
+          <span>页</span>
+        </div>
       </div>
     </el-dialog>
 
@@ -576,16 +581,34 @@
         </el-table-column>
         <el-table-column prop="remark" label="备注" show-overflow-tooltip />
       </el-table>
-      <div class="pagination-container-modern" style="margin-top: 20px;">
-        <el-pagination
-          v-model:current-page="operationLogsPagination.current"
-          v-model:page-size="operationLogsPagination.size"
-          :page-sizes="[10, 20, 50]"
-          :total="operationLogsPagination.total"
-          layout="total, sizes, prev, pager, next"
-          @size-change="loadOperationLogs"
-          @current-change="loadOperationLogs"
-        />
+      <div class="pagination-container-modern simple-pagination" style="margin-top: 20px;">
+        <el-button
+          class="page-btn"
+          :disabled="operationLogsPagination.current <= 1"
+          @click="handleOperationLogsCurrentChange(operationLogsPagination.current - 1)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="page-info">
+          {{ operationLogsPagination.current }} / {{ Math.max(1, Math.ceil(operationLogsPagination.total / operationLogsPagination.size || 1)) }}
+        </span>
+        <el-button
+          class="page-btn"
+          :disabled="operationLogsPagination.current >= Math.ceil(operationLogsPagination.total / operationLogsPagination.size || 1)"
+          @click="handleOperationLogsCurrentChange(operationLogsPagination.current + 1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+        <div class="page-jump">
+          <span>前往</span>
+          <el-input
+            v-model.number="operationLogsPageJump"
+            size="small"
+            class="page-jump-input"
+            @input="handleOperationLogsPageJump"
+          />
+          <span>页</span>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -598,7 +621,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   User, Download, Search, Refresh, Select, Check, Close, Delete, CloseBold,
   Edit, Lock, Unlock, UserFilled, Medal, Trophy, DataAnalysis, View, Tools,
-  ArrowDown, Clock, Document
+  ArrowDown, ArrowLeft, ArrowRight, Clock, Document
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import dayjs from 'dayjs'
@@ -713,6 +736,7 @@ const loginHistoryPagination = reactive({
   size: 10,
   total: 0
 })
+const loginHistoryPageJump = ref<number | null>(null)
 
 // 操作日志对话框
 const operationLogsDialogVisible = ref(false)
@@ -723,6 +747,7 @@ const operationLogsPagination = reactive({
   size: 10,
   total: 0
 })
+const operationLogsPageJump = ref<number | null>(null)
 
 const stats = computed(() => [
   {
@@ -1331,24 +1356,16 @@ const handleUserAction = (command: string, row: any) => {
   currentUser.value = row
   
   switch (command) {
-    case 'points':
-      pointsDialogVisible.value = true
-      pointsForm.points = 0
-      pointsForm.reason = ''
-      break
-    case 'level':
-      levelDialogVisible.value = true
-      levelForm.level = row.level || 1
-      levelForm.reason = ''
-      break
     case 'loginHistory':
       loginHistoryDialogVisible.value = true
       loginHistoryPagination.current = 1
+      loginHistoryPageJump.value = null
       loadLoginHistory()
       break
     case 'operationLogs':
       operationLogsDialogVisible.value = true
       operationLogsPagination.current = 1
+      operationLogsPageJump.value = null
       loadOperationLogs()
       break
   }
@@ -1415,6 +1432,38 @@ const submitLevelAdjust = async () => {
   } finally {
     levelLoading.value = false
   }
+}
+
+// 登录历史翻页处理
+const handleLoginHistoryCurrentChange = (current: number) => {
+  loginHistoryPagination.current = current
+  loadLoginHistory()
+}
+
+const handleLoginHistoryPageJump = () => {
+  const totalPages = Math.max(1, Math.ceil((loginHistoryPagination.total || 1) / (loginHistoryPagination.size || 10)))
+  let target = Number(loginHistoryPageJump.value || 1)
+  if (!Number.isFinite(target)) return
+  if (target < 1) target = 1
+  if (target > totalPages) target = totalPages
+  if (target === loginHistoryPagination.current) return
+  handleLoginHistoryCurrentChange(target)
+}
+
+// 操作日志翻页处理
+const handleOperationLogsCurrentChange = (current: number) => {
+  operationLogsPagination.current = current
+  loadOperationLogs()
+}
+
+const handleOperationLogsPageJump = () => {
+  const totalPages = Math.max(1, Math.ceil((operationLogsPagination.total || 1) / (operationLogsPagination.size || 10)))
+  let target = Number(operationLogsPageJump.value || 1)
+  if (!Number.isFinite(target)) return
+  if (target < 1) target = 1
+  if (target > totalPages) target = totalPages
+  if (target === operationLogsPagination.current) return
+  handleOperationLogsCurrentChange(target)
 }
 
 // 加载登录历史
@@ -1530,9 +1579,28 @@ onUnmounted(() => {
     padding: 24px;
   }
   
-  // 移除按钮图标
+  // 白色系按钮样式
   .el-dialog__footer {
-    .el-button--primary {
+    .white-btn {
+      background: #ffffff;
+      border: 1px solid #dcdfe6;
+      color: #606266;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      
+      &:hover {
+        background: #f5f7fa;
+        border-color: #c0c4cc;
+        color: #303133;
+      }
+      
+      &:active {
+        background: #f0f2f5;
+      }
+      
       // 隐藏所有图标
       .el-icon,
       i,
@@ -1556,9 +1624,11 @@ onUnmounted(() => {
         height: 0 !important;
       }
       
-      // 确保按钮文字正常显示
+      // 确保按钮文字正常显示并垂直居中
       span:not(.el-icon):not(.el-button__icon) {
         display: inline-block !important;
+        line-height: 1.5;
+        vertical-align: middle;
       }
     }
   }
@@ -1642,15 +1712,10 @@ onUnmounted(() => {
   }
 }
 
-.dialog-header-decoration {
-  height: 4px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  border-radius: 2px;
-  margin-bottom: 20px;
-}
 
 
-.edit-form {
+// 编辑表单样式 - 只作用于编辑对话框内的表单，不影响筛选条件
+.edit-user-dialog .edit-form {
   .el-form-item {
     margin-bottom: 22px;
     
@@ -1745,6 +1810,10 @@ onUnmounted(() => {
 .user-detail-content {
   .detail-section {
     margin-bottom: 24px;
+    padding: 20px;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    background: #fafafa;
     
     .section-title {
       font-size: 16px;

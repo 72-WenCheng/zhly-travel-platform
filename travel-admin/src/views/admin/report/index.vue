@@ -205,16 +205,16 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="detailDialogVisible = false">取消</el-button>
+          <el-button class="white-btn" @click="detailDialogVisible = false">取消</el-button>
           <el-button
-            type="warning"
+            class="white-btn"
             :disabled="!canOperate"
             @click="confirmProcess('REJECT')"
           >
             驳回
           </el-button>
           <el-button
-            type="danger"
+            class="white-btn"
             :disabled="!canOperate"
             @click="confirmProcess('RESOLVE')"
           >
@@ -514,5 +514,100 @@ onUnmounted(() => {
   background: #f5f7fa !important;
   transform: none !important;
   box-shadow: none !important;
+}
+
+// 举报详情对话框按钮白色系样式
+:deep(.dialog-footer .white-btn) {
+  padding: 10px 20px !important;
+  border-radius: 4px !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  transition: border-color 0.3s ease !important;
+  min-width: 100px !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #dcdfe6 !important;
+  border-color: #dcdfe6 !important;
+  color: #606266 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+  outline: none !important;
+  
+  // 覆盖 Element Plus 的所有可能类型和状态
+  &,
+  &.el-button--primary,
+  &.el-button--default,
+  &.el-button--success,
+  &.el-button--info,
+  &.el-button--warning,
+  &.el-button--danger {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1px solid #dcdfe6 !important;
+    border-color: #dcdfe6 !important;
+    color: #606266 !important;
+    box-shadow: none !important;
+  }
+  
+  // 覆盖所有 hover 状态 - 灰色边框加深
+  &:hover:not([disabled]),
+  &.el-button--primary:hover:not([disabled]),
+  &.el-button--default:hover:not([disabled]),
+  &.el-button--warning:hover:not([disabled]),
+  &.el-button--danger:hover:not([disabled]) {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: #909399 !important;
+    color: #606266 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  
+  // 覆盖所有 active 状态
+  &:active:not([disabled]),
+  &.el-button--primary:active:not([disabled]),
+  &.el-button--default:active:not([disabled]),
+  &.el-button--warning:active:not([disabled]),
+  &.el-button--danger:active:not([disabled]) {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: #909399 !important;
+    color: #606266 !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  // 覆盖所有 focus 状态
+  &:focus:not([disabled]),
+  &:focus-visible:not([disabled]),
+  &.el-button--primary:focus:not([disabled]),
+  &.el-button--default:focus:not([disabled]),
+  &.el-button--warning:focus:not([disabled]),
+  &.el-button--danger:focus:not([disabled]) {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: #909399 !important;
+    color: #606266 !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+  
+  // 覆盖 disabled 状态
+  &[disabled],
+  &.is-disabled {
+    color: #c0c4cc !important;
+    border-color: #e4e7ed !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    cursor: not-allowed;
+    
+    &:hover {
+      border-color: #e4e7ed !important;
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+    }
+  }
 }
 </style>

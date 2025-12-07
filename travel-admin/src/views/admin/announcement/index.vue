@@ -49,7 +49,7 @@
         <span>筛选条件</span>
       </div>
       <el-form :model="searchForm" class="filter-form">
-        <!-- 第一行：三个筛选条件 -->
+        <!-- 第一行：三个筛选条件 + 重置按钮 -->
         <div class="filter-row">
           <el-form-item label="公告类型">
             <el-select v-model="searchForm.type" placeholder="请选择公告类型" clearable>
@@ -73,9 +73,6 @@
               clearable
             />
           </el-form-item>
-        </div>
-        <!-- 第二行：右侧重置按钮，结构与攻略管理一致 -->
-        <div class="filter-row">
           <el-form-item label=" " class="filter-actions">
             <el-button class="reset-btn" @click="handleReset">
               重置筛选
@@ -857,34 +854,55 @@ onUnmounted(() => {
   justify-content: flex-end;
   gap: 12px;
 
-  .secondary-btn {
+  .secondary-btn,
+  .primary-btn {
     border-radius: 6px;
     border: 1px solid #dcdfe6;
     color: #606266;
-    background: #fff;
+    background: #ffffff;
+    padding: 6px 16px;
+    min-width: 80px;
+    font-size: 13px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    line-height: 1.5;
 
-    &:hover {
+    &:hover:not([disabled]) {
       background: #f5f7fa;
       border-color: #c0c4cc;
       color: #303133;
     }
-  }
 
-  .primary-btn {
-    border-radius: 6px;
-    border: 1px solid #dcdfe6;
-    background: #f5f7fa;
-    color: #303133;
-    font-weight: 600;
-
-    &:hover:not([disabled]) {
-      background: #e9ebf0;
+    &:active:not([disabled]) {
+      background: #f0f2f5;
     }
 
     &[disabled] {
       color: #c0c4cc;
       border-color: #e4e7ed;
+      background: #ffffff;
     }
+
+    .el-icon,
+    i,
+    svg {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+    }
+
+    span {
+      display: inline-block;
+      line-height: 1.5;
+      vertical-align: middle;
+    }
+  }
+
+  .primary-btn {
+    font-weight: 500;
   }
 }
 
@@ -896,6 +914,7 @@ onUnmounted(() => {
     box-shadow: none !important;
   }
 }
+
 </style>
 
 

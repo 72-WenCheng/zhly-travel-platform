@@ -872,6 +872,10 @@ const loadAttractions = async () => {
         // 保留原始城市名称，同时支持带"市"和不带"市"的匹配
         let cityName = location.label.replace(/市|省|自治区|特别行政区/g, '') // 移除后缀
         params.city = cityName
+        // 如果没有搜索关键词，将城市名称作为关键词，用于记录搜索日志
+        if (!params.keyword) {
+          params.keyword = cityName
+        }
         console.log('选择地点:', location.label, '转换为城市参数:', params.city)
         console.log('将尝试匹配:', cityName, '或', cityName + '市', '或', cityName + '省')
       }

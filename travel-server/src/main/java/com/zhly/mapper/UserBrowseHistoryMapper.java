@@ -20,23 +20,18 @@ public interface UserBrowseHistoryMapper extends BaseMapper<UserBrowseHistory> {
     List<UserBrowseHistory> selectRecentByUserId(Long userId, Integer limit);
 
     /**
-     * 获取按国家聚合的访问统计数据
+     * 获取按国家聚合的访问统计数据（访问量）
      */
     @Select("""
             SELECT 
-                CASE 
-                  WHEN country_code IS NULL OR country_code = '' THEN 'CN' 
-                  ELSE country_code 
-                END AS countryCode,
-                CASE 
-                  WHEN country_name IS NULL OR country_name = '' THEN '中国' 
-                  ELSE country_name 
-                END AS countryName,
+                COALESCE(NULLIF(country_code, ''), 'CN') AS countryCode,
+                COALESCE(NULLIF(country_name, ''), '中国') AS countryName,
                 COUNT(*) AS visits,
-                SUM(CASE WHEN browse_type = 2 THEN 1 ELSE 0 END) AS queries,
                 AVG(COALESCE(duration, 0)) AS avgDuration
             FROM user_browse_history
-            GROUP BY country_code, country_name
+            GROUP BY 
+                COALESCE(NULLIF(country_code, ''), 'CN'),
+                COALESCE(NULLIF(country_name, ''), '中国')
             """)
     List<Map<String, Object>> selectWorldTrafficAggregates();
 }

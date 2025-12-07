@@ -34,8 +34,12 @@ public class AdminUser {
     private String lastLoginIp;
     private LocalDateTime lastLoginTime;
     private String avatar;
-    private Integer points;          // 积分
-    private Integer level;           // 等级
+    // points 和 level 字段已从数据库表中移除，这些数据从 user_points 表获取
+    // 保留字段定义以兼容旧代码，但不会从数据库查询这些字段
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer points;          // 积分（已移除，从 user_points 表获取）
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer level;           // 等级（已移除，从 user_points 表获取）
     // interest_tags 和 frequent_cities 字段已移除，这些数据从用户画像服务获取
     private Integer deleted;          // 逻辑删除：0-未删除，1-已删除
 }

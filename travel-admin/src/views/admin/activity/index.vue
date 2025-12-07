@@ -108,7 +108,7 @@
               value-format="YYYY-MM-DD"
             />
           </el-form-item>
-          <el-form-item label="活动时间" style="flex: 0 0 380px;">
+          <el-form-item label="活动时间">
             <el-date-picker
               v-model="searchForm.activityTimeRange"
               type="datetimerange"

@@ -3,6 +3,26 @@
  * 适用于所有CRUD列表页面
  */
 
+// ============================================
+// 全局强制样式：确保筛选条件下的下拉框宽度固定
+// 使用最高优先级，防止被任何页面级样式覆盖
+// ============================================
+.admin-list-modern .filter-card-modern .filter-form .filter-row .el-form-item :deep(.el-select),
+.admin-list-modern .filter-card-modern .filter-form .filter-row .el-form-item .el-form-item__content .el-select {
+  min-width: 280px !important;
+  width: 100% !important;
+  
+  .el-input {
+    min-width: 280px !important;
+    width: 100% !important;
+  }
+  
+  .el-input__wrapper {
+    min-width: 280px !important;
+    width: 100% !important;
+  }
+}
+
 // 主容器
 .admin-list-modern {
   padding: 24px;
@@ -333,8 +353,23 @@
             }
           }
           
+          // 下拉框样式 - 设置最小宽度，确保下拉框足够宽
+          // 使用更具体的选择器，确保不被页面级样式覆盖
           :deep(.el-select) {
+            min-width: 280px !important;
+            width: 100% !important;
+            max-width: none !important;
+            
+            .el-input {
+              min-width: 280px !important;
+              width: 100% !important;
+              max-width: none !important;
+            }
+            
             .el-input__wrapper {
+              min-width: 280px !important;
+              width: 100% !important;
+              max-width: none !important;
               border-radius: 10px;
               box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
               transition: all 0.2s ease;
@@ -342,6 +377,21 @@
               &:hover {
                 box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
               }
+            }
+          }
+          
+          // 包含下拉框的表单项，设置最小宽度以确保下拉框有足够空间
+          &:has(:deep(.el-select)) {
+            min-width: 300px !important;
+            flex: 0 0 auto !important;
+            flex-shrink: 0 !important;
+          }
+          
+          // 确保表单项内容区域不会压缩下拉框
+          :deep(.el-form-item__content) {
+            .el-select {
+              min-width: 280px !important;
+              width: 100% !important;
             }
           }
           
@@ -360,7 +410,7 @@
           margin-left: auto;
           display: flex;
           gap: 12px;
-          align-items: flex-end;
+          align-items: center;
 
           .search-btn {
             padding: 10px 32px;
@@ -391,7 +441,10 @@
             transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
+            line-height: 1.5;
+            vertical-align: middle;
 
             .el-icon {
               font-size: 14px;
@@ -579,7 +632,7 @@
       display: inline-flex;
       align-items: center;
       gap: 12px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       .page-btn {
         width: 40px;
         height: 32px;
@@ -616,14 +669,46 @@
       .page-jump {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         font-size: 12px;
         color: #909399;
         white-space: nowrap;
         
         .page-jump-input {
-          width: 56px;
+          width: 48px !important;
+          margin: 0 4px;
+          
+          :deep(.el-input__wrapper) {
+            width: 48px !important;
+            min-width: 48px !important;
+            max-width: 48px !important;
+          }
         }
+      }
+    }
+  }
+}
+
+// 对话框中的翻页组件样式（对话框挂载在 body 上，不在 admin-list-modern 容器内）
+.el-dialog .simple-pagination,
+body .el-dialog .simple-pagination,
+.simple-pagination {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+  
+  .page-jump {
+    gap: 8px !important;
+    
+    .page-jump-input {
+      width: 48px !important;
+      margin: 0 4px !important;
+      
+      :deep(.el-input__wrapper) {
+        width: 48px !important;
+        min-width: 48px !important;
+        max-width: 48px !important;
       }
     }
   }

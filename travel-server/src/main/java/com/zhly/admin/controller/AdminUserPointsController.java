@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhly.common.R;
 import com.zhly.entity.PointsLog;
 import com.zhly.entity.UserPoints;
+import com.zhly.entity.UserLevel;
 import com.zhly.mapper.PointsLogMapper;
 import com.zhly.mapper.UserPointsMapper;
+import com.zhly.mapper.UserLevelMapper;
 import com.zhly.service.IUserPointsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +36,9 @@ public class AdminUserPointsController {
     @Autowired
     private PointsLogMapper pointsLogMapper;
     
+    @Autowired
+    private UserLevelMapper userLevelMapper;
+    
     /**
      * 查询用户积分列表
      */
@@ -56,6 +61,30 @@ public class AdminUserPointsController {
         
         wrapper.orderByDesc("total_points");
         userPointsMapper.selectPage(pageObj, wrapper);
+        
+        // 根据积分同步等级信息，确保等级显示准确
+        if (pageObj.getRecords() != null && !pageObj.getRecords().isEmpty()) {
+            for (UserPoints userPoints : pageObj.getRecords()) {
+                if (userPoints.getTotalPoints() != null) {
+                    // 根据积分获取对应的等级
+                    UserLevel currentLevel = userLevelMapper.getLevelByPoints(userPoints.getTotalPoints());
+                    if (currentLevel != null) {
+                        // 更新等级信息
+                        userPoints.setCurrentLevelId(currentLevel.getId());
+                        userPoints.setLevelCode(currentLevel.getLevelCode());
+                        userPoints.setLevelName(currentLevel.getLevelName());
+                    } else {
+                        // 如果没有找到等级，使用默认等级（青铜旅行者，level_code=1）
+                        UserLevel defaultLevel = userLevelMapper.getLevelByCode(1);
+                        if (defaultLevel != null) {
+                            userPoints.setCurrentLevelId(defaultLevel.getId());
+                            userPoints.setLevelCode(defaultLevel.getLevelCode());
+                            userPoints.setLevelName(defaultLevel.getLevelName());
+                        }
+                    }
+                }
+            }
+        }
         
         return R.ok(pageObj);
     }

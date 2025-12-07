@@ -447,8 +447,8 @@
 
     <!-- 页面底部按钮 -->
     <div class="page-footer">
-      <el-button @click="handleCancel" :disabled="loading" size="large">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="loading" size="large">
+      <el-button class="white-btn" @click="handleCancel" :disabled="loading" size="large">取消</el-button>
+        <el-button class="white-btn" @click="handleSubmit" :loading="loading" size="large">
           <el-icon v-if="!loading"><Check /></el-icon>
         {{ loading ? '提交中...' : '确定' }}
         </el-button>
@@ -1544,7 +1544,12 @@ const handleSubmit = async () => {
   border-top: 1px solid rgba(102, 126, 234, 0.1);
   margin: 0 -40px -36px;
   
-  .el-button {
+  // 确保 white-btn 样式优先级最高
+  .white-btn {
+    // 样式已在 .page-footer .white-btn 中定义，这里不需要重复
+  }
+  
+  .el-button:not(.white-btn) {
     padding: 14px 40px;
     border-radius: 12px;
     font-weight: 600;
@@ -1626,17 +1631,18 @@ const handleSubmit = async () => {
     flex-shrink: 0;
     white-space: nowrap;
     border-radius: 10px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 0.3s ease;
     font-weight: 600;
     padding: 0 20px;
     
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+      border-color: #909399 !important;
+      transform: none;
+      box-shadow: none;
     }
     
     &:active {
-      transform: translateY(0);
+      transform: none;
     }
   }
 }
@@ -1794,70 +1800,98 @@ const handleSubmit = async () => {
   margin-top: 32px;
   padding: 24px 0;
   
-  .el-button {
-    padding: 14px 40px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    min-width: 140px;
-    height: 52px;
+  :deep(.white-btn) {
+    padding: 14px 40px !important;
+    border-radius: 4px !important;
+    font-weight: 500 !important;
+    font-size: 16px !important;
+    transition: all 0.3s !important;
+    min-width: 140px !important;
+    height: 52px !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1px solid #dcdfe6 !important;
+    border-color: #dcdfe6 !important;
+    color: #606266 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+    line-height: 1.5 !important;
+    box-shadow: none !important;
+    outline: none !important;
     
-    &.el-button--primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-      position: relative;
-      overflow: hidden;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: left 0.6s;
-      }
-      
-      &:hover {
-        background: linear-gradient(135deg, #5568d3 0%, #6a4192 100%);
-        transform: translateY(-4px);
-        box-shadow: 0 10px 28px rgba(102, 126, 234, 0.45);
-        
-        &::before {
-          left: 100%;
-        }
-      }
-      
-      &:active {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-      }
-      
-      .el-icon {
-        margin-right: 6px;
-        font-size: 18px;
-      }
+    // 覆盖 Element Plus 的所有可能类型和状态
+    &,
+    &.el-button--primary,
+    &.el-button--default,
+    &.el-button--success,
+    &.el-button--info,
+    &.el-button--warning,
+    &.el-button--danger {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      border: 1px solid #dcdfe6 !important;
+      border-color: #dcdfe6 !important;
+      color: #606266 !important;
+      box-shadow: none !important;
     }
     
-    &:not(.el-button--primary) {
-      border: 2px solid #e5e7eb;
-      background: #ffffff;
-      color: #6b7280;
-      
-      &:hover {
-        border-color: #667eea;
-        color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.2);
-      }
-      
-      &:active {
-        transform: translateY(0);
-      }
+    // 覆盖所有 hover 状态
+    &:hover:not([disabled]),
+    &.el-button--primary:hover:not([disabled]),
+    &.el-button--default:hover:not([disabled]) {
+      background: #f5f7fa !important;
+      background-color: #f5f7fa !important;
+      border-color: #c0c4cc !important;
+      color: #303133 !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+    
+    // 覆盖所有 active 状态
+    &:active:not([disabled]),
+    &.el-button--primary:active:not([disabled]),
+    &.el-button--default:active:not([disabled]) {
+      background: #f0f2f5 !important;
+      background-color: #f0f2f5 !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    
+    // 覆盖所有 focus 状态
+    &:focus:not([disabled]),
+    &:focus-visible:not([disabled]),
+    &.el-button--primary:focus:not([disabled]),
+    &.el-button--default:focus:not([disabled]) {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      border-color: #dcdfe6 !important;
+      color: #606266 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    
+    // 覆盖 disabled 状态
+    &[disabled],
+    &.is-disabled {
+      color: #c0c4cc !important;
+      border-color: #e4e7ed !important;
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+    }
+    
+    // 覆盖 loading 状态
+    &.is-loading {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      border-color: #dcdfe6 !important;
+      color: #606266 !important;
+    }
+    
+    .el-icon {
+      margin-right: 6px;
+      font-size: 18px;
     }
   }
 }

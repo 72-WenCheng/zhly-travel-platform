@@ -1338,9 +1338,9 @@ onMounted(() => {
     margin-bottom: 24px !important; // 增大表单项间距
     display: flex !important;
     align-items: center !important; // 垂直居中对齐
-    
-    .el-form-item__label {
-      color: #666666 !important;
+
+  .el-form-item__label {
+    color: #666666 !important;
       font-size: 15px !important; // 增大标签字体
       font-weight: 500 !important;
       line-height: 44px !important; // 与输入框高度一致，实现垂直居中
@@ -1356,7 +1356,7 @@ onMounted(() => {
   // 输入框样式：初始状态就有阴影，去掉hover和focus的transform效果，去除蓝色边框
   .el-select {
     .el-select__wrapper {
-      background: #ffffff !important;
+    background: #ffffff !important;
       border: 1px solid #e0e0e0 !important;
       border-radius: 8px !important;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; // 初始状态就有阴影
@@ -1380,7 +1380,7 @@ onMounted(() => {
       
       &:focus,
       &:focus-within {
-        border-color: #e0e0e0 !important;
+    border-color: #e0e0e0 !important;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
         outline: none !important;
       }
@@ -1411,8 +1411,8 @@ onMounted(() => {
       &::placeholder {
         font-size: 15px !important; // 增大占位符字体
       }
-      
-      &:hover {
+    
+    &:hover {
         border-color: #d0d0d0 !important;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
       }

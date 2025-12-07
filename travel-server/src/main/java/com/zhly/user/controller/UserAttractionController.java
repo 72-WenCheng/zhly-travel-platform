@@ -281,7 +281,8 @@ public class UserAttractionController {
                 try {
                     int resultCount = result != null && result.get("total") != null ? 
                         ((Number) result.get("total")).intValue() : 0;
-                    searchServiceImpl.recordSearchLog(userId, keyword.trim(), "attractions", resultCount);
+                    String clientIp = com.zhly.util.IpAddressUtils.resolveClientIp(request);
+                    searchServiceImpl.recordSearchLog(userId, keyword.trim(), "attractions", resultCount, clientIp);
                 } catch (Exception e) {
                     // 记录搜索日志失败不应该影响搜索功能，只记录错误
                     System.err.println("记录搜索日志失败: " + e.getMessage());

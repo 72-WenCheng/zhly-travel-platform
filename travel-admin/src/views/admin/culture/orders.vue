@@ -2,49 +2,51 @@
   <div class="order-management">
     <BackButton />
     
-    <el-card class="filter-card">
-      <el-form :inline="true" class="filter-form">
-        <el-form-item label="订单编号">
-          <el-input v-model="filters.orderNo" placeholder="请输入订单编号" clearable />
-        </el-form-item>
-        <el-form-item label="商品类型">
-          <el-select v-model="filters.productType" placeholder="请选择" clearable>
-            <el-option label="全部" value="" />
-            <el-option label="特色产品" :value="1" />
-            <el-option label="文化体验" :value="2" />
-            <el-option label="农家乐/民宿" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="订单状态">
-          <el-select v-model="filters.orderStatus" placeholder="请选择" clearable>
-            <el-option label="全部" value="" />
-            <el-option label="待支付" :value="1" />
-            <el-option label="已支付" :value="2" />
-            <el-option label="已发货" :value="3" />
-            <el-option label="已完成" :value="4" />
-            <el-option label="已取消" :value="5" />
-            <el-option label="已退款" :value="6" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="下单时间">
-          <el-date-picker
-            v-model="filters.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
+    <el-card class="filter-card-modern" shadow="never">
+      <div class="filter-header">
+        <el-icon><Search /></el-icon>
+        <span>筛选条件</span>
+      </div>
+      <el-form :model="filters" class="filter-form">
+        <div class="filter-row">
+          <el-form-item label="订单编号">
+            <el-input v-model="filters.orderNo" placeholder="请输入订单编号" clearable />
+          </el-form-item>
+          <el-form-item label="商品类型">
+            <el-select v-model="filters.productType" placeholder="请选择商品类型" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="特色产品" :value="1" />
+              <el-option label="文化体验" :value="2" />
+              <el-option label="农家乐/民宿" :value="3" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="订单状态">
+            <el-select v-model="filters.orderStatus" placeholder="请选择订单状态" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="待支付" :value="1" />
+              <el-option label="已支付" :value="2" />
+              <el-option label="已发货" :value="3" />
+              <el-option label="已完成" :value="4" />
+              <el-option label="已取消" :value="5" />
+              <el-option label="已退款" :value="6" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="下单时间">
+            <el-date-picker
+              v-model="filters.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              style="width: 100%;"
+            />
+          </el-form-item>
+          <el-form-item label=" " class="filter-actions">
+            <el-button class="reset-btn" @click="handleReset">
+              重置筛选
+            </el-button>
+          </el-form-item>
+        </div>
       </el-form>
     </el-card>
 
@@ -479,19 +481,13 @@ onMounted(() => {
 })
 </script>
 
+<style lang="scss">
+@import '@/styles/admin-list.scss';
+</style>
+
 <style scoped lang="scss">
 .order-management {
   padding: 20px;
-
-  .filter-card {
-    margin-bottom: 20px;
-  }
-
-  .filter-form {
-    .el-form-item {
-      margin-bottom: 0;
-    }
-  }
 
   .table-card {
     .table-header {

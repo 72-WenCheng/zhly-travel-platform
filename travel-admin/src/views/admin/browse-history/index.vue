@@ -49,7 +49,7 @@
         <span>筛选条件</span>
       </div>
       <el-form :model="searchForm" class="filter-form">
-        <!-- 第一行：三个筛选条件 -->
+        <!-- 第一行：三个筛选条件 + 重置按钮 -->
         <div class="filter-row">
           <el-form-item label="用户ID">
             <el-input 
@@ -73,9 +73,6 @@
               clearable
             />
           </el-form-item>
-        </div>
-        <!-- 第二行：右侧重置按钮，结构和攻略管理页一致 -->
-        <div class="filter-row">
           <el-form-item label=" " class="filter-actions">
             <el-button class="reset-btn" @click="handleReset">
               重置筛选
@@ -241,7 +238,7 @@
         </el-descriptions>
       </div>
       <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button class="white-btn" @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -599,6 +596,40 @@ onUnmounted(() => {
     box-shadow: none !important;
   }
 }
+
+// 白色系按钮样式
+.white-btn {
+  background: #ffffff !important;
+  border: 1px solid #dcdfe6 !important;
+  color: #606266 !important;
+  padding: 6px 16px !important;
+  min-width: 80px !important;
+  font-size: 13px !important;
+  border-radius: 4px !important;
+  transition: all 0.3s !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  line-height: 1.5 !important;
+  
+  &:hover:not([disabled]) {
+    background: #f5f7fa !important;
+    border-color: #c0c4cc !important;
+    color: #303133 !important;
+  }
+  
+  &:active:not([disabled]) {
+    background: #f0f2f5 !important;
+  }
+  
+  &[disabled] {
+    color: #c0c4cc !important;
+    border-color: #e4e7ed !important;
+    background: #ffffff !important;
+  }
+}
+
 </style>
 
 

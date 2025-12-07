@@ -9,6 +9,13 @@
         <div class="header-title">
           <h1>积分管理</h1>
           <p>管理用户积分和配置积分规则</p>
+          <div class="status-info">
+            <div class="status-text">
+              <el-icon class="status-icon"><Refresh /></el-icon>
+              <span>数据每30秒自动刷新</span>
+            </div>
+            <span v-if="lastUpdateTime" class="update-time">{{ lastUpdateTime }}</span>
+          </div>
         </div>
       </div>
       <div class="header-actions">
@@ -332,8 +339,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="adjustDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitAdjust">
+        <el-button class="white-btn" @click="adjustDialogVisible = false">取消</el-button>
+        <el-button class="white-btn" @click="submitAdjust">
           确认调整
         </el-button>
       </template>
@@ -342,7 +349,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Coin, Edit, User, TrendCharts, DataLine, Filter, Search, 
@@ -489,6 +496,8 @@ const loadStats = async () => {
         todayPointsIssued: res.data.todayPointsIssued || 0,
         averagePoints: res.data.averagePoints || 0
       }
+      // 更新最后刷新时间
+      lastUpdateTime.value = formatCurrentTime()
     }
   } catch (error) {
     console.error('加载统计失败', error)
@@ -516,6 +525,8 @@ const loadUserPoints = async () => {
         userPointsList.value = list
         userPagination.value.total = resolvedTotal
       }
+      // 更新最后刷新时间
+      lastUpdateTime.value = formatCurrentTime()
     }
   } catch (error) {
     ElMessage.error('加载用户积分列表失败')
@@ -543,6 +554,8 @@ const loadPointsLogs = async () => {
         pointsLogsList.value = list
         logPagination.value.total = resolvedTotal
       }
+      // 更新最后刷新时间
+      lastUpdateTime.value = formatCurrentTime()
     }
   } catch (error) {
     ElMessage.error('加载积分明细失败')
@@ -690,9 +703,46 @@ const formatDate = (date) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
+// 格式化当前时间（用于显示最后刷新时间）
+const formatCurrentTime = () => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
 // 防抖函数
 let userFilterTimer = null
 let logFilterTimer = null
+
+// 自动刷新配置
+const refreshInterval = ref(30000) // 30秒刷新一次
+const autoRefreshTimer = ref(null)
+const lastUpdateTime = ref('')
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+  }
+  autoRefreshTimer.value = setInterval(() => {
+    console.log('自动刷新积分管理数据...')
+    loadStats()  // 刷新统计数据
+    loadUserPoints()  // 刷新用户积分列表
+    loadPointsLogs()  // 刷新积分明细列表
+  }, refreshInterval.value)
+  console.log(`自动刷新已启动，间隔: ${refreshInterval.value / 1000}秒`)
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+    autoRefreshTimer.value = null
+    console.log('自动刷新已停止')
+  }
+}
 
 // 监听用户积分筛选条件变化，自动触发搜索
 watch(
@@ -728,6 +778,11 @@ onMounted(() => {
   loadStats()
   loadUserPoints()
   loadPointsLogs()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -761,7 +816,32 @@ onMounted(() => {
   }
   
   .el-dialog__footer {
-    .el-button--primary {
+    // 白色系按钮样式
+    .white-btn {
+      background: #ffffff;
+      border: 1px solid #dcdfe6;
+      color: #606266;
+      padding: 6px 16px;
+      min-width: 80px;
+      font-size: 13px;
+      border-radius: 4px;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.5;
+      
+      &:hover {
+        background: #f5f7fa;
+        border-color: #c0c4cc;
+        color: #303133;
+      }
+      
+      &:active {
+        background: #f0f2f5;
+      }
+      
       .el-icon,
       i,
       svg {
@@ -770,20 +850,25 @@ onMounted(() => {
         width: 0 !important;
         height: 0 !important;
       }
+      
+      // 确保文字垂直居中
+      span {
+        display: inline-block;
+        line-height: 1.5;
+        vertical-align: middle;
+      }
     }
-  }
-  
-  .el-dialog__body {
-    padding-top: 12px !important;
-  }
-
-  .el-dialog__footer {
+    
     .el-button {
       padding: 6px 16px;
       min-width: 80px;
       font-size: 13px;
       border-radius: 4px;
     }
+  }
+  
+  .el-dialog__body {
+    padding-top: 12px !important;
   }
 }
 

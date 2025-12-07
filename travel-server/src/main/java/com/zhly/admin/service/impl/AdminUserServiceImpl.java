@@ -10,7 +10,12 @@ import com.zhly.mapper.UserCollectMapper;
 import com.zhly.mapper.CommentMapper;
 import com.zhly.mapper.PointsLogMapper;
 import com.zhly.mapper.OrderMapper;
+import com.zhly.mapper.UserPointsMapper;
+import com.zhly.mapper.UserLevelMapper;
 import com.zhly.entity.PointsLog;
+import com.zhly.entity.UserPoints;
+import com.zhly.entity.UserLevel;
+import com.zhly.service.IUserPointsService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +61,15 @@ public class AdminUserServiceImpl implements AdminUserService {
     
     @Autowired(required = false)
     private OrderMapper orderMapper;
+    
+    @Autowired(required = false)
+    private UserPointsMapper userPointsMapper;
+    
+    @Autowired(required = false)
+    private IUserPointsService userPointsService;
+    
+    @Autowired(required = false)
+    private UserLevelMapper userLevelMapper;
     
     @Override
     public List<AdminUser> getUserList(Integer page, Integer size, String keyword) {
@@ -236,6 +250,17 @@ public class AdminUserServiceImpl implements AdminUserService {
         
         // 写入数据
         for (AdminUser user : users) {
+            // 从 user_points 表获取积分和等级信息
+            int points = 0;
+            int level = 0;
+            if (userPointsMapper != null) {
+                UserPoints userPoints = userPointsMapper.getByUserId(user.getId());
+                if (userPoints != null) {
+                    points = userPoints.getTotalPoints() != null ? userPoints.getTotalPoints() : 0;
+                    level = userPoints.getLevelCode() != null ? userPoints.getLevelCode() : 0;
+                }
+            }
+            
             writer.println(String.format("%d,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s,%s,%s",
                 user.getId(),
                 escapeCSV(user.getUsername()),
@@ -245,8 +270,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 "", // userType 字段已移除
                 getRoleText(user.getRole()),
                 getTravelPreferenceText(user.getTravelPreference()),
-                user.getPoints() != null ? user.getPoints() : 0,
-                user.getLevel() != null ? user.getLevel() : 0,
+                points,
+                level,
                 user.getStatus() != null && user.getStatus() == 1 ? "正常" : "禁用",
                 user.getCreateTime() != null ? user.getCreateTime().toString() : "",
                 user.getLastLoginTime() != null ? user.getLastLoginTime().toString() : ""
@@ -303,11 +328,13 @@ public class AdminUserServiceImpl implements AdminUserService {
             Long todayNew = adminUserMapper.selectCount(todayWrapper);
             stats.put("todayNew", todayNew != null ? todayNew : 0L);
             
-            // VIP用户数（假设level >= 5为VIP）
-            QueryWrapper<AdminUser> vipWrapper = new QueryWrapper<>();
-            vipWrapper.ge("level", 5);
-            vipWrapper.eq("deleted", 0);
-            Long vipUsers = adminUserMapper.selectCount(vipWrapper);
+            // VIP用户数（从user_points表查询，level_code >= 5为VIP）
+            Long vipUsers = 0L;
+            if (userPointsMapper != null) {
+                QueryWrapper<UserPoints> vipWrapper = new QueryWrapper<>();
+                vipWrapper.ge("level_code", 5);
+                vipUsers = userPointsMapper.selectCount(vipWrapper);
+            }
             stats.put("vipUsers", vipUsers != null ? vipUsers : 0L);
             
             return stats;
@@ -471,28 +498,45 @@ public class AdminUserServiceImpl implements AdminUserService {
                 throw new RuntimeException("用户不存在");
             }
             
-            int currentPoints = user.getPoints() != null ? user.getPoints() : 0;
-            int newPoints = currentPoints + points;
-            if (newPoints < 0) {
-                throw new RuntimeException("积分不足，无法扣除");
+            // 检查积分是否足够扣除
+            if (points < 0 && userPointsMapper != null) {
+                UserPoints userPoints = userPointsMapper.getByUserId(id);
+                if (userPoints == null || userPoints.getTotalPoints() == null || 
+                    userPoints.getTotalPoints() + points < 0) {
+                    throw new RuntimeException("积分不足，无法扣除");
+                }
             }
             
-            LambdaUpdateWrapper<AdminUser> updateWrapper = new LambdaUpdateWrapper<>();
-            updateWrapper.eq(AdminUser::getId, id)
-                         .set(AdminUser::getPoints, newPoints)
-                         .set(AdminUser::getUpdateTime, LocalDateTime.now());
-            adminUserMapper.update(null, updateWrapper);
-            
-            // 记录积分变动日志
-            if (pointsLogMapper != null) {
-                PointsLog pointsLog = new PointsLog();
-                pointsLog.setUserId(id);
-                pointsLog.setPoints(points);
-                pointsLog.setActionType(10); // 10-管理员调整
-                pointsLog.setActionDesc(reason != null ? reason : "管理员调整积分");
-                pointsLog.setBalanceAfter(newPoints);
-                pointsLog.setCreateTime(LocalDateTime.now());
-                pointsLogMapper.insert(pointsLog);
+            // 使用 IUserPointsService 调整积分（会自动更新等级和记录日志）
+            if (userPointsService != null) {
+                userPointsService.addPoints(id, points, 10, 
+                    reason != null ? reason : "管理员调整积分", 
+                    "ADMIN", null);
+            } else if (userPointsMapper != null) {
+                // 如果 service 不可用，直接操作 mapper
+                UserPoints userPoints = userPointsMapper.getByUserId(id);
+                if (userPoints == null) {
+                    if (userPointsMapper != null) {
+                        // 初始化用户积分
+                        UserPoints newUserPoints = new UserPoints();
+                        newUserPoints.setUserId(id);
+                        newUserPoints.setTotalPoints(Math.max(0, points));
+                        newUserPoints.setAvailablePoints(Math.max(0, points));
+                        newUserPoints.setFrozenPoints(0);
+                        newUserPoints.setCreateTime(LocalDateTime.now());
+                        newUserPoints.setUpdateTime(LocalDateTime.now());
+                        userPointsMapper.insert(newUserPoints);
+                    }
+                } else {
+                    int newTotalPoints = (userPoints.getTotalPoints() != null ? userPoints.getTotalPoints() : 0) + points;
+                    if (newTotalPoints < 0) {
+                        throw new RuntimeException("积分不足，无法扣除");
+                    }
+                    userPoints.setTotalPoints(newTotalPoints);
+                    userPoints.setAvailablePoints((userPoints.getAvailablePoints() != null ? userPoints.getAvailablePoints() : 0) + points);
+                    userPoints.setUpdateTime(LocalDateTime.now());
+                    userPointsMapper.updateById(userPoints);
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("调整积分失败: " + e.getMessage());
@@ -508,24 +552,55 @@ public class AdminUserServiceImpl implements AdminUserService {
                 throw new RuntimeException("用户不存在");
             }
             
-            if (level < 1 || level > 10) {
-                throw new RuntimeException("等级必须在1-10之间");
+            if (level < 1 || level > 6) {
+                throw new RuntimeException("等级必须在1-6之间");
             }
             
-            LambdaUpdateWrapper<AdminUser> updateWrapper = new LambdaUpdateWrapper<>();
-            updateWrapper.eq(AdminUser::getId, id)
-                         .set(AdminUser::getLevel, level)
-                         .set(AdminUser::getUpdateTime, LocalDateTime.now());
-            adminUserMapper.update(null, updateWrapper);
+            // 从 user_points 表更新等级
+            if (userPointsMapper == null) {
+                throw new RuntimeException("用户积分服务不可用");
+            }
             
-            // 记录等级变动日志（可以记录到操作日志表）
+            UserPoints userPoints = userPointsMapper.getByUserId(id);
+            if (userPoints == null) {
+                // 如果用户积分记录不存在，先初始化
+                if (userPointsService != null) {
+                    userPointsService.initUserPoints(id);
+                    userPoints = userPointsMapper.getByUserId(id);
+                } else {
+                    throw new RuntimeException("用户积分记录不存在，且无法初始化");
+                }
+            }
+            
+            // 获取等级信息
+            Integer oldLevelCode = userPoints.getLevelCode();
+            if (userLevelMapper != null) {
+                UserLevel targetLevel = userLevelMapper.getLevelByCode(level);
+                if (targetLevel != null) {
+                    userPoints.setCurrentLevelId(targetLevel.getId());
+                    userPoints.setLevelCode(targetLevel.getLevelCode());
+                    userPoints.setLevelName(targetLevel.getLevelName());
+                    userPoints.setUpdateTime(LocalDateTime.now());
+                    userPointsMapper.updateById(userPoints);
+                } else {
+                    throw new RuntimeException("等级配置不存在");
+                }
+            } else {
+                // 如果 userLevelMapper 不可用，直接设置 level_code
+                userPoints.setLevelCode(level);
+                userPoints.setUpdateTime(LocalDateTime.now());
+                userPointsMapper.updateById(userPoints);
+            }
+            
+            // 记录等级变动日志
             if (userOperationLogMapper != null) {
                 try {
                     com.zhly.entity.UserOperationLog log = new com.zhly.entity.UserOperationLog();
                     log.setUserId(id);
                     log.setOperationType("EDIT");
                     log.setOperationModule("USER");
-                    log.setOperationContent("管理员调整用户等级：" + user.getLevel() + " -> " + level);
+                    log.setOperationContent("管理员调整用户等级：" + 
+                        (oldLevelCode != null ? oldLevelCode : "未知") + " -> " + level);
                     log.setOperationTime(LocalDateTime.now());
                     log.setStatus(1);
                     log.setRemark(reason != null ? reason : "管理员调整等级");

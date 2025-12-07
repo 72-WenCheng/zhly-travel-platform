@@ -110,7 +110,7 @@
           </el-form-item>
         </div>
         <div class="filter-row">
-          <el-form-item label="创建时间" style="flex: 0 0 320px;">
+          <el-form-item label="创建时间">
             <el-date-picker
               v-model="searchForm.dateRange"
               type="daterange"
@@ -126,7 +126,7 @@
               <el-option label="点赞数（高到低）" value="likeCount" />
               <el-option label="评论数（高到低）" value="commentCount" />
             </el-select>
-            <el-button class="reset-btn" @click="handleReset" style="margin-left: 12px;">
+            <el-button class="reset-btn" @click="handleReset">
               重置筛选
             </el-button>
           </el-form-item>

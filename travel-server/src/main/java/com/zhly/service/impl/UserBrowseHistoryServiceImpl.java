@@ -44,6 +44,10 @@ public class UserBrowseHistoryServiceImpl extends ServiceImpl<UserBrowseHistoryM
         if (geoIpInfo != null) {
             history.setCountryCode(geoIpInfo.getCountryCode());
             history.setCountryName(geoIpInfo.getCountryName());
+        } else {
+            // 如果IP解析失败，设置默认值（中国）
+            history.setCountryCode("CN");
+            history.setCountryName("中国");
         }
         history.setCreateTime(LocalDateTime.now());
         return this.save(history);

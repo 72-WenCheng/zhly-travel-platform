@@ -30,7 +30,7 @@
       <el-tabs v-model="activeTab" class="config-tabs">
         <!-- 基本设置 -->
         <el-tab-pane label="基本设置" name="basic">
-          <el-form :model="basicSettings" label-width="150px">
+          <el-form :model="basicSettings" label-width="155px">
             <el-divider content-position="left">系统信息</el-divider>
             <el-form-item label="管理平台名称">
               <el-input v-model="basicSettings.adminPlatformName" placeholder="请输入管理平台名称" />
@@ -69,7 +69,7 @@
         
         <!-- 缓存配置 -->
         <el-tab-pane label="缓存配置" name="cache">
-          <el-form :model="cacheSettings" label-width="150px">
+          <el-form :model="cacheSettings" label-width="155px">
             <el-divider content-position="left">缓存类型</el-divider>
             <el-form-item label="缓存类型">
               <el-radio-group v-model="cacheSettings.type">
@@ -104,7 +104,7 @@
         
         <!-- 安全配置 -->
         <el-tab-pane label="安全配置" name="security">
-          <el-form :model="securitySettings" label-width="150px">
+          <el-form :model="securitySettings" label-width="155px">
             <el-divider content-position="left">登录安全</el-divider>
             <el-form-item label="密码最小长度">
               <el-input-number v-model="securitySettings.passwordMinLength" :min="6" :max="20" />
@@ -158,7 +158,6 @@
                 <div class="logs-header">
                   <div class="logs-title">
                     <span>系统操作日志</span>
-                    <span class="auto-refresh-tip">30 秒自动刷新</span>
                   </div>
                 </div>
               </template>
@@ -487,6 +486,49 @@ const testCacheConnection = async () => {
   }
 }
 
+// 转换操作类型为友好描述
+const formatOperationType = (type: string): string => {
+  if (!type) return '-'
+  const typeMap: Record<string, string> = {
+    'CREATE': '创建',
+    'UPDATE': '更新',
+    'EDIT': '编辑',
+    'DELETE': '删除',
+    'VIEW': '查看',
+    'TEST': '测试',
+    'OPERATE': '操作',
+    'LOGIN': '登录',
+    'LOGOUT': '退出',
+    'EXPORT': '导出',
+    'IMPORT': '导入',
+    'ENABLE': '启用',
+    'DISABLE': '禁用'
+  }
+  return typeMap[type.toUpperCase()] || type
+}
+
+// 转换操作模块为友好描述
+const formatOperationModule = (module: string): string => {
+  if (!module) return '-'
+  const moduleMap: Record<string, string> = {
+    'SYSTEM_CONFIG': '系统配置',
+    'CACHE_CONFIG': '缓存配置',
+    'SECURITY_CONFIG': '安全配置',
+    'USER': '用户管理',
+    'PLAN': '攻略管理',
+    'ATTRACTION': '景点管理',
+    'COMMENT': '评论管理',
+    'BANNER': '轮播图管理',
+    'ANNOUNCEMENT': '公告管理',
+    'REPORT': '举报审核',
+    'POINTS': '积分管理',
+    'BROWSE_HISTORY': '浏览历史',
+    'ACTIVITY': '活动管理',
+    'RECOMMENDATION': '推荐管理'
+  }
+  return moduleMap[module.toUpperCase()] || module
+}
+
 // 加载日志
 const loadLogs = async () => {
   loadingLogs.value = true
@@ -501,8 +543,8 @@ const loadLogs = async () => {
       logList.value = (res.data.list || []).map((item: any) => ({
         id: item.id,
         operator: item.operator || '系统',
-        operation: item.operationType || '',
-        module: item.operationModule || '',
+        operation: formatOperationType(item.operationType || ''),
+        module: formatOperationModule(item.operationModule || ''),
         content: item.operationContent || '',
         ip: item.operationIp || '',
         createTime: item.createTime || item.operationTime
@@ -738,31 +780,77 @@ onUnmounted(() => {
     }
   }
 
+  :deep(.el-divider__text) {
+    font-size: 15px;
+    font-weight: 600;
+    color: #4d5562;
+    padding: 0 16px;
+  }
+
   .el-form-item {
-    margin-bottom: 24px;
+    margin-bottom: 26px;
 
     :deep(.el-form-item__label) {
       font-weight: 500;
       color: #4d5562;
-      font-size: 14px;
+      font-size: 15px;
       pointer-events: none;
       user-select: none;
     }
 
     :deep(.el-input__wrapper),
     :deep(.el-select .el-input__wrapper),
-    :deep(.el-input-number .el-input__wrapper),
-    :deep(.el-textarea__inner) {
+    :deep(.el-input-number .el-input__wrapper) {
       border-radius: 10px;
       border: 1px solid #e1e4ea;
+      min-height: 40px;
+      padding: 0 16px;
       box-shadow: none;
       background: #f3f5fa;
+      
+      .el-input__inner {
+        font-size: 14px;
+        height: 40px;
+        line-height: 40px;
+      }
 
       &.is-focus,
       &:focus {
         border-color: #cfd4dd;
         box-shadow: none;
         background: #fff;
+      }
+    }
+    
+    :deep(.el-textarea__inner) {
+      border-radius: 10px;
+      border: 1px solid #e1e4ea;
+      min-height: 70px;
+      padding: 10px 16px;
+      box-shadow: none;
+      background: #f3f5fa;
+      font-size: 14px;
+      line-height: 1.6;
+
+      &:focus {
+        border-color: #cfd4dd;
+        box-shadow: none;
+        background: #fff;
+      }
+    }
+    
+    :deep(.el-input-number) {
+      .el-input__wrapper {
+        .el-input__inner {
+          font-size: 14px;
+        }
+      }
+    }
+    
+    :deep(.el-radio-group) {
+      .el-radio__label {
+        font-size: 14px;
+        color: #4d5562;
       }
     }
 
@@ -835,11 +923,6 @@ onUnmounted(() => {
         font-weight: 600;
         color: #2f3542;
       }
-
-      .auto-refresh-tip {
-        font-size: 12px;
-        color: #909399;
-      }
     }
 
     :deep(.el-card) {
@@ -880,6 +963,35 @@ onUnmounted(() => {
       display: inline-flex;
       align-items: center;
       gap: 12px;
+      
+      .page-btn {
+        width: 40px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid #e4e7ed;
+        background: #f9fafb;
+        box-shadow: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: all 0.2s ease;
+        
+        :deep(.el-icon) {
+          font-size: 14px;
+          color: #909399;
+        }
+        
+        &:hover:not(.is-disabled) {
+          border-color: #d0d3db !important;
+          background: #f3f4f6 !important;
+          background-color: #f3f4f6 !important;
+        }
+        
+        &.is-disabled {
+          opacity: 0.5;
+        }
+      }
     }
     
     .logs-pagination-jump {
@@ -970,6 +1082,34 @@ onUnmounted(() => {
         background: #f6f7f9 !important;
         border-color: #caced6 !important;
       }
+    }
+  }
+  
+  // 操作日志翻页按钮样式 - 覆盖 Element Plus 默认蓝色
+  .logs-section .logs-pagination .logs-pagination-pages .page-btn {
+    &:hover:not(.is-disabled),
+    &.el-button:hover:not(.is-disabled),
+    &.el-button--default:hover:not(.is-disabled) {
+      background: #f3f4f6 !important;
+      background-color: #f3f4f6 !important;
+      border-color: #d0d3db !important;
+      color: #606266 !important;
+    }
+    
+    &:active:not(.is-disabled),
+    &.el-button:active:not(.is-disabled) {
+      background: #e4e7ed !important;
+      background-color: #e4e7ed !important;
+      border-color: #c0c4cc !important;
+    }
+    
+    &:focus:not(.is-disabled),
+    &.el-button:focus:not(.is-disabled) {
+      background: #f9fafb !important;
+      background-color: #f9fafb !important;
+      border-color: #e4e7ed !important;
+      box-shadow: none !important;
+      outline: none !important;
     }
   }
 }

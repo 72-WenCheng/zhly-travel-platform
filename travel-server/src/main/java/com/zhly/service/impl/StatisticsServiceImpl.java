@@ -21,6 +21,7 @@ import com.zhly.mapper.UserCollectMapper;
 import com.zhly.mapper.UserLikeMapper;
 import com.zhly.mapper.OrderMapper;
 import com.zhly.mapper.UserBrowseHistoryMapper;
+import com.zhly.mapper.SearchLogMapper;
 import com.zhly.mapper.ReportMapper;
 import com.zhly.mapper.UserLoginHistoryMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -77,6 +78,9 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Autowired
     private UserBrowseHistoryMapper browseHistoryMapper;
+    
+    @Autowired
+    private SearchLogMapper searchLogMapper;
 
     @Autowired
     private UserLoginHistoryMapper userLoginHistoryMapper;
@@ -455,22 +459,61 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public List<Map<String, Object>> getWorldTrafficStatistics() {
         try {
-            List<Map<String, Object>> aggregates = browseHistoryMapper.selectWorldTrafficAggregates();
-            if (aggregates == null || aggregates.isEmpty()) {
-                return java.util.Collections.emptyList();
+            // 查询访问量统计（user_browse_history表）
+            List<Map<String, Object>> browseStats = browseHistoryMapper.selectWorldTrafficAggregates();
+            
+            // 查询检索量统计（search_log表，只统计攻略社区和景点社区的搜索）
+            List<Map<String, Object>> searchStats = searchLogMapper.selectSearchStatisticsByCountry();
+            
+            // 合并数据
+            Map<String, Map<String, Object>> mergedMap = new HashMap<>();
+            
+            // 先处理访问量数据
+            if (browseStats != null) {
+                for (Map<String, Object> row : browseStats) {
+                    String countryCode = (String) row.get("countryCode");
+                    if (countryCode == null) countryCode = "CN";
+                    
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("countryCode", countryCode);
+                    item.put("countryName", row.getOrDefault("countryName", "中国"));
+                    item.put("visits", ((Number) row.getOrDefault("visits", 0)).intValue());
+                    item.put("queries", 0); // 初始化为0
+                    item.put("avgDuration", ((Number) row.getOrDefault("avgDuration", 0)).intValue());
+                    mergedMap.put(countryCode, item);
+                }
             }
-
+            
+            // 再处理检索量数据
+            if (searchStats != null) {
+                for (Map<String, Object> row : searchStats) {
+                    String countryCode = (String) row.get("countryCode");
+                    if (countryCode == null) countryCode = "CN";
+                    
+                    Map<String, Object> item = mergedMap.get(countryCode);
+                    if (item == null) {
+                        // 如果该国家没有访问量数据，创建新条目
+                        item = new HashMap<>();
+                        item.put("countryCode", countryCode);
+                        item.put("countryName", row.getOrDefault("countryName", "中国"));
+                        item.put("visits", 0);
+                        item.put("avgDuration", 0);
+                        mergedMap.put(countryCode, item);
+                    }
+                    item.put("queries", ((Number) row.getOrDefault("queries", 0)).intValue());
+                }
+            }
+            
+            // 转换为列表
             List<Map<String, Object>> list = new java.util.ArrayList<>();
-            for (Map<String, Object> row : aggregates) {
-                int visits = ((Number) row.getOrDefault("visits", 0)).intValue();
-                int queries = ((Number) row.getOrDefault("queries", 0)).intValue();
-                Number avgDurationValue = (Number) row.get("avgDuration");
-                int avgDurationSeconds = avgDurationValue != null ? avgDurationValue.intValue() : 0;
-
-                String countryCode = (String) row.get("countryCode");
-                String cnName = (String) row.getOrDefault("countryName", "未知");
+            for (Map<String, Object> item : mergedMap.values()) {
+                String countryCode = (String) item.get("countryCode");
+                String cnName = (String) item.getOrDefault("countryName", "未知");
+                int visits = ((Number) item.getOrDefault("visits", 0)).intValue();
+                int queries = ((Number) item.getOrDefault("queries", 0)).intValue();
+                int avgDurationSeconds = ((Number) item.getOrDefault("avgDuration", 0)).intValue();
                 String enName = resolveEnglishCountryName(countryCode);
-
+                
                 list.add(createWorldTrafficItem(
                         countryCode != null ? countryCode : "UNKNOWN",
                         enName,
@@ -480,7 +523,8 @@ public class StatisticsServiceImpl implements StatisticsService {
                         avgDurationSeconds
                 ));
             }
-
+            
+            // 按访问量排序
             list.sort((a, b) -> {
                 int v1 = ((Number) b.getOrDefault("visits", 0)).intValue();
                 int v2 = ((Number) a.getOrDefault("visits", 0)).intValue();
@@ -679,6 +723,11 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public Map<String, Object> getFunctionUsageStatistics(String timeRange) {
         try {
+            // 参数验证
+            if (timeRange != null && timeRange.trim().isEmpty()) {
+                timeRange = null;
+            }
+            
             FunctionUsageWindow window = resolveFunctionUsageWindow(timeRange);
             Map<String, Object> result = new HashMap<>();
             result.put("range", window.getRangeKey());
@@ -1410,6 +1459,10 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     private long countTravelPlans(LocalDateTime start, LocalDateTime end) {
         QueryWrapper<TravelPlan> wrapper = new QueryWrapper<>();
+        // 只统计已审核通过的攻略（audit_status=1）
+        wrapper.eq("audit_status", 1);
+        // 只统计已发布的攻略（status=1）
+        wrapper.eq("status", 1);
         if (start != null) {
             wrapper.ge("create_time", start);
         }

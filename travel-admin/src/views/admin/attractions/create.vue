@@ -922,25 +922,94 @@ const handleSubmit = async () => {
       display: flex;
       gap: 12px;
       
-      .action-btn {
-        border-radius: 4px;
-        padding: 8px 20px;
-        font-weight: 500;
-        background-color: #ffffff;
-        border: 1px solid #dcdfe6;
-        color: #606266;
-        transition: none;
+      :deep(.action-btn) {
+        border-radius: 4px !important;
+        padding: 8px 20px !important;
+        font-weight: 500 !important;
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        border: 1px solid #dcdfe6 !important;
+        border-color: #dcdfe6 !important;
+        color: #606266 !important;
+        transition: all 0.3s !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        vertical-align: middle !important;
+        line-height: 1.5 !important;
+        box-shadow: none !important;
+        outline: none !important;
         
-        &:hover {
-          background-color: #f5f7fa;
-          border-color: #c0c4cc;
-          color: #606266;
-          box-shadow: none;
-          transform: none;
+        // 覆盖 Element Plus 的所有可能类型和状态
+        &,
+        &.el-button--primary,
+        &.el-button--default,
+        &.el-button--success,
+        &.el-button--info,
+        &.el-button--warning,
+        &.el-button--danger {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          border: 1px solid #dcdfe6 !important;
+          border-color: #dcdfe6 !important;
+          color: #606266 !important;
+          box-shadow: none !important;
+        }
+        
+        // 覆盖所有 hover 状态
+        &:hover:not([disabled]),
+        &.el-button--primary:hover:not([disabled]),
+        &.el-button--default:hover:not([disabled]) {
+          background: #f5f7fa !important;
+          background-color: #f5f7fa !important;
+          border-color: #c0c4cc !important;
+          color: #303133 !important;
+          box-shadow: none !important;
+          transform: none !important;
+        }
+        
+        // 覆盖所有 active 状态
+        &:active:not([disabled]),
+        &.el-button--primary:active:not([disabled]),
+        &.el-button--default:active:not([disabled]) {
+          background: #f0f2f5 !important;
+          background-color: #f0f2f5 !important;
+          transform: none !important;
+          box-shadow: none !important;
+        }
+        
+        // 覆盖所有 focus 状态
+        &:focus:not([disabled]),
+        &:focus-visible:not([disabled]),
+        &.el-button--primary:focus:not([disabled]),
+        &.el-button--default:focus:not([disabled]) {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          border-color: #dcdfe6 !important;
+          color: #606266 !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+        
+        // 覆盖 disabled 状态
+        &[disabled],
+        &.is-disabled {
+          color: #c0c4cc !important;
+          border-color: #e4e7ed !important;
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        // 覆盖 loading 状态
+        &.is-loading {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          border-color: #dcdfe6 !important;
+          color: #606266 !important;
         }
         
         &.confirm-btn {
-          font-weight: 600;
+          font-weight: 500 !important;
         }
       }
     }
@@ -1121,26 +1190,32 @@ const handleSubmit = async () => {
     padding: 14px 20px;
     border-radius: 8px;
     font-weight: 500;
-    border: 2px dashed #409eff;
-    background: #ecf5ff;
-    color: #409eff;
-    transition: all 0.3s;
+    border: 2px dashed #dcdfe6;
+    background: #ffffff;
+    color: #606266;
+    transition: border-color 0.3s ease;
     
     .el-icon {
       margin-right: 8px;
       font-size: 18px;
+      color: #909399;
     }
     
     &:hover {
-      border-color: #66b1ff;
-      background: #d9ecff;
-      color: #66b1ff;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+      border-color: #909399;
+      background: #ffffff;
+      color: #606266;
+      transform: none;
+      box-shadow: none;
+      
+      .el-icon {
+        color: #909399;
+      }
     }
     
     &:active {
-      transform: translateY(0);
+      transform: none;
+      background: #ffffff;
     }
   }
   

@@ -7,6 +7,7 @@ import com.zhly.service.AttractionService;
 import com.zhly.service.TravelPlanService;
 import com.zhly.service.CultureProjectService;
 import com.zhly.service.TravelRouteService;
+import com.zhly.service.dto.GeoIpInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.HashMap;
@@ -38,6 +39,9 @@ public class SearchServiceImpl implements SearchService {
     
     @Autowired
     private SearchLogMapper searchLogMapper;
+    
+    @Autowired
+    private com.zhly.service.GeoIpService geoIpService;
     
     @Override
     public Map<String, Object> globalSearch(String keyword, Integer page, Integer size) {
@@ -147,6 +151,13 @@ public class SearchServiceImpl implements SearchService {
      * 记录搜索日志（带结果数量）
      */
     public void recordSearchLog(Long userId, String keyword, String searchType, Integer resultCount) {
+        recordSearchLog(userId, keyword, searchType, resultCount, null);
+    }
+    
+    /**
+     * 记录搜索日志（带结果数量和IP信息，用于地理统计）
+     */
+    public void recordSearchLog(Long userId, String keyword, String searchType, Integer resultCount, String ipAddress) {
         try {
             SearchLog searchLog = new SearchLog();
             searchLog.setUserId(userId);
@@ -154,12 +165,124 @@ public class SearchServiceImpl implements SearchService {
             searchLog.setSearchType(searchType);
             searchLog.setResultCount(resultCount != null ? resultCount : 0);
             searchLog.setSearchTime(LocalDateTime.now());
+            searchLog.setIpAddress(ipAddress);
+            
+            // 优先根据搜索关键词推断国家（如果搜索的是外国城市）
+            GeoIpInfo keywordCountryInfo = inferCountryFromKeyword(keyword);
+            if (keywordCountryInfo != null) {
+                searchLog.setCountryCode(keywordCountryInfo.getCountryCode());
+                searchLog.setCountryName(keywordCountryInfo.getCountryName());
+            } else {
+                // 如果无法从关键词推断，则使用IP地址解析国家信息
+            if (ipAddress != null && !ipAddress.trim().isEmpty()) {
+                try {
+                    GeoIpInfo geoIpInfo = geoIpService.lookup(ipAddress);
+                    if (geoIpInfo != null) {
+                        searchLog.setCountryCode(geoIpInfo.getCountryCode());
+                        searchLog.setCountryName(geoIpInfo.getCountryName());
+                        } else {
+                            // 如果IP解析失败，设置默认值（中国）
+                            searchLog.setCountryCode("CN");
+                            searchLog.setCountryName("中国");
+                    }
+                } catch (Exception e) {
+                        // IP解析失败不影响搜索日志记录，设置默认值
+                    System.err.println("解析IP地址失败: " + e.getMessage());
+                        searchLog.setCountryCode("CN");
+                        searchLog.setCountryName("中国");
+                    }
+                } else {
+                    // 如果没有IP地址，设置默认值（中国）
+                    searchLog.setCountryCode("CN");
+                    searchLog.setCountryName("中国");
+                }
+            }
             
             searchLogMapper.insert(searchLog);
         } catch (Exception e) {
             // 记录搜索日志失败不应该影响搜索功能，只记录错误
             System.err.println("记录搜索日志失败: " + e.getMessage());
         }
+    }
+    
+    /**
+     * 根据搜索关键词推断国家信息
+     * 如果搜索的是外国城市，返回该城市所在的国家信息
+     */
+    private GeoIpInfo inferCountryFromKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        
+        String normalizedKeyword = keyword.trim().toLowerCase();
+        
+        // 国际城市到国家的映射
+        java.util.Map<String, String[]> cityCountryMap = new java.util.HashMap<>();
+        
+        // 欧洲城市
+        cityCountryMap.put("维也纳", new String[]{"AT", "奥地利"});
+        cityCountryMap.put("vienna", new String[]{"AT", "Austria"});
+        cityCountryMap.put("巴黎", new String[]{"FR", "法国"});
+        cityCountryMap.put("paris", new String[]{"FR", "France"});
+        cityCountryMap.put("伦敦", new String[]{"GB", "英国"});
+        cityCountryMap.put("london", new String[]{"GB", "United Kingdom"});
+        cityCountryMap.put("罗马", new String[]{"IT", "意大利"});
+        cityCountryMap.put("rome", new String[]{"IT", "Italy"});
+        cityCountryMap.put("柏林", new String[]{"DE", "德国"});
+        cityCountryMap.put("berlin", new String[]{"DE", "Germany"});
+        cityCountryMap.put("马德里", new String[]{"ES", "西班牙"});
+        cityCountryMap.put("madrid", new String[]{"ES", "Spain"});
+        cityCountryMap.put("阿姆斯特丹", new String[]{"NL", "荷兰"});
+        cityCountryMap.put("amsterdam", new String[]{"NL", "Netherlands"});
+        cityCountryMap.put("莫斯科", new String[]{"RU", "俄罗斯"});
+        cityCountryMap.put("moscow", new String[]{"RU", "Russia"});
+        
+        // 亚洲城市
+        cityCountryMap.put("东京", new String[]{"JP", "日本"});
+        cityCountryMap.put("tokyo", new String[]{"JP", "Japan"});
+        cityCountryMap.put("首尔", new String[]{"KR", "韩国"});
+        cityCountryMap.put("seoul", new String[]{"KR", "South Korea"});
+        cityCountryMap.put("新加坡", new String[]{"SG", "新加坡"});
+        cityCountryMap.put("singapore", new String[]{"SG", "Singapore"});
+        cityCountryMap.put("曼谷", new String[]{"TH", "泰国"});
+        cityCountryMap.put("bangkok", new String[]{"TH", "Thailand"});
+        
+        // 北美洲城市
+        cityCountryMap.put("纽约", new String[]{"US", "美国"});
+        cityCountryMap.put("new york", new String[]{"US", "United States"});
+        cityCountryMap.put("洛杉矶", new String[]{"US", "美国"});
+        cityCountryMap.put("los angeles", new String[]{"US", "United States"});
+        cityCountryMap.put("温哥华", new String[]{"CA", "加拿大"});
+        cityCountryMap.put("vancouver", new String[]{"CA", "Canada"});
+        cityCountryMap.put("多伦多", new String[]{"CA", "加拿大"});
+        cityCountryMap.put("toronto", new String[]{"CA", "Canada"});
+        
+        // 大洋洲城市
+        cityCountryMap.put("悉尼", new String[]{"AU", "澳大利亚"});
+        cityCountryMap.put("sydney", new String[]{"AU", "Australia"});
+        cityCountryMap.put("墨尔本", new String[]{"AU", "澳大利亚"});
+        cityCountryMap.put("melbourne", new String[]{"AU", "Australia"});
+        
+        // 检查关键词是否匹配城市
+        String[] countryInfo = cityCountryMap.get(normalizedKeyword);
+        if (countryInfo == null) {
+            // 尝试部分匹配（包含关系）
+            for (java.util.Map.Entry<String, String[]> entry : cityCountryMap.entrySet()) {
+                if (normalizedKeyword.contains(entry.getKey()) || entry.getKey().contains(normalizedKeyword)) {
+                    countryInfo = entry.getValue();
+                    break;
+                }
+            }
+        }
+        
+        if (countryInfo != null) {
+            GeoIpInfo info = new GeoIpInfo();
+            info.setCountryCode(countryInfo[0]);
+            info.setCountryName(countryInfo[1]);
+            return info;
+        }
+        
+        return null;
     }
     
     @Override

@@ -2,38 +2,39 @@
   <div class="coupon-management">
     <BackButton />
     
-    <el-card class="filter-card">
-      <el-form :inline="true" class="filter-form">
-        <el-form-item label="优惠券名称">
-          <el-input v-model="filters.name" placeholder="请输入优惠券名称" clearable />
-        </el-form-item>
-        <el-form-item label="优惠券类型">
-          <el-select v-model="filters.type" placeholder="请选择" clearable>
-            <el-option label="全部" value="" />
-            <el-option label="满减券" :value="1" />
-            <el-option label="折扣券" :value="2" />
-            <el-option label="兑换券" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="请选择" clearable>
-            <el-option label="全部" value="" />
-            <el-option label="未开始" :value="1" />
-            <el-option label="进行中" :value="2" />
-            <el-option label="已结束" :value="3" />
-            <el-option label="已下架" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
+    <el-card class="filter-card-modern" shadow="never">
+      <div class="filter-header">
+        <el-icon><Search /></el-icon>
+        <span>筛选条件</span>
+      </div>
+      <el-form :model="filters" class="filter-form">
+        <div class="filter-row">
+          <el-form-item label="优惠券名称">
+            <el-input v-model="filters.name" placeholder="请输入优惠券名称" clearable />
+          </el-form-item>
+          <el-form-item label="优惠券类型">
+            <el-select v-model="filters.type" placeholder="请选择优惠券类型" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="满减券" :value="1" />
+              <el-option label="折扣券" :value="2" />
+              <el-option label="兑换券" :value="3" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="filters.status" placeholder="请选择状态" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="未开始" :value="1" />
+              <el-option label="进行中" :value="2" />
+              <el-option label="已结束" :value="3" />
+              <el-option label="已下架" :value="4" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label=" " class="filter-actions">
+            <el-button class="reset-btn" @click="handleReset">
+              重置筛选
+            </el-button>
+          </el-form-item>
+        </div>
       </el-form>
     </el-card>
 
@@ -601,19 +602,13 @@ onMounted(() => {
 })
 </script>
 
+<style lang="scss">
+@import '@/styles/admin-list.scss';
+</style>
+
 <style scoped lang="scss">
 .coupon-management {
   padding: 20px;
-
-  .filter-card {
-    margin-bottom: 20px;
-  }
-
-  .filter-form {
-    .el-form-item {
-      margin-bottom: 0;
-    }
-  }
 
   .table-card {
     .table-header {

@@ -477,9 +477,6 @@
             <!-- 订单统计 -->
             <div class="stats-group">
               <div class="group-header">
-                <div class="group-icon orders">
-                  <el-icon><ShoppingCart /></el-icon>
-              </div>
                 <span class="group-title">订单统计</span>
               </div>
               <div class="stats-grid">
@@ -505,9 +502,6 @@
             <!-- 优惠券统计 -->
             <div class="stats-group">
               <div class="group-header">
-                <div class="group-icon coupons">
-                  <el-icon><Ticket /></el-icon>
-                </div>
                 <span class="group-title">优惠券使用</span>
               </div>
               <div class="stats-grid">
@@ -529,9 +523,6 @@
             <!-- 预订申请 -->
             <div class="stats-group">
               <div class="group-header">
-                <div class="group-icon bookings">
-                  <el-icon><Calendar /></el-icon>
-                </div>
                 <span class="group-title">预订申请</span>
               </div>
               <div class="stats-grid">
@@ -768,23 +759,6 @@
                 暂无匹配结果
               </div>
             </el-scrollbar>
-            <div class="world-map-detail" v-if="worldSelectedCountry">
-              <div class="detail-title">
-                {{ worldSelectedCountry.cnName }} ({{ worldSelectedCountry.name }})
-              </div>
-              <div class="detail-row">
-                <span>访问量</span>
-                <strong>{{ worldSelectedCountry.visits }}</strong>
-              </div>
-              <div class="detail-row">
-                <span>检索量</span>
-                <strong>{{ worldSelectedCountry.queries }}</strong>
-              </div>
-              <div class="detail-row">
-                <span>平均停留</span>
-                <strong>{{ worldSelectedCountry.avgDuration }}s</strong>
-              </div>
-            </div>
           </div>
         </div>
       </el-card>
@@ -1227,11 +1201,15 @@ const worldMapOption = ref<any>({
   tooltip: {
     trigger: 'item',
     formatter: (params: any) => {
-      const target = worldMapData.value.find(item => item.name === params.name)
+      // 通过地图名称查找对应的数据
+      const target = worldMapData.value.find(item => {
+        const mapName = getMapCountryName(item)
+        return mapName === params.name || item.name === params.name || item.cnName === params.name
+      })
       if (!target) {
-        return `${params.name}: ${params.value || 0}`
+        return `${params.name}<br/>访问量：${params.value || 0}<br/>检索量：0`
       }
-      return `${target.cnName} (${target.name})<br/>访问量：${target.visits}<br/>检索量：${target.queries}`
+      return `${target.cnName} (${target.name})<br/>访问量：${target.visits || 0}<br/>检索量：${target.queries || 0}`
     }
   },
   visualMap: {
@@ -1240,8 +1218,14 @@ const worldMapOption = ref<any>({
     text: ['高', '低'],
     realtime: true,
     calculable: true,
+    left: 'left',
+    bottom: 'bottom',
     inRange: {
-      color: ['#dfe9f3', '#a1c4fd', '#3f72af']
+      // 从浅到深的蓝色渐变，体现热度
+      color: ['#e8eef9', '#c5d9f0', '#9bc4e5', '#6ba8d9', '#3f72af', '#2a4d7a']
+    },
+    textStyle: {
+      color: '#333'
     }
   },
   series: [
@@ -1270,8 +1254,8 @@ const worldMapOption = ref<any>({
 
 const getWorldMetricValue = (item: WorldCountryStat): number => {
   if (!item) return 0
-  // 地图与排序统一使用访问量作为主指标
-  return item.visits || 0
+  // 使用访问量 + 检索量作为热度指标，确保有检索量的国家也能显示颜色
+  return (item.visits || 0) + (item.queries || 0)
 }
 
 const filteredWorldStats = computed(() => {
@@ -1299,24 +1283,244 @@ const totalWorldQueries = computed(() => {
   return total.toLocaleString()
 })
 
+// 国家代码到地图名称的映射（ECharts 世界地图使用的名称）
+// 注意：不同的地图数据可能使用不同的名称，这里提供多个可能的名称
+const countryCodeToMapName: Record<string, string> = {
+  'CN': 'China',
+  'US': 'United States of America',
+  'JP': 'Japan',
+  'KR': 'Korea',
+  'FR': 'France',
+  'DE': 'Germany', // 也可能是 'Federal Republic of Germany' 或 'Deutschland'
+  'GB': 'United Kingdom',
+  'AU': 'Australia',
+  'CA': 'Canada',
+  'IT': 'Italy',
+  'ES': 'Spain',
+  'RU': 'Russia',
+  'IN': 'India',
+  'BR': 'Brazil',
+  'MX': 'Mexico',
+  'TH': 'Thailand',
+  'SG': 'Singapore',
+  'MY': 'Malaysia',
+  'ID': 'Indonesia',
+  'PH': 'Philippines',
+  'VN': 'Vietnam',
+  'AE': 'United Arab Emirates',
+  'SA': 'Saudi Arabia',
+  'TR': 'Turkey',
+  'EG': 'Egypt',
+  'ZA': 'South Africa',
+  'AR': 'Argentina',
+  'CL': 'Chile',
+  'CO': 'Colombia',
+  'PE': 'Peru',
+  'NL': 'Netherlands',
+  'BE': 'Belgium',
+  'CH': 'Switzerland',
+  'AT': 'Austria',
+  'SE': 'Sweden',
+  'NO': 'Norway',
+  'DK': 'Denmark',
+  'FI': 'Finland',
+  'PL': 'Poland',
+  'GR': 'Greece',
+  'PT': 'Portugal',
+  'IE': 'Ireland',
+  'NZ': 'New Zealand',
+  'PK': 'Pakistan',
+  'BD': 'Bangladesh',
+  'MM': 'Myanmar',
+  'KH': 'Cambodia',
+  'LA': 'Laos'
+}
+
+// 国家代码到多个可能地图名称的映射（用于匹配不同的地图数据格式）
+const countryCodeToMapNames: Record<string, string[]> = {
+  'DE': ['Germany', 'Federal Republic of Germany', 'Deutschland', 'DE'],
+  'US': ['United States of America', 'United States', 'USA', 'US'],
+  'GB': ['United Kingdom', 'UK', 'Great Britain', 'GB'],
+  'KR': ['Korea', 'South Korea', 'Republic of Korea', 'KR'],
+  'VN': ['Vietnam', 'Viet Nam', 'VN']
+}
+
+// 获取地图使用的国家名称
+const getMapCountryName = (item: WorldCountryStat): string => {
+  if (!item || !item.code) return item?.name || ''
+  
+  const code = item.code.toUpperCase()
+  
+  // 优先使用映射表中的名称
+  if (countryCodeToMapName[code]) {
+    return countryCodeToMapName[code]
+  }
+  
+  // 如果没有映射，尝试使用英文名称
+  if (item.name) {
+    return item.name
+  }
+  
+  // 最后使用代码
+  return code
+}
+
 const updateWorldMapOption = () => {
   const values = worldMapData.value.map(item => getWorldMetricValue(item))
   const maxValue = values.length ? Math.max(...values) : 100
+  const minValue = values.length ? Math.min(...values.filter(v => v > 0)) : 0
+  
+  // 构建地图数据，使用正确的国家名称
+  // 确保所有有数据的国家（访问量或检索量 > 0）都包含在地图数据中
+  const mapData: Array<{ name: string; value: number }> = []
+  
+  worldMapData.value
+    .filter(item => getWorldMetricValue(item) > 0) // 只包含有数据的国家
+    .forEach(item => {
+      const mapName = getMapCountryName(item)
+      let metricValue = getWorldMetricValue(item)
+      
+      // 如果值很小（<= 10），给它一个基础值，确保能显示明显的颜色
+      // 这样即使只有1次检索，也能在地图上看到颜色
+      // 将小值映射到至少 10，这样在分段映射中能显示明显的颜色
+      if (metricValue > 0 && metricValue <= 10) {
+        metricValue = Math.max(metricValue, 10)
+      }
+      
+      // 调试日志（始终输出，方便排查问题）
+      console.log(`[地图数据] ${item.cnName} (${item.code}) -> 地图名称: "${mapName}", 原始值: ${getWorldMetricValue(item)}, 映射值: ${metricValue}, 访问量: ${item.visits}, 检索量: ${item.queries}`)
+      
+      // 直接使用映射后的名称，不添加多个变体（避免数据重复）
+      // 如果地图名称不匹配，ECharts 会忽略该数据点
+      // 我们通过调试日志来查看实际需要使用的名称
+      if (!mapData.find(d => d.name === mapName)) {
+        mapData.push({
+          name: mapName,
+          value: metricValue
+        })
+      }
+      
+      // 对于德国，额外添加可能的名称变体（因为名称匹配可能有问题）
+      if (item.code === 'DE') {
+        const deNames = ['Federal Republic of Germany', 'Deutschland', 'DE', 'Germany']
+        deNames.forEach(name => {
+          if (name !== mapName && !mapData.find(d => d.name === name)) {
+            mapData.push({
+              name: name,
+              value: metricValue
+            })
+          }
+        })
+      }
+    })
+  
+  // 调试：输出所有地图数据
+  console.log('[地图数据列表]', mapData)
+  console.log('[世界地图数据]', worldMapData.value)
+  
+  // 重新计算映射后的最大值和最小值
+  const mappedValues = mapData.map(d => d.value)
+  const mappedMaxValue = mappedValues.length > 0 ? Math.max(...mappedValues) : maxValue
+  const mappedMinValue = mappedValues.length > 0 ? Math.min(...mappedValues.filter(v => v > 0)) : minValue
+  
+  // 使用分段型 visualMap，确保小值也能显示明显颜色
+  let visualMax = Math.max(mappedMaxValue, 100)
+  
+  // 如果有数据但最大值和最小值差距很大，或者有小值（<=10），使用分段映射
+  const usePiecewise = (maxValue > 0 && minValue > 0 && maxValue / minValue > 20) || 
+                       (mappedValues.some(v => v > 0 && v <= 10))
+  
+  if (usePiecewise) {
+    // 使用分段型 visualMap，让小值显示更明显的颜色
+    worldMapOption.value = {
+      ...worldMapOption.value,
+      visualMap: {
+        type: 'piecewise', // 分段型映射
+        min: 0,
+        max: visualMax,
+        text: ['高', '低'],
+        realtime: true,
+        calculable: true,
+        left: 'left',
+        bottom: 'bottom',
+        pieces: [
+          { min: 0, max: 0, color: '#e8eef9', label: '无数据' },
+          { min: 1, max: 10, color: '#c5d9f0', label: '1-10' },
+          { min: 11, max: 50, color: '#9bc4e5', label: '11-50' },
+          { min: 51, max: 100, color: '#6ba8d9', label: '51-100' },
+          { min: 101, max: 200, color: '#3f72af', label: '101-200' },
+          { min: 201, color: '#2a4d7a', label: '200+' }
+        ],
+        textStyle: {
+          color: '#333'
+        },
+        formatter: (value: number) => {
+          return value.toLocaleString()
+        }
+      },
+    }
+  } else {
+    // 使用连续型映射
+    worldMapOption.value = {
+      ...worldMapOption.value,
+      visualMap: {
+        type: 'continuous', // 连续型映射
+        min: 0,
+        max: visualMax,
+        text: ['高', '低'],
+        realtime: true,
+        calculable: true,
+        left: 'left',
+        bottom: 'bottom',
+        inRange: {
+          // 从浅到深的蓝色渐变，体现热度
+          // 浅色（低值）-> 深色（高值）
+          // 使用更多颜色级别，确保小值也能显示明显颜色
+          color: ['#e8eef9', '#d0e0f0', '#b8d1e7', '#9bc4e5', '#7db3d8', '#5fa0cb', '#3f72af', '#2a4d7a']
+        },
+        textStyle: {
+          color: '#333'
+        },
+        formatter: (value: number) => {
+          return value.toLocaleString()
+        }
+      },
+    }
+  }
+  
+  // 更新 series 配置
   worldMapOption.value = {
     ...worldMapOption.value,
-    visualMap: {
-      ...(worldMapOption.value.visualMap || {}),
-      max: Math.max(maxValue, 100)
-    },
     series: [
       {
         ...(worldMapOption.value.series?.[0] || {}),
         type: 'map',
         map: 'world',
-        data: worldMapData.value.map(item => ({
-          name: item.name,
-          value: getWorldMetricValue(item)
-        }))
+        data: mapData,
+        // 使用 nameMap 确保国家名称正确匹配
+        nameMap: (() => {
+          const nameMap: Record<string, string> = {}
+          worldMapData.value.forEach(item => {
+            if (item.code && countryCodeToMapName[item.code.toUpperCase()]) {
+              // 如果地图使用不同的名称，可以通过 nameMap 映射
+              // 这里先不设置，让 ECharts 自动匹配
+            }
+          })
+          return nameMap
+        })(),
+        // 确保没有数据的国家显示为默认浅色
+        itemStyle: {
+          borderColor: '#ffffff',
+          borderWidth: 0.6,
+          areaColor: '#e8eef9' // 默认浅色，与 visualMap 最低值颜色一致
+        },
+        // 添加标签显示，方便调试
+        label: {
+          show: false, // 默认不显示，可以通过配置开启
+          formatter: (params: any) => {
+            return params.name
+          }
+        }
       }
     ]
   }
@@ -1328,11 +1532,28 @@ const selectWorldCountry = (country: WorldCountryStat) => {
 
 const handleWorldCountryClick = (params: any) => {
   if (!params || !params.name) return
-  const target = worldMapData.value.find(
-    item => item.name === params.name || item.cnName === params.name
-  )
+  
+  // 调试：输出点击的国家信息
+  console.log('[地图点击事件]', {
+    name: params.name,
+    value: params.value,
+    seriesName: params.seriesName
+  })
+  
+  // 尝试多种方式匹配国家
+  const target = worldMapData.value.find(item => {
+    const mapName = getMapCountryName(item)
+    return mapName === params.name || 
+           item.name === params.name || 
+           item.cnName === params.name ||
+           item.code === params.name
+  })
+  
   if (target) {
+    console.log('[找到匹配的国家]', target)
     worldSelectedCountry.value = target
+  } else {
+    console.warn('[未找到匹配的国家]', params.name, '可用国家:', worldMapData.value.map(i => `${i.cnName}(${i.code})`))
   }
 }
 
@@ -1342,21 +1563,28 @@ const loadGlobalTraffic = async (options: { silent?: boolean } = {}) => {
   try {
     await ensureWorldMapRegistered()
     const result = await request.get('/statistics/world-traffic')
+    console.log('[API响应]', result)
     if (result.code === 200 && Array.isArray(result.data)) {
-      const mapped = result.data.map((item: any) => ({
-        code: item.code || item.countryCode || item.isoCode || item.name,
-        name: item.name || item.country || item.countryEn || item.code,
-        cnName: item.cnName || item.countryCn || item.nameCn || item.name,
-        visits: item.visits || item.traffic || item.value || 0,
-        queries: item.queries || item.search || item.query || 0,
-        avgDuration: item.avgDuration || item.duration || 0
-      }))
+      const mapped = result.data.map((item: any) => {
+        const mappedItem = {
+          code: item.code || item.countryCode || item.isoCode || item.name,
+          name: item.name || item.country || item.countryEn || item.code,
+          cnName: item.cnName || item.countryCn || item.nameCn || item.name,
+          visits: item.visits || item.traffic || item.value || 0,
+          queries: item.queries || item.search || item.query || 0,
+          avgDuration: item.avgDuration || item.duration || 0
+        }
+        console.log('[映射数据]', mappedItem)
+        return mappedItem
+      })
       worldMapData.value = aggregateWorldStats(mapped)
+      console.log('[聚合后的数据]', worldMapData.value)
       success = true
     } else if (!silent) {
       ElMessage.warning('未获取到全球访问数据，使用示例数据')
     }
   } catch (error) {
+    console.error('[加载全球访问数据失败]', error)
     if (!silent) {
       ElMessage.warning('全球访问数据加载失败，已使用示例数据')
     }
@@ -1813,26 +2041,27 @@ const functionUsageRanking = computed(() => {
   const items = functionStatsData.value
   if (!items.length) return []
 
+  // 按值降序排序
   const sorted = items
     .map(item => ({ ...item }))
     .sort((a, b) => (b.value || 0) - (a.value || 0))
 
-  const total = sorted.reduce((sum, item) => sum + (item.value || 0), 0)
+  // 计算最大值（用于进度条显示）
   const maxValue = Math.max(...sorted.map(item => item.value || 0), 1)
 
+  // 返回排序后的数据，使用已计算的百分比
   return sorted.map((item, index) => {
-    const progress = ((item.value || 0) / maxValue) * 100
+    const value = item.value || 0
+    const progress = maxValue > 0 ? (value / maxValue) * 100 : 0
     return {
       ...item,
       rank: index + 1,
-      percent:
-        typeof item.percent === 'number'
-          ? item.percent
-          : total > 0
-            ? Math.round(((item.value || 0) / total) * 100)
-            : 0,
-      progress: item.value > 0 ? Math.max(progress, 8) : 0,
-      trend: item.trend || 0
+      // 使用已计算的百分比，确保数据一致性
+      percent: typeof item.percent === 'number' ? item.percent : 0,
+      // 进度条至少显示8%的最小宽度（如果有值）
+      progress: value > 0 ? Math.max(progress, 8) : 0,
+      // 确保趋势值是有效的数字
+      trend: typeof item.trend === 'number' && isFinite(item.trend) ? item.trend : 0
     }
   })
 })
@@ -2424,90 +2653,150 @@ const loadFunctionUsage = async (suppressError = true) => {
     const functionResult = await request.get('/statistics/function-usage', {
       params: { range: getFunctionUsageRangeParam() }
     })
-    if (functionResult.code === 200 && functionResult.data) {
-      const data = functionResult.data
-      functionUsageRangeLabel.value = getFunctionUsageFallbackLabel()
+    
+    // 数据验证
+    if (!functionResult || functionResult.code !== 200) {
+      throw new Error(`API返回错误: ${functionResult?.message || '未知错误'}`)
+    }
+    
+    if (!functionResult.data || typeof functionResult.data !== 'object') {
+      throw new Error('API返回数据格式错误')
+    }
+    
+    const data = functionResult.data
+    functionUsageRangeLabel.value = getFunctionUsageFallbackLabel()
 
-      // 计算总量
-      const total =
-        (data.content || 0) +
-        (data.aiService || 0) +
-        (data.attraction || 0) +
-        (data.interaction || 0) +
-        (data.culture || 0) +
-        (data.order || 0) +
-        (data.portrait || 0)
-      
-      // 更新详细统计数据
-      functionStatsData.value = [
-        {
-          name: '内容创作',
-          description: '攻略发布、编辑',
-          value: data.content || 0,
-          percent: total > 0 ? Math.round((data.content || 0) / total * 100) : 0,
-          trend: data.contentTrend || 0,
-          icon: 'Edit',
-          color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        },
-        {
-          name: 'AI智能服务',
-          description: 'AI生成、智能推荐',
-          value: data.aiService || 0,
-          percent: total > 0 ? Math.round((data.aiService || 0) / total * 100) : 0,
-          trend: data.aiServiceTrend || 0,
-          icon: 'MagicStick',
-          color: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
-        },
-        {
-          name: '景点浏览',
-          description: '景点查看、搜索',
-          value: data.attraction || 0,
-          percent: total > 0 ? Math.round((data.attraction || 0) / total * 100) : 0,
-          trend: data.attractionTrend || 0,
-          icon: 'Search',
-          color: 'linear-gradient(135deg, #faa307 0%, #ffba08 100%)'
-        },
-        {
-          name: '社区互动',
-          description: '评论、点赞、收藏',
-          value: data.interaction || 0,
-          percent: total > 0 ? Math.round((data.interaction || 0) / total * 100) : 0,
-          trend: data.interactionTrend || 0,
-          icon: 'ChatDotRound',
-          color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
-        },
-        {
-          name: '文旅对接',
-          description: '项目查看、预订',
-          value: data.culture || 0,
-          percent: total > 0 ? Math.round((data.culture || 0) / total * 100) : 0,
-          trend: data.cultureTrend || 0,
-          icon: 'Connection',
-          color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
-        },
-        {
-          name: '订单交易',
-          description: '订单创建、支付',
-          value: data.order || 0,
-          percent: total > 0 ? Math.round((data.order || 0) / total * 100) : 0,
-          trend: data.orderTrend || 0,
-          icon: 'ShoppingCart',
-          color: 'linear-gradient(135deg, #a78bfa 0%, #c084fc 100%)'
-        },
-        {
-          name: '用户画像',
-          description: '行为分析、推荐',
-          value: data.portrait || 0,
-          percent: total > 0 ? Math.round((data.portrait || 0) / total * 100) : 0,
-          trend: data.portraitTrend || 0,
-          icon: 'Picture',
-          color: 'linear-gradient(135deg, #fb7185 0%, #f472b6 100%)'
-        }
-      ]
+    // 数据验证和清理
+    const content = Math.max(0, Number(data.content) || 0)
+    const aiService = Math.max(0, Number(data.aiService) || 0)
+    const attraction = Math.max(0, Number(data.attraction) || 0)
+    const interaction = Math.max(0, Number(data.interaction) || 0)
+    const culture = Math.max(0, Number(data.culture) || 0)
+    const order = Math.max(0, Number(data.order) || 0)
+    const portrait = Math.max(0, Number(data.portrait) || 0)
+    
+    // 计算总量
+    const total = content + aiService + attraction + interaction + culture + order + portrait
+    
+    // 计算百分比（使用更精确的算法，确保总和为100%）
+    const calculatePercentages = (values: number[], total: number): number[] => {
+      if (total === 0) {
+        return values.map(() => 0)
+      }
+      // 先计算精确百分比
+      const precise = values.map(v => (v / total) * 100)
+      // 四舍五入到整数
+      const rounded = precise.map(p => Math.round(p))
+      // 计算总和
+      const sum = rounded.reduce((s, r) => s + r, 0)
+      // 如果总和不为100，调整最大的值
+      if (sum !== 100 && rounded.length > 0) {
+        const diff = 100 - sum
+        const maxIndex = rounded.reduce((maxIdx, val, idx) => 
+          val > rounded[maxIdx] ? idx : maxIdx, 0
+        )
+        rounded[maxIndex] += diff
+      }
+      return rounded
+    }
+    
+    const values = [content, aiService, attraction, interaction, culture, order, portrait]
+    const percentages = calculatePercentages(values, total)
+    
+    // 处理趋势值（确保是数字，处理NaN和Infinity）
+    const safeTrend = (trend: any): number => {
+      const num = Number(trend)
+      if (isNaN(num) || !isFinite(num)) return 0
+      // 限制趋势值在合理范围内（-1000% 到 1000%）
+      return Math.max(-1000, Math.min(1000, num))
+    }
+    
+    // 更新详细统计数据
+    functionStatsData.value = [
+      {
+        name: '内容创作',
+        description: '攻略发布、编辑',
+        value: content,
+        percent: percentages[0],
+        trend: safeTrend(data.contentTrend),
+        icon: 'Edit',
+        color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      },
+      {
+        name: 'AI智能服务',
+        description: 'AI生成、智能推荐',
+        value: aiService,
+        percent: percentages[1],
+        trend: safeTrend(data.aiServiceTrend),
+        icon: 'MagicStick',
+        color: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+      },
+      {
+        name: '景点浏览',
+        description: '景点查看、搜索',
+        value: attraction,
+        percent: percentages[2],
+        trend: safeTrend(data.attractionTrend),
+        icon: 'Search',
+        color: 'linear-gradient(135deg, #faa307 0%, #ffba08 100%)'
+      },
+      {
+        name: '社区互动',
+        description: '评论、点赞、收藏',
+        value: interaction,
+        percent: percentages[3],
+        trend: safeTrend(data.interactionTrend),
+        icon: 'ChatDotRound',
+        color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+      },
+      {
+        name: '文旅对接',
+        description: '项目查看、预订',
+        value: culture,
+        percent: percentages[4],
+        trend: safeTrend(data.cultureTrend),
+        icon: 'Connection',
+        color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+      },
+      {
+        name: '订单交易',
+        description: '订单创建、支付',
+        value: order,
+        percent: percentages[5],
+        trend: safeTrend(data.orderTrend),
+        icon: 'ShoppingCart',
+        color: 'linear-gradient(135deg, #a78bfa 0%, #c084fc 100%)'
+      },
+      {
+        name: '用户画像',
+        description: '行为分析、推荐',
+        value: portrait,
+        percent: percentages[6],
+        trend: safeTrend(data.portraitTrend),
+        icon: 'Picture',
+        color: 'linear-gradient(135deg, #fb7185 0%, #f472b6 100%)'
+      }
+    ]
+    
+    // 调试日志（开发环境）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[功能使用统计]', {
+        total,
+        percentages: percentages.reduce((sum, p) => sum + p, 0),
+        data: functionStatsData.value.map(item => ({
+          name: item.name,
+          value: item.value,
+          percent: item.percent,
+          trend: item.trend
+        }))
+      })
     }
   } catch (error) {
     console.error('功能使用统计加载失败:', error)
+    // 发生错误时，重置数据避免显示错误数据
+    functionStatsData.value = []
     if (!suppressError) {
+      ElMessage.error('加载功能使用统计失败，请稍后重试')
       throw error
     }
   }
@@ -3876,17 +4165,29 @@ const loadFunctionUsage = async (suppressError = true) => {
     .world-map-search {
       :deep(.el-input__wrapper) {
         border-radius: 12px;
-        // 移除聚焦时的蓝色高亮
-        box-shadow: none !important;
+        // 添加默认外边框样式
+        border: 1px solid #dcdfe6 !important;
+        // 固定阴影
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+        min-height: 44px;
+      }
+      
+      :deep(.el-input__wrapper:hover) {
         border-color: #dcdfe6 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
       }
       
       :deep(.el-input__wrapper.is-focus),
       :deep(.el-input__wrapper:focus),
       :deep(.el-input__wrapper:focus-visible) {
-        box-shadow: 0 0 0 1px #dcdfe6 inset !important;
         border-color: #dcdfe6 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
         outline: none !important;
+      }
+      
+      :deep(.el-input__inner) {
+        min-height: 44px;
+        padding: 0 12px;
       }
     }
 
@@ -3932,7 +4233,7 @@ const loadFunctionUsage = async (suppressError = true) => {
         border-radius: 12px;
         border: 1px solid rgba(15, 23, 42, 0.06);
         margin-bottom: 10px;
-        background: #fbfcfe;
+        background: #ffffff;
         cursor: pointer;
         transition: all 0.2s ease;
 
@@ -3953,13 +4254,13 @@ const loadFunctionUsage = async (suppressError = true) => {
         }
 
         &.active {
-          border-color: rgba(14, 165, 233, 0.6);
-          background: #e0f2fe;
+          border-color: rgba(15, 23, 42, 0.06);
+          background: #ffffff;
         }
 
         &:hover {
-          border-color: rgba(14, 165, 233, 0.3);
-          background: #eef6ff;
+          border-color: rgba(15, 23, 42, 0.06);
+          background: #ffffff;
         }
       }
 
@@ -3973,7 +4274,7 @@ const loadFunctionUsage = async (suppressError = true) => {
     .world-map-detail {
       border-radius: 14px;
       padding: 16px;
-      background: #f4f7ff;
+      background: #ffffff;
       display: flex;
       flex-direction: column;
       gap: 10px;

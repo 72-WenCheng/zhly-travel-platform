@@ -1620,12 +1620,13 @@ onMounted(() => {
     border: 1px solid #dcdfe6;
     background: #fff;
     color: #4b5563;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.3s ease;
     
     &:hover {
-      border-color: #c0c4cc;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 10px rgba(4, 9, 20, 0.08);
+      border-color: #909399;
+      background: #fff;
+      transform: none;
+      box-shadow: none;
     }
     
     &.el-button--success {
