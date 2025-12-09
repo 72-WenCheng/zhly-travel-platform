@@ -195,10 +195,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '文化体验详情', icon: 'Document' }
       },
       {
+        path: 'user/culture/experience/:id',
+        name: 'CultureExperienceDetail',
+        component: () => import('@/views/user/culture/experienceDetail.vue'),
+        meta: { title: '文化体验详情', icon: 'Document' }
+      },
+      {
         path: 'user/culture/service/:id',
         name: 'CultureService',
         component: () => import('@/views/user/culture/service.vue'),
         meta: { title: '服务详情', icon: 'Document' }
+      },
+      {
+        path: 'user/culture/homestay/:id',
+        name: 'CultureHomestay',
+        component: () => import('@/views/user/culture/homestay.vue'),
+        meta: { title: '民宿详情', icon: 'HomeFilled' }
       },
       {
         path: 'user/culture/project/:id',
@@ -211,6 +223,12 @@ const routes: RouteRecordRaw[] = [
         name: 'CultureProduct',
         component: () => import('@/views/user/culture/product.vue'),
         meta: { title: '产品详情', icon: 'Document' }
+      },
+      {
+        path: 'user/culture/agri-product/:id',
+        name: 'CultureAgriProduct',
+        component: () => import('@/views/user/culture/agriProductDetail.vue'),
+        meta: { title: '农特产品详情', icon: 'Document' }
       },
       {
         path: 'user/culture/cart',

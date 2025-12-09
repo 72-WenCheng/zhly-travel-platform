@@ -8,12 +8,11 @@
       <el-col :span="16">
         <!-- 服务头图 -->
         <div class="detail-header">
-          <el-carousel :interval="4000" arrow="hover" height="450px">
+          <el-carousel :interval="4000" arrow="never" height="450px">
             <el-carousel-item v-for="(img, index) in service.images" :key="index">
               <img :src="img" :alt="service.title" />
             </el-carousel-item>
           </el-carousel>
-          <div class="service-badge">{{ service.badge }}</div>
         </div>
 
         <!-- 服务信息 -->
@@ -58,7 +57,7 @@
             <h3>配套设施</h3>
             <div class="facilities-grid">
               <div v-for="facility in service.facilities" :key="facility.name" class="facility-item">
-                <span class="facility-icon">{{ facility.icon }}</span>
+              <img class="facility-icon" :src="facility.icon" :alt="facility.name" />
                 <span class="facility-name">{{ facility.name }}</span>
               </div>
             </div>
@@ -84,38 +83,15 @@
                 </div>
                 <p class="package-desc">{{ pkg.description }}</p>
                 <div class="package-includes">
-                  <span v-for="item in pkg.includes" :key="item" class="include-item">
-                    {{ item }}
-                  </span>
+                <span v-for="item in pkg.includes" :key="item" class="include-item">
+                  #{{ item }}
+                </span>
                 </div>
               </div>
             </div>
           </div>
         </el-card>
 
-        <!-- 评论区 -->
-        <el-card class="reviews-card">
-          <div class="reviews-header">
-            <h3>用户评价 ({{ service.reviews.length }})</h3>
-            <div class="rating-summary">
-              <el-rate v-model="service.rating" disabled show-score />
-            </div>
-          </div>
-          
-          <div class="reviews-list">
-            <div v-for="review in service.reviews" :key="review.id" class="review-item">
-              <div class="review-header">
-                <el-avatar :src="review.userAvatar">{{ review.userName.charAt(0) }}</el-avatar>
-                <div class="review-user">
-                  <span class="user-name">{{ review.userName }}</span>
-                  <el-rate v-model="review.rating" disabled size="small" />
-                </div>
-                <span class="review-date">{{ review.date }}</span>
-              </div>
-              <p class="review-content">{{ review.content }}</p>
-            </div>
-          </div>
-        </el-card>
       </el-col>
 
       <!-- 右侧：预订信息 -->
@@ -138,30 +114,12 @@
             <el-divider />
 
             <el-form :model="bookingForm" label-position="top" :disabled="!selectedPackage">
-              <el-form-item label="入住日期">
-                <el-date-picker
-                  v-model="bookingForm.checkInDate"
-                  type="date"
-                  placeholder="选择日期"
-                  :disabled-date="disabledDate"
-                  style="width: 100%"
-                />
-              </el-form-item>
 
-              <el-form-item label="入住天数">
-                <el-input-number
-                  v-model="bookingForm.days"
-                  :min="1"
-                  :max="30"
-                  style="width: 100%"
-                />
-              </el-form-item>
-
-              <el-form-item label="房间数/人数">
+              <el-form-item label="人数">
                 <el-input-number
                   v-model="bookingForm.quantity"
                   :min="1"
-                  :max="10"
+                  :max="20"
                   style="width: 100%"
                 />
               </el-form-item>
@@ -190,9 +148,9 @@
             </div>
 
             <el-button
-              type="primary"
+              type="default"
               size="large"
-              class="booking-button"
+              class="booking-button ghost"
               :disabled="!selectedPackage"
               @click="handleBooking"
             >
@@ -202,7 +160,7 @@
 
             <div class="contact-info">
               <el-icon><Phone /></el-icon>
-              <span>咨询电话：{{ service.contactPhone }}</span>
+              <span class="contact-text">咨询电话：{{ service.contactPhone }}</span>
             </div>
           </el-card>
         </div>
@@ -255,14 +213,14 @@ const service = ref({
     '宠物友好'
   ],
   facilities: [
-    { icon: '🅿️', name: '免费停车' },
-    { icon: '📶', name: '免费WiFi' },
-    { icon: '🍽️', name: '农家餐厅' },
-    { icon: '🐟', name: '垂钓池塘' },
-    { icon: '🌳', name: '采摘果园' },
-    { icon: '🏡', name: '休息凉亭' },
-    { icon: '🎮', name: '儿童乐园' },
-    { icon: '🐶', name: '宠物友好' }
+    { icon: 'https://api.iconify.design/mdi:parking.svg?color=%230f172a', name: '免费停车' },
+    { icon: 'https://api.iconify.design/mdi:wifi.svg?color=%230f172a', name: '免费WiFi' },
+    { icon: 'https://api.iconify.design/mdi:silverware-fork-knife.svg?color=%230f172a', name: '农家餐厅' },
+    { icon: 'https://api.iconify.design/mdi:fish.svg?color=%230f172a', name: '垂钓池塘' },
+    { icon: 'https://api.iconify.design/mdi:pine-tree.svg?color=%230f172a', name: '采摘果园' },
+    { icon: 'https://api.iconify.design/mdi:home-variant.svg?color=%230f172a', name: '休息凉亭' },
+    { icon: 'https://api.iconify.design/mdi:gamepad-variant.svg?color=%230f172a', name: '儿童乐园' },
+    { icon: 'https://api.iconify.design/mdi:paw.svg?color=%230f172a', name: '宠物友好' }
   ],
   packages: [
     {
@@ -323,8 +281,6 @@ const selectedPackage = ref(null)
 
 // 预订表单
 const bookingForm = ref({
-  checkInDate: '',
-  days: 1,
   quantity: 1,
   contactName: '',
   contactPhone: '',
@@ -334,7 +290,8 @@ const bookingForm = ref({
 // 计算总价
 const totalPrice = computed(() => {
   if (!selectedPackage.value) return 0
-  return selectedPackage.value.price * bookingForm.value.quantity * bookingForm.value.days
+  const qty = bookingForm.value.quantity || 1
+  return selectedPackage.value.price * qty
 })
 
 // 禁用过去的日期
@@ -353,10 +310,6 @@ const handleBooking = async () => {
     ElMessage.warning('请先选择套餐')
     return
   }
-  if (!bookingForm.value.checkInDate) {
-    ElMessage.warning('请选择入住日期')
-    return
-  }
   if (!bookingForm.value.contactName) {
     ElMessage.warning('请输入联系人姓名')
     return
@@ -368,7 +321,7 @@ const handleBooking = async () => {
 
   try {
     await ElMessageBox.confirm(
-      `确认预订 ${service.value.title}？\n套餐：${selectedPackage.value.name}\n日期：${bookingForm.value.checkInDate}\n天数：${bookingForm.value.days}天\n数量：${bookingForm.value.quantity}\n总计：¥${totalPrice.value}`,
+      `确认预订 ${service.value.title}？\n套餐：${selectedPackage.value.name}\n人数：${bookingForm.value.quantity || 1}人\n总计：¥${totalPrice.value}`,
       '确认预订',
       {
         confirmButtonText: '确认',
@@ -431,20 +384,6 @@ onMounted(() => {
     width: 100%;
     height: 100%;
     object-fit: cover;
-  }
-
-  .service-badge {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #667eea;
-    z-index: 10;
   }
 }
 
@@ -529,7 +468,8 @@ onMounted(() => {
   border-radius: 12px;
 
   .facility-icon {
-    font-size: 32px;
+    width: 32px;
+    height: 32px;
   }
 
   .facility-name {
@@ -553,13 +493,13 @@ onMounted(() => {
   transition: all 0.3s;
 
   &:hover {
-    border-color: #409eff;
-    background: #ecf5ff;
+    border-color: #d1d5db;
+    background: #f6f7fb;
   }
 
   &.active {
-    border-color: #409eff;
-    background: #ecf5ff;
+    border-color: #d1d5db;
+    background: #f6f7fb;
   }
 }
 
@@ -607,11 +547,13 @@ onMounted(() => {
 }
 
 .include-item {
-  padding: 4px 12px;
-  background: white;
-  border-radius: 12px;
-  font-size: 12px;
-  color: #67c23a;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 13px;
+  color: #374151;
+  border: none;
+  font-weight: 600;
 }
 
 .reviews-card {
@@ -736,6 +678,19 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.booking-button.ghost {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  box-shadow: none;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #cbd5e1;
+    color: #111827;
+  }
+}
+
 .contact-info {
   display: flex;
   align-items: center;
@@ -743,10 +698,15 @@ onMounted(() => {
   gap: 8px;
   margin-top: 16px;
   padding: 12px;
-  background: #ecf5ff;
+  background: #ecfdf3;
   border-radius: 8px;
   font-size: 13px;
-  color: #409eff;
+  color: #16a34a;
+
+  .contact-text {
+    color: #15803d;
+    font-weight: 600;
+  }
 }
 
 @media (max-width: 768px) {

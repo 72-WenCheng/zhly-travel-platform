@@ -3,65 +3,90 @@
     <!-- 返回按钮 -->
     <BackButton />
     
-    <!-- 顶部横幅 -->
-    <div id="banner" class="platform-banner">
-      <div class="banner-content">
-        <h1 class="banner-title">
-          <span class="title-icon">🏛️</span>
-          智慧文旅对接平台
-        </h1>
-        <p class="banner-subtitle">助力乡村振兴 · 传承文化精髓 · 共创美好未来</p>
-        <div class="banner-tags">
-          <span class="tag-item">政府支持</span>
-          <span class="tag-item">文化传承</span>
-          <span class="tag-item">产业振兴</span>
-          <span class="tag-item">乡村发展</span>
+    <!-- 顶部英雄区 -->
+    <section id="banner" class="hero-shell">
+      <div class="hero-copy">
+        <h1>帮助当地文旅、政府、企业与文化资产高效对接</h1>
+        <p class="hero-subtitle">成功案例</p>
+        <div class="hero-success" v-if="heroSuccess.length">
+          <div class="success-item" v-for="item in heroSuccess" :key="item.title">
+            <div class="success-stat">
+              <span class="stat-value">{{ item.value }}</span>
+              <span class="stat-unit">{{ item.unit }}</span>
+            </div>
+            <div class="success-title">{{ item.title }}</div>
+            <div class="success-desc">{{ item.desc }}</div>
+          </div>
+        </div>
+        <div class="hero-partners" v-if="heroPartners.length">
+          <span class="partners-label">合作伙伴</span>
+          <div class="partners-tags">
+            <span v-for="name in heroPartners" :key="name" class="partner-tag">{{ name }}</span>
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- 轮播图 -->
-    <div id="carousel" class="culture-carousel-section" v-if="carouselBanners.length > 0">
-      <el-carousel :interval="5000" arrow="always" height="480px" class="culture-carousel">
-        <el-carousel-item v-for="(banner, index) in carouselBanners" :key="banner.id || index">
-          <div class="carousel-item-wrapper" :style="{ backgroundImage: `url(${banner.image})` }">
-            <div class="carousel-overlay"></div>
-            <div class="carousel-content">
-              <h2 class="carousel-title">{{ banner.title }}</h2>
-              <p class="carousel-subtitle">{{ banner.subtitle }}</p>
-              <div class="carousel-tags">
-                <span v-for="tag in banner.tags" :key="tag" class="carousel-tag">{{ tag }}</span>
+      <div class="hero-carousel" id="carousel" v-if="carouselBanners.length > 0">
+        <el-carousel
+          :interval="5200"
+          arrow="never"
+          height="360px"
+          indicator-position="outside"
+          :autoplay="true"
+          :pause-on-hover="false"
+          trigger="click"
+          :loop="carouselBanners.length > 1"
+        >
+          <el-carousel-item v-for="(banner, index) in carouselBanners" :key="banner.id || index">
+            <div
+              class="hero-slide simple"
+              :style="{ backgroundImage: `url(${banner.image})` }"
+              @click="handleBannerClick(banner)"
+            >
+              <div class="hero-slide-mask"></div>
+              <div class="hero-slide-content simple">
+                <h2>{{ banner.title }}</h2>
+                <p>{{ banner.subtitle }}</p>
+                <div v-if="banner.tags?.length" class="slide-tags">
+                  <span v-for="tag in banner.tags" :key="tag">{{ tag }}</span>
+                </div>
               </div>
-              <el-button type="primary" size="large" class="carousel-btn" @click="handleBannerClick(banner)">
-                {{ banner.btnText }}
-              </el-button>
+            </div>
+          </el-carousel-item>
+        </el-carousel>
+      </div>
+    </section>
+
+    <!-- 核心菜单卡片轮播 -->
+    <section id="nav-cards" class="nav-rotator">
+      <div class="section-header minimal"></div>
+      <div class="nav-card-track" @mouseenter="stopNavAutoplay" @mouseleave="startNavAutoplay">
+        <div
+          v-for="(card, index) in displayedNavCards"
+          :key="card.title + index"
+          :class="['nav-card', { active: index === 0 }]"
+          :style="getNavCardStyle(index)"
+          @click="handleNavCardClick(index)"
+        >
+          <div class="nav-card-body">
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.desc }}</p>
+            <div class="nav-card-tags">
+              <span v-for="tag in card.tags" :key="tag" class="nav-card-tag">{{ tag }}</span>
+            </div>
+            <div class="nav-card-footer">
+              <span class="nav-card-cta" @click.stop="handleNavLinkClick(card)">{{ card.meta }}</span>
             </div>
           </div>
-        </el-carousel-item>
-      </el-carousel>
-    </div>
-
-    <!-- 核心板块 -->
-    <div id="modules" class="core-modules">
-      <h2 class="section-title">
-        <span class="title-icon">🎯</span>
-        核心板块
-      </h2>
-      <div class="modules-grid">
-        <div v-for="(module, index) in coreModules" :key="index" class="module-card">
-          <div class="module-icon">{{ module.emoji }}</div>
-          <h3 class="module-title">{{ module.title }}</h3>
-          <p class="module-desc">{{ module.description }}</p>
-          <div class="module-count">{{ module.count }}+项目</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- 服务分类 -->
+
+    <!-- 产业振兴 -->
     <div id="services" class="service-categories">
       <h2 class="section-title">
         <span class="title-icon">🎨</span>
-        服务分类
+        产业振兴
       </h2>
       <div class="categories-tabs">
         <div 
@@ -70,8 +95,7 @@
           :class="['category-tab', { 'active': activeTab === tab.value }]"
           @click="activeTab = tab.value"
         >
-          <span>{{ tab.emoji }} {{ tab.label }}</span>
-          <span class="tab-count">{{ tab.count }}</span>
+          <span class="tab-text">{{ tab.label }}</span>
         </div>
       </div>
       
@@ -79,18 +103,52 @@
         <div class="service-grid">
           <div v-for="service in currentServices" :key="service.id" class="service-card" @click="handleServiceClick(service)">
             <div class="service-header">
-              <h3>{{ service.title }}</h3>
-              <span class="service-badge">{{ service.badge }}</span>
+              <div class="service-title-wrap">
+                <h3>{{ service.title }}</h3>
+                <el-tag v-if="activeTab === 'products' && service.badge" size="small" type="success">{{ service.badge }}</el-tag>
+              </div>
+              <div class="service-price-block">
+                <span class="service-price">¥{{ service.price }}</span>
+                <span class="service-price-unit">
+                  <template v-if="activeTab === 'products'">{{ service.unit || '/盒' }}</template>
+                  <template v-else-if="activeTab === 'homestay'">/晚</template>
+                  <template v-else>{{ service.unit || '/人' }}</template>
+                </span>
+              </div>
             </div>
-            <p class="service-location">📍 {{ service.location }}</p>
-            <div class="service-features">
-              <span v-for="feature in service.features" :key="feature" class="feature-tag">
+
+            <div class="service-meta" :class="{ 'product-meta': activeTab === 'products' }">
+              <span class="service-location">📍 {{ service.location }}</span>
+              <span class="service-rating">⭐ {{ service.rating }}</span>
+              <span v-if="(activeTab === 'products' && service.viewCount) || (activeTab !== 'products' && service.views)" class="service-views">
+                👁️ {{ activeTab === 'products' ? service.viewCount : service.views }} 浏览
+              </span>
+            </div>
+
+            <p v-if="service.summary" class="service-summary">{{ service.summary }}</p>
+
+            <div v-if="activeTab === 'products'" class="product-extra">
+              <span v-if="service.sales">🔥 月销 {{ service.sales }}</span>
+              <span v-if="service.origin">📦 产地直发：{{ service.origin }}</span>
+              <span v-if="service.shelfLife">⏱️ 保质期 {{ service.shelfLife }}</span>
+            </div>
+            <div v-else-if="activeTab === 'homestay'" class="product-extra">
+              <span v-if="service.roomType">🏠 {{ service.roomType }}</span>
+              <span v-if="service.capacity">👥 可住 {{ service.capacity }} 人</span>
+              <span v-if="service.amenities?.length">🛎️ 配套：{{ service.amenities.slice(0, 3).join(' / ') }}</span>
+            </div>
+            <div v-else-if="activeTab === 'farmstay'" class="product-extra">
+              <span v-if="service.contactPhone">📞 {{ service.contactPhone }}</span>
+              <span v-if="service.views">🔥 热度 {{ service.views }}</span>
+            </div>
+
+            <div v-if="service.features?.length" class="service-features">
+              <span v-for="feature in getFeatures(service)" :key="feature" class="feature-tag">
                 {{ feature }}
               </span>
             </div>
-            <div class="service-footer">
-              <span class="service-rating">⭐ {{ service.rating }}</span>
-              <span class="service-price">¥{{ service.price }}</span>
+            <div v-if="getHighlights(service).length" class="service-highlights">
+              <span v-for="item in getHighlights(service)" :key="item" class="highlight-tag">#{{ item }}</span>
             </div>
           </div>
         </div>
@@ -110,13 +168,37 @@
             <span :class="['project-status', project.statusClass]">{{ project.statusText }}</span>
           </div>
           <p class="project-desc">{{ project.description }}</p>
-          <div class="project-tags">
-            <span v-for="tag in project.tags" :key="tag" class="project-tag">#{{ tag }}</span>
+
+          <div class="gov-meta">
+            <div class="meta-chip">
+              <el-icon><Location /></el-icon>
+              <span>{{ project.location }}</span>
+            </div>
+            <div class="meta-chip">
+              <el-icon><Calendar /></el-icon>
+              <span>{{ project.startDate }}</span>
+            </div>
+            <div class="meta-chip">
+              <el-icon><Coin /></el-icon>
+              <span>投资 {{ project.investment }} 万</span>
+            </div>
+            <div class="meta-chip">
+              <el-icon><UserFilled /></el-icon>
+              <span>惠及 {{ project.beneficiaries }} 户</span>
+            </div>
           </div>
-          <div class="project-info">
-            <span>📅 {{ project.startDate }}</span>
-            <span>💰 投资{{ project.investment }}万</span>
-            <span>👥 惠及{{ project.beneficiaries }}户</span>
+
+          <div class="gov-tags">
+            <span v-for="tag in project.tags" :key="tag" class="gov-tag">#{{ tag }}</span>
+          </div>
+
+          <div class="gov-contact">
+            <span v-if="project.contactName">负责人：{{ project.contactName }}</span>
+            <span v-if="project.contactPhone">咨询：{{ project.contactPhone }}</span>
+          </div>
+
+          <div class="gov-goal-brief" v-if="project.goalBrief">
+            {{ project.goalBrief }}
           </div>
         </div>
       </div>
@@ -134,22 +216,27 @@
         <div v-for="experience in cultureExperiences" :key="experience.id" class="experience-card" @click="handleCategoryClick(experience)">
           <div class="experience-image">
             <img :src="experience.image" :alt="experience.name" />
-            <div class="experience-badge">{{ experience.categoryName }}</div>
           </div>
           <div class="experience-content">
             <h3 class="experience-title">{{ experience.name }}</h3>
-            <p class="experience-location">📍 {{ experience.location }}</p>
+            <p class="experience-location">
+              <el-icon><Location /></el-icon>
+              <span>{{ experience.location }}</span>
+            </p>
             <div class="experience-features">
-              <span class="feature-item">⏱️ {{ experience.duration }}</span>
-              <span class="feature-item">⭐ {{ experience.rating }}</span>
+              <span class="feature-item">
+                <el-icon><Clock /></el-icon>
+                <span>{{ experience.duration }}</span>
+              </span>
+              <span class="feature-item">
+                <el-icon><StarFilled /></el-icon>
+                <span>{{ experience.rating }}</span>
+              </span>
             </div>
             <div class="experience-footer">
               <span class="experience-price">
                 <span class="price-label">体验价</span>
                 <span class="price-value">¥{{ experience.price }}</span>
-              </span>
-              <span class="experience-status" :class="`status-${experience.status}`">
-                {{ experience.status === 'hot' ? '🔥 热门' : '✨ 精选' }}
               </span>
             </div>
           </div>
@@ -166,58 +253,28 @@
       <div class="products-grid">
         <div v-for="product in localProducts" :key="product.id" class="product-card" @click="handleProductClick(product)">
           <div class="product-badge">{{ product.badge }}</div>
-          <h4>{{ product.name }}</h4>
-          <p class="product-origin">📍 {{ product.origin }}</p>
+          <div class="product-header">
+            <h4>{{ product.name }}</h4>
+          </div>
+          <div class="product-meta">
+            <span class="meta-item">
+              <el-icon><Location /></el-icon>
+              {{ product.origin }}
+            </span>
+            <span class="meta-item">
+              <el-icon><StarFilled /></el-icon>
+              {{ product.rating }}
+            </span>
+          </div>
           <div class="product-footer">
-            <span class="product-sales">已售{{ product.sales }}</span>
+            <span class="product-sales">已售 {{ product.sales }}</span>
             <span class="product-price">¥{{ product.price }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 成功案例 -->
-    <div id="cases" class="success-cases">
-      <h2 class="section-title">
-        <span class="title-icon">🏆</span>
-        成功案例
-      </h2>
-      <div class="cases-grid">
-        <div v-for="caseItem in successCases" :key="caseItem.id" class="case-card" @click="handleCaseClick(caseItem)">
-          <h3>{{ caseItem.title }}</h3>
-          <p class="case-location">📍 {{ caseItem.location }}</p>
-          <p class="case-description">{{ caseItem.description }}</p>
-          <div class="case-achievements">
-            <div class="achievement-item">
-              <div class="achievement-value">{{ caseItem.revenue }}万</div>
-              <div class="achievement-label">年收入</div>
-            </div>
-            <div class="achievement-item">
-              <div class="achievement-value">{{ caseItem.jobs }}+</div>
-              <div class="achievement-label">就业岗位</div>
-            </div>
-            <div class="achievement-item">
-              <div class="achievement-value">{{ caseItem.visitors }}万</div>
-              <div class="achievement-label">年游客量</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- 合作伙伴 -->
-    <div id="partners" class="partners">
-      <h2 class="section-title">
-        <span class="title-icon">👥</span>
-        合作伙伴
-      </h2>
-      <div class="partners-grid">
-        <div v-for="partner in partners" :key="partner.id" class="partner-card">
-          <div class="partner-emoji">{{ partner.emoji }}</div>
-          <p class="partner-name">{{ partner.name }}</p>
-        </div>
-      </div>
-    </div>
 
     <!-- 返回顶部按钮 -->
     <transition name="fade">
@@ -265,7 +322,7 @@
         @click="scrollToSection('services')"
       >
         <el-icon><Service /></el-icon>
-        <span class="nav-text">服务分类</span>
+        <span class="nav-text">产业振兴</span>
       </div>
       <div 
         class="nav-item" 
@@ -336,12 +393,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  Star, Grid, Service, OfficeBuilding, Tickets, ShoppingBag, Trophy, UserFilled, Picture, Top
+  Star, Grid, Service, OfficeBuilding, Tickets, ShoppingBag, Trophy, UserFilled, Picture, Top,
+  ArrowLeft, ArrowRight, Location, Calendar, Coin, Clock, StarFilled
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
 import { useSystemStore } from '@/stores/system'
 import { storeToRefs } from 'pinia'
+import * as cultureExperienceApi from '@/api/cultureExperience'
 
 const router = useRouter()
 const systemStore = useSystemStore()
@@ -355,8 +414,110 @@ const activeSection = ref('banner')
 // 是否显示返回顶部按钮
 const showBackToTop = ref(false)
 
+// 顶部数据展示
+const heroStats = ref([
+  { label: '合作文旅项目', value: '320+' },
+  { label: '年度活跃对接', value: '1.2亿' },
+  { label: '政府协同', value: '48个地区' }
+])
+
+const heroSuccess = ref([
+  { title: '政策对接', desc: '申报直连与合规指导', value: '320+', unit: '项目/年' },
+  { title: '产业振兴', desc: '规划落地与运营陪跑', value: '48', unit: '产业带' },
+  { title: '文化体验', desc: '非遗体验与精品路线', value: '560+', unit: '体验' },
+  { title: '特产上行', desc: '供应链与全渠道上架', value: '1.2K', unit: 'SKU' }
+])
+const heroPartners = computed(() => {
+  return partners.value.slice(0, 4).map(p => p.name)
+})
+
 // 轮播图数据
 const carouselBanners = ref([])
+
+// 四大核心功能（与详情页对应）
+const coreNavCards = ref([
+  { title: '政策对接', desc: '政府窗口直连，政策解读、项目申报一站协同', meta: '立即对接', icon: '🏛️', accent: 'linear-gradient(135deg, #e3e8ff, #f6f7ff)', path: '/home/admin/culture', tags: ['政策解读', '项目申报', '合规指导'] },
+  { title: '产业振兴', desc: '产业规划、运营陪跑、培训落地，帮你把路走稳', meta: '查看方案', icon: '📈', accent: 'linear-gradient(135deg, #e9fff7, #f8fffb)', path: '/home/user/culture/project', tags: ['规划落地', '运营陪跑', '培训赋能'] },
+  { title: '文化体验', desc: '非遗工坊、沉浸演艺与精品路线，一键预约体验', meta: '去体验', icon: '🎭', accent: 'linear-gradient(135deg, #e8f5ff, #f7fbff)', path: '/home/user/culture/experience', tags: ['非遗工坊', '沉浸演艺', '精品路线'] },
+  { title: '特产上行', desc: '产地直采+供应链，上架渠道与履约一体化', meta: '上架商品', icon: '🛍️', accent: 'linear-gradient(135deg, #fff4e8, #fffaf3)', path: '/home/user/culture/product', tags: ['供应链', '多渠道上架', '履约售后'] }
+])
+
+const activeNavIndex = ref(0)
+const navAutoplayTimer = ref(null)
+
+const displayedNavCards = computed(() => {
+  if (!coreNavCards.value.length) return []
+  const result = []
+  for (let i = 0; i < Math.min(4, coreNavCards.value.length); i++) {
+    result.push(coreNavCards.value[(activeNavIndex.value + i) % coreNavCards.value.length])
+  }
+  return result
+})
+
+const getNavCardStyle = (index) => {
+  // 叠层效果：当前大、等待小，后排更小更淡
+  const presets = [
+    { offset: 0, scale: 1.05, opacity: 1, zIndex: 4, blur: 'none' },
+    { offset: 260, scale: 0.9, opacity: 0.78, zIndex: 3, blur: 'none' },
+    { offset: -260, scale: 0.9, opacity: 0.78, zIndex: 3, blur: 'none' },
+    { offset: 520, scale: 0.85, opacity: 0.45, zIndex: 2, blur: 'blur(0.6px)' }
+  ]
+  const preset = presets[index] || presets[presets.length - 1]
+  return {
+    transform: `translateX(-50%) translateX(${preset.offset}px) scale(${preset.scale})`,
+    opacity: preset.opacity,
+    zIndex: preset.zIndex,
+    filter: preset.blur
+  }
+}
+
+const rotateNavCard = (step = 1) => {
+  const total = coreNavCards.value.length
+  if (!total) return
+  activeNavIndex.value = (activeNavIndex.value + step + total) % total
+}
+
+const nextNavCard = () => rotateNavCard(1)
+const prevNavCard = () => rotateNavCard(-1)
+
+const startNavAutoplay = () => {
+  if (navAutoplayTimer.value || coreNavCards.value.length <= 1) return
+  navAutoplayTimer.value = setInterval(() => {
+    nextNavCard()
+  }, 3000)
+}
+
+const stopNavAutoplay = () => {
+  if (navAutoplayTimer.value) {
+    clearInterval(navAutoplayTimer.value)
+    navAutoplayTimer.value = null
+  }
+}
+
+const handleNavCardClick = (index) => {
+  if (index === 0) return
+  // 左边等待卡
+  if (index === 2) {
+    prevNavCard()
+    return
+  }
+  // 右边等待卡
+  nextNavCard()
+}
+
+const handleNavLinkClick = (card) => {
+  if (card?.path) {
+    router.push(card.path)
+  } else {
+    scrollToSection('modules')
+  }
+}
+
+const goModule = (module) => {
+  if (module?.path) {
+    router.push(module.path)
+  }
+}
 
 // 加载轮播图数据（从后端获取）
 const loadBanners = async () => {
@@ -366,17 +527,33 @@ const loadBanners = async () => {
     })
     if (response.code === 200 && response.data && response.data.length > 0) {
       // 转换后端数据格式为前端需要的格式
-      carouselBanners.value = response.data.map(banner => ({
-        id: banner.id,
-        title: banner.title || '',
-        subtitle: banner.subtitle || '',
-        tags: banner.subtitle ? banner.subtitle.split('、').slice(0, 3) : ['文旅项目'],
-        btnText: '了解详情',
-        image: banner.imageUrl || banner.image,
-        link: getBannerLink(banner.linkType, banner.linkValue),
-        linkType: banner.linkType || 0,
-        linkValue: banner.linkValue || ''
-      }))
+      carouselBanners.value = response.data.map(banner => {
+        const rawTags =
+          banner.tags ||
+          banner.tag ||
+          banner.tagList ||
+          banner.tagNames ||
+          banner.tagsText ||
+          banner.label ||
+          ''
+        let tagList = Array.isArray(rawTags)
+          ? rawTags
+          : (rawTags || '').split(/[,，、\s]+/).filter(Boolean)
+        // 如果仍然没有标签，尝试从副标题拆分
+        if (!tagList.length && banner.subtitle) {
+          tagList = banner.subtitle.split(/[,，、\s]+/).filter(Boolean)
+        }
+        return {
+          id: banner.id,
+          title: banner.title || '',
+          subtitle: banner.subtitle || '',
+          tags: tagList.length ? tagList.slice(0, 4) : ['文旅项目'],
+          image: banner.imageUrl || banner.image,
+          link: getBannerLink(banner.linkType, banner.linkValue),
+          linkType: banner.linkType || 0,
+          linkValue: banner.linkValue || ''
+        }
+      })
     } else {
       // 没有数据时显示空列表
       carouselBanners.value = []
@@ -413,38 +590,40 @@ const getBannerLink = (linkType, linkValue) => {
 // 核心板块
 const coreModules = ref([
   {
-    emoji: '🏛️',
-    title: '政府对接',
-    description: '对接当地政府，政策支持，资源整合',
-    count: 28
+    icon: OfficeBuilding,
+    title: '政策对接',
+    description: '政府窗口直连，政策申报与合规指导',
+    count: 28,
+    path: '/home/admin/culture'
   },
   {
-    emoji: '📈',
+    icon: Grid,
     title: '产业振兴',
-    description: '旅游+农业，助力乡村产业升级',
-    count: 45
+    description: '规划落地、运营陪跑、培训赋能',
+    count: 45,
+    path: '/home/user/culture/project'
   },
   {
-    emoji: '🎨',
-    title: '文化传承',
-    description: '保护传统文化，活化非遗项目',
-    count: 63
+    icon: Tickets,
+    title: '文化体验',
+    description: '精品体验、非遗工坊、沉浸演艺',
+    count: 63,
+    path: '/home/user/culture/experience'
   },
   {
-    emoji: '🛍️',
-    title: '特产推广',
-    description: '地方特产上线，拓展销售渠道',
-    count: 156
+    icon: ShoppingBag,
+    title: '特产上行',
+    description: '产地直采、供应链与全渠道上架',
+    count: 156,
+    path: '/home/user/culture/product'
   }
 ])
 
 // 服务标签页
 const serviceTabs = ref([
-  { value: 'farmstay', label: '农家乐', emoji: '🏠', count: 48 },
-  { value: 'homestay', label: '特色民宿', emoji: '☕', count: 32 },
-  { value: 'products', label: '农特产品', emoji: '🛍️', count: 156 },
-  { value: 'experience', label: '文化体验', emoji: '🎭', count: 24 },
-  { value: 'food', label: '地道美食', emoji: '🍜', count: 67 }
+  { value: 'farmstay', label: '农家乐' },
+  { value: 'homestay', label: '特色民宿' },
+  { value: 'products', label: '农特产品' }
 ])
 
 const activeTab = ref('farmstay')
@@ -452,16 +631,206 @@ const activeTab = ref('farmstay')
 // 服务数据
 const services = ref({
   farmstay: [
-    { id: 1, title: '云雾山庄农家乐', location: '重庆市巴南区', badge: '政府推荐', features: ['采摘体验', '农家餐饮', '垂钓'], rating: 4.8, price: 88 },
-    { id: 2, title: '桃花源生态农庄', location: '重庆市江津区', badge: '热门', features: ['有机蔬菜', '户外烧烤', '儿童乐园'], rating: 4.9, price: 128 },
-    { id: 3, title: '翠竹山居', location: '重庆市北碚区', badge: '新上架', features: ['竹林漫步', '茶艺体验', '农耕体验'], rating: 4.7, price: 98 },
-    { id: 4, title: '金色田园', location: '重庆市璧山区', badge: '政府扶持', features: ['稻田观光', '农事体验', '土鸡美食'], rating: 4.6, price: 76 }
+    {
+      id: 1,
+      title: '云雾山庄农家乐',
+      location: '重庆市巴南区云雾山',
+      origin: '云雾山脚下·自营农场',
+      badge: '政府推荐',
+      unit: '/人',
+      features: ['采摘体验', '农家餐饮', '垂钓', '烧烤', '儿童乐园'],
+      highlights: ['免费停车', '免费WiFi', '农家餐厅'],
+      summary: '云雾山脚田园度假，农家菜+采摘+垂钓，亲子休闲好去处。',
+      rating: 4.8,
+      views: 1234,
+      price: 88,
+      contactPhone: '023-6688-1122'
+    },
+    {
+      id: 2,
+      title: '桃花源生态农庄',
+      location: '重庆市江津区',
+      origin: '江津·生态果园',
+      badge: '热门',
+      unit: '/人',
+      features: ['有机蔬菜', '户外烧烤', '儿童乐园'],
+      highlights: ['果园采摘', '烧烤场地', '亲子游乐'],
+      summary: '有机果蔬+户外烧烤，家庭周末亲子游的热门选择。',
+      rating: 4.9,
+      views: 980,
+      price: 128,
+      contactPhone: '023-6688-1133'
+    },
+    {
+      id: 3,
+      title: '翠竹山居',
+      location: '重庆市北碚区',
+      origin: '北碚·竹林小院',
+      badge: '新上架',
+      unit: '/人',
+      features: ['竹林漫步', '茶艺体验', '农耕体验'],
+      highlights: ['茶室小憩', '竹林氧吧', '乡野露营'],
+      summary: '竹林环绕的小院，主打茶艺体验与竹林徒步，清新安静。',
+      rating: 4.7,
+      views: 660,
+      price: 98,
+      contactPhone: '023-6688-1144'
+    },
+    {
+      id: 4,
+      title: '金色田园',
+      location: '重庆市璧山区',
+      origin: '璧山·稻田农庄',
+      badge: '政府扶持',
+      unit: '/人',
+      features: ['稻田观光', '农事体验', '土鸡美食'],
+      highlights: ['稻田露营', '土鸡柴火饭', '亲子插秧'],
+      summary: '稻田景观和农事体验为亮点，土鸡柴火饭和乡野露营广受好评。',
+      rating: 4.6,
+      views: 520,
+      price: 76,
+      contactPhone: '023-6688-1155'
+    }
   ],
   homestay: [
-    { id: 1, title: '山水间·云舍', location: '重庆市武隆区', badge: '精品民宿', features: ['景观房', '管家服务', '私人影院'], rating: 4.9, price: 368 },
-    { id: 2, title: '老街记忆客栈', location: '重庆市磁器口', badge: '文化特色', features: ['古镇风情', '传统装饰', '特色早餐'], rating: 4.8, price: 228 },
-    { id: 3, title: '竹海深处', location: '重庆市永川区', badge: '生态体验', features: ['竹海环绕', '天然氧吧', '静谧环境'], rating: 4.7, price: 198 },
-    { id: 4, title: '江畔小筑', location: '重庆市长寿区', badge: '江景房', features: ['临江观景', '江鲜美食', '垂钓平台'], rating: 4.8, price: 268 }
+    {
+      id: 1,
+      title: '山水间·云舍',
+      location: '重庆市武隆区',
+      badge: '精品民宿',
+      roomType: '景观大床房 · 1室1厅1卫',
+      capacity: 2,
+      amenities: ['空调', 'WiFi', '观景阳台', '早餐', '停车位'],
+      highlightTags: ['峡谷观景', '管家服务', '私密小院'],
+      highlights: '位于武隆峡谷旁，观景露台与私密小院，管家式服务与双早餐。',
+      features: ['景观房', '管家服务', '双早套餐', '私人影院'],
+      summary: '峡谷景观房与贴心管家服务，适合度假小憩。',
+      rating: 4.9,
+      views: 236,
+      price: 368,
+      cover: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'
+    },
+    {
+      id: 2,
+      title: '老街记忆客栈',
+      location: '重庆市磁器口',
+      badge: '文化特色',
+      roomType: '双人房 · 1室1卫',
+      capacity: 2,
+      amenities: ['早餐', 'WiFi', '老街步行可达'],
+      highlightTags: ['古镇风情', '传统装饰'],
+      highlights: '置身古镇的慢生活，木质小院与地道早餐相得益彰。',
+      features: ['古镇风情', '传统装饰', '特色早餐'],
+      summary: '靠近磁器口老街，传统风情与特色早餐。',
+      rating: 4.8,
+      views: 310,
+      price: 228,
+      cover: 'https://images.unsplash.com/photo-1496417263034-38ec4f0b665a?auto=format&fit=crop&w=1200&q=80'
+    },
+    {
+      id: 3,
+      title: '竹海深处',
+      location: '重庆市永川区',
+      badge: '生态体验',
+      roomType: '庭院房 · 1室1厅',
+      capacity: 3,
+      amenities: ['早餐', '停车位', '竹林步道'],
+      highlightTags: ['竹林氧吧', '静谧环境'],
+      highlights: '竹海氧吧里的安静民宿，主打林间漫步与清新空气。',
+      features: ['竹海环绕', '天然氧吧', '静谧环境'],
+      summary: '竹林环绕，空气清新，适合放松发呆。',
+      rating: 4.7,
+      views: 280,
+      price: 198,
+      cover: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80'
+    },
+    {
+      id: 4,
+      title: '江畔小筑',
+      location: '重庆市长寿区',
+      badge: '江景房',
+      roomType: '江景大床房 · 1室1卫',
+      capacity: 2,
+      amenities: ['观景露台', '早餐', 'WiFi'],
+      highlightTags: ['江景露台', '江鲜美食'],
+      highlights: '江景露台与江鲜美食的组合，适合周末放松。',
+      features: ['临江观景', '江鲜美食', '垂钓平台'],
+      summary: '临江观景，江鲜美食，周末度假的自在选择。',
+      rating: 4.8,
+      views: 360,
+      price: 268,
+      cover: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80'
+    }
+  ],
+  products: [
+    {
+      id: 1,
+      title: '云雾绿茶礼盒',
+      location: '重庆市忠县',
+      origin: '重庆忠县·高山茶园',
+      badge: '当季新茶',
+      unit: '/盒',
+      features: ['春茶新采', '源头直发', '可定制'],
+      highlights: ['单芽茶', '溯源质检', '礼盒装'],
+      summary: '900米云雾茶园春采单芽，礼盒装支持定制，产地直发。',
+      rating: 4.8,
+      price: 168,
+      sales: 1560,
+      viewCount: 3086,
+      shelfLife: '18个月',
+      cover: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1200&q=80'
+    },
+    {
+      id: 2,
+      title: '竹编工艺套装',
+      location: '重庆市江津区',
+      origin: '江津·非遗工坊',
+      badge: '非遗好物',
+      unit: '/套',
+      features: ['纯手工', '环保材质', '礼赠优选'],
+      highlights: ['非遗师傅', '竹料可溯', '可定制'],
+      summary: '手工竹编茶席与收纳盒组合，兼具实用与非遗美学，支持定制。',
+      rating: 4.7,
+      price: 198,
+      sales: 980,
+      viewCount: 2230,
+      shelfLife: '可长期使用',
+      cover: 'https://images.unsplash.com/photo-1505764706515-aa95265c5abc?auto=format&fit=crop&w=1200&q=80'
+    },
+    {
+      id: 3,
+      title: '山地蜂蜜',
+      location: '重庆市酉阳县',
+      origin: '酉阳·高山林场',
+      badge: '生态养殖',
+      unit: '/瓶',
+      features: ['原生态', '溯源可查', '营养丰富'],
+      highlights: ['高山放养', '低温灌装', '花源可溯'],
+      summary: '高山放养蜂场直供，花源清晰可溯，低温灌装保留活性，口感清甜。',
+      rating: 4.9,
+      price: 128,
+      sales: 1860,
+      viewCount: 4120,
+      shelfLife: '24个月',
+      cover: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&w=1200&q=80'
+    },
+    {
+      id: 4,
+      title: '土鸡蛋礼盒',
+      location: '重庆市武隆区',
+      origin: '武隆·山地农场',
+      badge: '农场直供',
+      unit: '/盒',
+      features: ['散养土鸡', '每日新鲜', '蛋香浓郁'],
+      highlights: ['日捡日发', '粗粮喂养', '礼盒装'],
+      summary: '散养土鸡每日新鲜收集，蛋香浓郁，礼盒装家庭早餐优选。',
+      rating: 4.6,
+      price: 76,
+      sales: 2320,
+      viewCount: 3650,
+      shelfLife: '35天',
+      cover: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=1200&q=80'
+    }
   ]
 })
 
@@ -474,40 +843,54 @@ const govProjects = ref([
   {
     id: 1,
     title: '巴南区乡村振兴示范项目',
+    location: '重庆市巴南区',
     description: '以农旅融合为核心，打造集观光、体验、度假为一体的乡村旅游综合体，带动当地农民增收致富。',
     tags: ['乡村振兴', '产业融合', '就业扶持'],
     startDate: '2024-03',
     investment: 5000,
     beneficiaries: 320,
     statusText: '进行中',
-    statusClass: 'status-active'
+    statusClass: 'status-active',
+    contactName: '张经理',
+    contactPhone: '023-6688-3344',
+    goalBrief: '目标：产业链年产值8000万+，就业500人+，示范乡村样板。'
   },
   {
     id: 2,
     title: '武隆区文化遗产保护与开发',
+    location: '重庆市武隆区',
     description: '保护和传承当地非物质文化遗产，结合旅游开发，实现文化传承与经济发展双赢。',
     tags: ['文化传承', '非遗保护', '旅游开发'],
     startDate: '2024-01',
     investment: 3200,
     beneficiaries: 180,
     statusText: '招募中',
-    statusClass: 'status-recruiting'
+    statusClass: 'status-recruiting',
+    contactName: '李主任',
+    contactPhone: '023-6688-5566',
+    goalBrief: '目标：完成非遗场馆建设与运营，年接待游客30万+。'
   },
   {
     id: 3,
     title: '江津区特色农产品推广计划',
+    location: '重庆市江津区',
     description: '建立线上线下一体化销售平台，帮助当地农产品拓展销售渠道，提升品牌影响力。',
     tags: ['农产品', '电商扶持', '品牌打造'],
     startDate: '2024-02',
     investment: 1500,
     beneficiaries: 450,
     statusText: '进行中',
-    statusClass: 'status-active'
+    statusClass: 'status-active',
+    contactName: '王老师',
+    contactPhone: '023-6688-7788',
+    goalBrief: '目标：打造区域公用品牌，新增线上销售额3000万+。'
   }
 ])
 
 // 文化体验项目（与管理端数据结构对应）
-const cultureExperiences = ref([
+const cultureExperiences = ref([])
+
+const fallbackExperiences = [
   {
     id: 1,
     name: '蜀绣体验工坊',
@@ -532,7 +915,7 @@ const cultureExperiences = ref([
   },
   {
     id: 3,
-    name: '重庆民俗山峡美誉',
+    name: '民俗山峡走读',
     categoryName: '历史探访',
     location: '重庆·磁器口',
     price: 88,
@@ -574,16 +957,54 @@ const cultureExperiences = ref([
     status: 'hot',
     image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800&h=600&fit=crop'
   }
-])
+]
+
+const normalizeImages = (images) => {
+  if (!images) return []
+  try {
+    const parsed = Array.isArray(images) ? images : JSON.parse(images)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return typeof images === 'string' ? [images] : []
+  }
+}
+
+const loadCultureExperiences = async () => {
+  try {
+    const res = await cultureExperienceApi.getUserExperienceList({ page: 1, size: 9 })
+    if (res.code === 200 && (res.data?.list?.length || 0) > 0) {
+      cultureExperiences.value = res.data.list.map((item, index) => {
+        const imgs = normalizeImages(item.images)
+        return {
+          id: item.id,
+          name: item.name,
+          categoryName: item.categoryName || '文化体验',
+          location: item.location || '待定',
+          price: item.price ? Number(item.price) : 0,
+          duration: item.duration || '约2小时',
+          rating: item.rating ? Number(item.rating) : 4.8,
+          status: item.status || 'featured',
+          image: imgs[0] || `https://picsum.photos/800/600?random=${880 + index}`
+        }
+      })
+    } else {
+      console.warn('文化体验列表为空，使用本地示例数据')
+      cultureExperiences.value = fallbackExperiences
+    }
+  } catch (error) {
+    console.error('加载文化体验列表失败', error)
+    cultureExperiences.value = fallbackExperiences
+  }
+}
 
 // 特色周边
 const localProducts = ref([
-  { id: 1, name: '巴南银针茶', origin: '重庆巴南', badge: '地理标志', price: 128, sales: 2356 },
-  { id: 2, name: '江津花椒', origin: '重庆江津', badge: '原产地直供', price: 68, sales: 5678 },
-  { id: 3, name: '手工竹编', origin: '重庆梁平', badge: '非遗工艺', price: 158, sales: 892 },
-  { id: 4, name: '土家织锦', origin: '重庆酉阳', badge: '文创精品', price: 368, sales: 456 },
-  { id: 5, name: '涪陵榨菜', origin: '重庆涪陵', badge: '老字号', price: 45, sales: 12356 },
-  { id: 6, name: '石柱蜂蜜', origin: '重庆石柱', badge: '天然有机', price: 98, sales: 3456 }
+  { id: 1, name: '巴南银针茶', origin: '重庆巴南', badge: '地理标志', price: 128, sales: 2356, rating: 4.9 },
+  { id: 2, name: '江津花椒', origin: '重庆江津', badge: '原产地直供', price: 68, sales: 5678, rating: 4.8 },
+  { id: 3, name: '手工竹编', origin: '重庆梁平', badge: '非遗工艺', price: 158, sales: 892, rating: 4.7 },
+  { id: 4, name: '土家织锦', origin: '重庆酉阳', badge: '文创精品', price: 368, sales: 456, rating: 4.9 },
+  { id: 5, name: '涪陵榨菜', origin: '重庆涪陵', badge: '老字号', price: 45, sales: 12356, rating: 4.6 },
+  { id: 6, name: '石柱蜂蜜', origin: '重庆石柱', badge: '天然有机', price: 98, sales: 3456, rating: 4.8 }
 ])
 
 // 成功案例
@@ -626,7 +1047,8 @@ const partners = ref([
   { id: 5, emoji: '🎓', name: '重庆大学旅游学院' },
   { id: 6, emoji: '📱', name: '携程旅游' },
   { id: 7, emoji: '🌐', name: '美团点评' },
-  { id: 8, emoji: '🚗', name: '滴滴出行' }
+  { id: 8, emoji: '🚗', name: '滴滴出行' },
+  { id: 9, emoji: '🤝', name: '本地文旅合作联盟' }
 ])
 
 // 交互函数
@@ -643,18 +1065,16 @@ const handleBannerClick = async (banner) => {
   
   // 跳转逻辑
   if (banner.link) {
-    if (banner.linkType === 2) {
-      // 外部链接，新窗口打开
+    if (banner.linkType === 2 || banner.link?.startsWith?.('http')) {
       window.open(banner.link, '_blank')
     } else {
-      // 内部链接
       router.push(banner.link)
     }
   } else if (banner.linkType && banner.linkValue) {
     // 根据链接类型跳转
     const link = getBannerLink(banner.linkType, banner.linkValue)
     if (link) {
-      if (banner.linkType === 2) {
+      if (banner.linkType === 2 || link.startsWith('http')) {
         window.open(link, '_blank')
       } else {
         router.push(link)
@@ -665,8 +1085,26 @@ const handleBannerClick = async (banner) => {
 
 const handleServiceClick = (service) => {
   console.log('跳转到服务详情:', service.title)
-  // TODO: 跳转到服务详情页
-  router.push(`/home/user/culture/service/${service.id}`)
+  if (activeTab.value === 'homestay') {
+    router.push(`/home/user/culture/homestay/${service.id}`)
+  } else if (activeTab.value === 'products') {
+    router.push(`/home/user/culture/agri-product/${service.id}`)
+  } else {
+    router.push(`/home/user/culture/service/${service.id}`)
+  }
+}
+
+const getHighlights = (service) => {
+  if (activeTab.value === 'homestay') {
+    return Array.isArray(service.highlightTags) ? service.highlightTags : []
+  }
+  const list = Array.isArray(service.highlights) ? service.highlights : []
+  return list.slice(0, 4)
+}
+
+const getFeatures = (service) => {
+  const list = Array.isArray(service.features) ? service.features : []
+  return list.slice(0, 4)
 }
 
 const handleProjectClick = (project) => {
@@ -677,8 +1115,8 @@ const handleProjectClick = (project) => {
 
 const handleCategoryClick = (category) => {
   console.log('跳转到文化体验详情:', category.name)
-  // 跳转到文化体验详情页
-  router.push(`/home/user/culture/detail/${category.id}`)
+  // 跳转到文化体验详情页（文化体验专属详情）
+  router.push(`/home/user/culture/experience/${category.id}`)
 }
 
 // 获取滚动容器（el-main元素）
@@ -746,6 +1184,8 @@ const handleScroll = (event) => {
 // 页面挂载时添加滚动监听
 onMounted(() => {
   loadBanners() // 加载轮播图数据
+  loadCultureExperiences() // 加载文化体验列表（含分类标签）
+  startNavAutoplay()
   const scrollContainer = getScrollContainer()
   if (scrollContainer) {
     scrollContainer.addEventListener('scroll', handleScroll)
@@ -761,6 +1201,7 @@ onUnmounted(() => {
   if (scrollContainer) {
     scrollContainer.removeEventListener('scroll', handleScroll)
   }
+  stopNavAutoplay()
 })
 
 const handleProductClick = (product) => {
@@ -782,38 +1223,469 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 .culture-platform-medium {
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f5f7fa 0%, #e8eef5 100%);
-  padding-bottom: 60px;
-  padding-right: 120px; /* 为右侧导航条留出空间 */
+  background: #f5f7fa;
+  padding: 24px 120px 60px 24px; /* 留出右侧导航空间并减少白边 */
   
   /* 添加装饰性背景圆圈 */
-  &::before {
-    content: '';
-    position: fixed;
-    top: 10%;
-    left: 5%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(102, 126, 234, 0.08) 0%, transparent 70%);
-    border-radius: 50%;
-    animation: floatDecoration 15s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 0;
-  }
-  
+  &::before,
   &::after {
-    content: '';
-    position: fixed;
-    bottom: 15%;
-    right: 8%;
-    width: 250px;
-    height: 250px;
-    background: radial-gradient(circle, rgba(118, 75, 162, 0.08) 0%, transparent 70%);
-    border-radius: 50%;
-    animation: floatDecoration 18s ease-in-out infinite reverse;
-    pointer-events: none;
-    z-index: 0;
+    content: none;
   }
+}
+
+/* 覆盖主页默认白色/渐变背景，去掉外层白框感 */
+:deep(.home-layout .main-content) {
+  background: #f5f7fa !important;
+  padding: 0 !important;
+}
+
+/* 白色系英雄区 */
+.hero-shell {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 28px;
+  padding: 56px 80px;
+  margin: 24px 80px 16px;
+  background: #ffffff;
+  border-radius: 32px;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.hero-shell::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -40px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(98, 115, 255, 0.12) 0%, transparent 60%);
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f3f6fb;
+  color: #52607a;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.hero-copy h1 {
+  font-size: 34px;
+  line-height: 1.3;
+  color: #111827;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.hero-subtitle {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.hero-success {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  max-width: 720px;
+}
+
+.success-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.success-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.stat-unit {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.success-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 2px 0;
+}
+
+.success-desc {
+  font-size: 12px;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.hero-success {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.hero-partners {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #374151;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.partners-label {
+  font-weight: 700;
+  color: #111827;
+}
+
+.partners-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.partner-tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ecfdf3, #e0f2fe);
+  color: #0f172a;
+  border: 1px solid #d1fae5;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.success-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  border: 1px solid #e5e7eb;
+  min-height: 120px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.success-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.success-desc {
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.success-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.stat-unit {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.hero-carousel {
+  position: relative;
+}
+
+.hero-slide {
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+  height: 360px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-slide-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.05) 0%, rgba(17, 24, 39, 0.7) 100%);
+}
+
+.hero-slide-content {
+  position: relative;
+  padding: 24px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  text-align: center;
+  opacity: 0.78;
+}
+
+.hero-slide-content h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.hero-slide-content p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.6;
+}
+
+.slide-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  width: fit-content;
+  font-size: 12px;
+}
+
+.slide-tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  justify-content: center;
+  opacity: 0.78;
+}
+
+.slide-tags span {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  font-size: 12px;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+}
+
+/* 核心菜单轮播 */
+.nav-rotator {
+  padding: 8px 80px 32px;
+}
+
+.nav-card-track {
+  position: relative;
+  margin-top: 20px;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.nav-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+  transition: transform 0.35s ease, opacity 0.3s ease;
+  width: 620px;
+  max-width: 96vw;
+  min-height: 240px;
+  will-change: transform, opacity;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  left: 50%;
+}
+
+.nav-card.active {
+  border-color: #d1d5db;
+}
+
+.nav-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.nav-card-body h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #111827;
+  text-align: center;
+}
+
+.nav-card-body p {
+  margin: 0 0 14px 0;
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 14px;
+  text-align: center;
+}
+
+.nav-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  text-align: center;
+}
+
+.nav-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.nav-card-tag {
+  padding: 6px 10px;
+  background: #f3f4f6;
+  color: #475569;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nav-card-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #16a34a;
+  font-weight: 700;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 0 6px;
+  width: auto;
+  align-self: flex-end;
+}
+
+.nav-card-cta {
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 50%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 14px;
+  position: relative;
+  display: inline-block;
+}
+
+/* 统一下方板块的白色卡片风格（默认），按需单独覆盖 */
+.core-modules,
+.service-categories,
+.gov-cooperation,
+.culture-experience,
+.local-products {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 40px 48px;
+  margin: 28px 60px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.06);
+  position: relative;
+  z-index: 1;
+}
+
+/* 产业振兴区、政府合作、文化体验、特色周边模块取消卡片底色与阴影，仅保留内容 */
+.service-categories,
+.gov-cooperation,
+.culture-experience,
+.local-products {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 16px 0 24px;
+  padding: 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  margin: 0 0 20px 0;
+  color: #0f172a;
+}
+
+.title-icon {
+  font-size: 20px;
+}
+
+
+.service-categories .categories-tabs {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.service-grid {
+  margin-top: 16px;
+}
+
+.service-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+}
+
+.gov-project-card,
+.experience-card,
+.product-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.gov-project-card:hover,
+.experience-card:hover,
+.product-card:hover {
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
 }
 
 /* 顶部横幅 */
@@ -1106,39 +1978,45 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
     left: 0;
     width: 80px;
     height: 4px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 100%);
     border-radius: 2px;
   }
   
   .title-icon {
     font-size: 36px;
-    filter: drop-shadow(0 2px 8px rgba(102, 126, 234, 0.3));
+    filter: drop-shadow(0 2px 8px rgba(148, 163, 184, 0.3));
   }
 }
 
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
 }
 
 .module-card {
   background: white;
-  border-radius: 32px;
-  padding: 32px;
+  border-radius: 10px;
+  padding: 20px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 0.25s ease;
 }
 
 .module-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
 }
 
 .module-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #f5f5f5;
+  color: #3b82f6;
 }
 
 .module-title {
@@ -1164,153 +2042,190 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 /* 服务分类 */
 .categories-tabs {
   display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
-  padding: 8px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 0 8px;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
   overflow-x: auto;
 }
 
 .category-tab {
   flex-shrink: 0;
-  padding: 12px 24px;
-  border-radius: 12px;
+  padding: 10px 4px 12px;
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.3s;
-  font-size: 15px;
-  font-weight: 500;
-  color: #606266;
+  transition: all 0.25s ease;
+  font-size: 16px;
+  font-weight: 600;
+  color: #94a3b8;
   background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  border-bottom: 2px solid transparent;
 }
 
 .category-tab:hover {
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
+  color: #0f172a;
 }
 
 .category-tab.active {
-  color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
-}
-
-.tab-count {
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
-  font-size: 12px;
+  color: #0f172a;
+  border-bottom-color: #0ea5e9;
 }
 
 .service-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
 }
 
 .service-card {
-  background: white;
-  border-radius: 28px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.service-card > * + * {
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px dashed #e2e8f0;
 }
 
 .service-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  transform: none;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .service-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.service-title-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
 }
 
 .service-header h3 {
   font-size: 16px;
   font-weight: 700;
-  color: #303133;
+  color: #0f172a;
   margin: 0;
   flex: 1;
+  line-height: 1.3;
 }
 
-.service-badge {
-  padding: 4px 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
+.service-price-block {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.service-price {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.service-price-unit {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.service-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 8px;
 }
 
 .service-location {
   font-size: 13px;
-  color: #909399;
-  margin: 0 0 12px 0;
+  color: #475569;
 }
 
-.service-features {
+.service-summary {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.service-features,
+.service-highlights {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin: 0;
+}
+
+.product-extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
 }
 
 .feature-tag {
-  padding: 4px 12px;
-  background: rgba(102, 126, 234, 0.08);
-  color: #667eea;
-  border-radius: 20px;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 10px;
   font-size: 12px;
-  font-weight: 500;
+  border: 1px solid #e2e8f0;
 }
 
-.service-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+.highlight-tag {
+  padding: 0;
+  background: transparent;
+  color: #0891b2;
+  border-radius: 0;
+  font-size: 12px;
+  border: none;
 }
 
 .service-rating {
   font-size: 13px;
-  color: #606266;
-}
-
-.service-price {
-  font-size: 18px;
-  font-weight: 700;
-  color: #667eea;
+  color: #334155;
 }
 
 /* 政府合作项目 */
 .gov-projects-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
 }
 
 .gov-project-card {
   background: white;
-  border-radius: 32px;
-  padding: 28px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s;
+  border-radius: 6px;
+  padding: 20px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 0.25s ease;
   cursor: pointer;
 }
 
 .gov-project-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
 }
 
 .project-header {
@@ -1330,52 +2245,81 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 
 .project-status {
   padding: 4px 12px;
-  border-radius: 20px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  color: #475569;
 }
 
 .status-active {
-  background: #67c23a;
-  color: white;
+  border-color: #67c23a;
+  color: #3e8e1f;
+  background: #f0f9eb;
 }
 
 .status-recruiting {
-  background: #e6a23c;
-  color: white;
+  border-color: #e6a23c;
+  color: #a76505;
+  background: #fdf3e6;
 }
 
 .project-desc {
   font-size: 14px;
   color: #606266;
   line-height: 1.6;
-  margin: 0 0 16px 0;
+  margin: 0;
 }
 
-.project-tags {
+.gov-project-card > * + * {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.gov-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.gov-tags {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
 }
 
-.project-tag {
-  padding: 6px 14px;
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
+.gov-tag {
+  font-size: 12px;
+  color: #475569;
 }
 
-.project-info {
+.gov-contact {
   display: flex;
-  gap: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #475569;
+}
+
+.gov-goal-brief {
   font-size: 13px;
-  color: #606266;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  color: #334155;
+  line-height: 1.5;
 }
 
 /* 文化体验 */
@@ -1407,23 +2351,24 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 }
 
 .experience-card {
-  background: white;
-  border-radius: 32px;
+  background: #ffffff;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border: 1px solid #edf0f5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .experience-card:hover {
   transform: translateY(-8px);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
 }
 
 .experience-image {
   position: relative;
   width: 100%;
-  height: 220px;
+  height: 200px;
   overflow: hidden;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
@@ -1439,26 +2384,12 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
   transform: scale(1.1);
 }
 
-.experience-badge {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #667eea;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .experience-content {
-  padding: 24px;
+  padding: 20px 20px 18px;
 }
 
 .experience-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: #303133;
   margin: 0 0 12px 0;
@@ -1469,13 +2400,20 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
   font-size: 14px;
   color: #606266;
   margin: 0 0 16px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  .el-icon {
+    color: #909399;
+  }
 }
 
 .experience-features {
   display: flex;
   gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -1485,11 +2423,15 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
   display: flex;
   align-items: center;
   gap: 4px;
+
+  .el-icon {
+    color: #f5a623;
+  }
 }
 
 .experience-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
 }
 
@@ -1547,20 +2489,21 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 }
 
 .product-card {
-  background: white;
-  border-radius: 28px;
-  padding: 24px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s;
+  background: #ffffff;
+  border-radius: 0;
+  border: 1px solid #eef0f3;
+  padding: 20px;
+  text-align: left;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
   cursor: pointer;
   overflow: hidden;
 }
 
 .product-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
 .product-badge {
@@ -1568,34 +2511,42 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
   top: 16px;
   right: 16px;
   padding: 6px 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 20px;
+  background: #ffffff;
+  color: #606266;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  max-width: 90px;
+  max-width: 110px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
-.product-card h4 {
-  font-size: 15px;
+.product-header h4 {
+  font-size: 16px;
   font-weight: 700;
   color: #303133;
-  margin: 0 0 8px 0;
-  padding-right: 80px;
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0 0 10px 0;
+  padding-right: 90px;
+  min-height: 40px;
 }
 
-.product-origin {
-  font-size: 12px;
-  color: #909399;
-  margin: 0 0 12px 0;
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #606266;
+  margin-bottom: 12px;
+}
+
+.product-meta .meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .product-footer {
@@ -1612,7 +2563,7 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 }
 
 .product-price {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #f56c6c;
 }
@@ -1896,7 +2847,7 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
     justify-content: center;
     align-items: center;
     gap: 8px;
-    margin-bottom: 20px;
+  margin-bottom: 28px;
     font-size: 12px;
     
     a {

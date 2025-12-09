@@ -1233,10 +1233,11 @@ watch(() => loginMethod.value, () => {
             border-left: 0;
             border-top: 0;
             height: 10px;
-            left: 5px;
-            top: 4px;
+              left: 50%;
+              top: 50%;
             width: 5px;
-            transition: all 0.2s ease;
+              transition: all 0.2s ease;
+              transform: translate(-50%, -50%) rotate(45deg) scale(0);
           }
         }
         
@@ -1255,6 +1256,10 @@ watch(() => loginMethod.value, () => {
                 0 0 12px rgba(255, 255, 255, 0.4),
                 inset 0 0 12px rgba(255, 255, 255, 0.15);
             }
+          }
+          
+          &.is-checked .el-checkbox__inner::after {
+            transform: translate(-50%, -50%) rotate(45deg) scale(1);
           }
         }
         

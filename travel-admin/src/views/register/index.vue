@@ -917,8 +917,8 @@ watch(() => registerMethod.value, () => {
       
       .el-checkbox__input {
         .el-checkbox__inner {
-          width: 18px;
-          height: 18px;
+          width: 16px;
+          height: 16px;
           border: 2px solid rgba(255, 255, 255, 0.3);
           background: rgba(0, 0, 0, 0.2);
           border-radius: 4px;
@@ -933,11 +933,12 @@ watch(() => registerMethod.value, () => {
             border: 2px solid #ffffff;
             border-left: 0;
             border-top: 0;
-            height: 10px;
-            left: 5px;
-            top: 4px;
-            width: 5px;
+            height: 8px;
+            left: 50%;
+            top: 50%;
+            width: 4px;
             transition: all 0.2s ease;
+            transform: translate(-50%, -50%) rotate(45deg) scale(0);
           }
         }
         
@@ -956,6 +957,10 @@ watch(() => registerMethod.value, () => {
                 0 0 12px rgba(255, 255, 255, 0.4),
                 inset 0 0 12px rgba(255, 255, 255, 0.15);
             }
+          }
+          
+          .el-checkbox__inner::after {
+            transform: translate(-50%, -50%) rotate(45deg) scale(1);
           }
         }
         

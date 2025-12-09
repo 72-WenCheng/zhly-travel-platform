@@ -40,7 +40,6 @@
             <div class="product-badges">
               <el-tag type="danger" size="large">{{ product.badge }}</el-tag>
               <el-tag v-if="product.certified" type="success" size="large">
-                <el-icon><Checked /></el-icon>
                 官方认证
               </el-tag>
             </div>
@@ -109,29 +108,6 @@
           </div>
         </el-card>
 
-        <!-- 用户评价 -->
-        <el-card class="reviews-card">
-          <div class="reviews-header">
-            <h3>用户评价 ({{ product.reviews.length }})</h3>
-            <div class="rating-summary">
-              <el-rate v-model="product.rating" disabled show-score />
-            </div>
-          </div>
-          
-          <div class="reviews-list">
-            <div v-for="review in product.reviews" :key="review.id" class="review-item">
-              <div class="review-header">
-                <el-avatar :src="review.userAvatar">{{ review.userName.charAt(0) }}</el-avatar>
-                <div class="review-user">
-                  <span class="user-name">{{ review.userName }}</span>
-                  <el-rate v-model="review.rating" disabled size="small" />
-                </div>
-                <span class="review-date">{{ review.date }}</span>
-              </div>
-              <p class="review-content">{{ review.content }}</p>
-            </div>
-          </div>
-        </el-card>
       </el-col>
 
       <!-- 右侧：购买信息 -->
@@ -618,72 +594,6 @@ onMounted(() => {
   color: #606266;
 }
 
-.reviews-card {
-  margin-bottom: 20px;
-
-  :deep(.el-card__body) {
-    padding: 32px;
-  }
-}
-
-.reviews-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-
-  h3 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #303133;
-    margin: 0;
-  }
-}
-
-.reviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.review-item {
-  padding: 20px;
-  background: #f5f7fa;
-  border-radius: 12px;
-}
-
-.review-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.review-user {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  .user-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #303133;
-  }
-}
-
-.review-date {
-  font-size: 12px;
-  color: #909399;
-}
-
-.review-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #606266;
-  margin: 0;
-}
-
 .purchase-card-sticky {
   position: sticky;
   top: 24px;
@@ -706,12 +616,21 @@ onMounted(() => {
 }
 
 .spec-radio-group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 
   :deep(.el-radio) {
     margin: 0;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  :deep(.el-radio__label) {
+    width: 100%;
+    text-align: center;
   }
 }
 

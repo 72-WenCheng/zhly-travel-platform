@@ -15,9 +15,7 @@
                 <el-tag :type="project.statusType" size="large">{{ project.statusText }}</el-tag>
               </div>
             </div>
-            <div class="header-right">
-              <div class="project-icon">🤝</div>
-            </div>
+            <div class="header-right"></div>
           </div>
 
           <div class="project-meta">
@@ -71,7 +69,9 @@
           <h3>项目目标</h3>
           <div class="project-goals">
             <div v-for="goal in project.goals" :key="goal.title" class="goal-item">
-              <div class="goal-icon">{{ goal.icon }}</div>
+              <div class="goal-icon">
+                <el-icon><component :is="goal.icon" /></el-icon>
+              </div>
               <div class="goal-content">
                 <h4>{{ goal.title }}</h4>
                 <p>{{ goal.description }}</p>
@@ -201,7 +201,6 @@
             </el-form>
 
             <el-button type="primary" size="large" class="apply-button" @click="handleApply">
-              <el-icon><Checked /></el-icon>
               提交申请
             </el-button>
 
@@ -232,7 +231,11 @@ import {
   Message,
   Document,
   Checked,
-  InfoFilled
+  InfoFilled,
+  TrendCharts,
+  Briefcase,
+  Sunny,
+  Brush
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -252,22 +255,22 @@ const project = ref({
   tags: ['乡村振兴', '产业融合', '就业扶持', '文化传承', '生态保护'],
   goals: [
     {
-      icon: '🎯',
+      icon: TrendCharts,
       title: '产业发展',
       description: '建立完善的农旅融合产业链，年产值达到8000万元以上'
     },
     {
-      icon: '💼',
+      icon: Briefcase,
       title: '就业创收',
       description: '创造就业岗位500个以上，带动农户年均增收2万元'
     },
     {
-      icon: '🌱',
+      icon: Sunny,
       title: '生态保护',
       description: '保护和改善当地生态环境，打造美丽乡村示范点'
     },
     {
-      icon: '🎨',
+      icon: Brush,
       title: '文化传承',
       description: '挖掘和传承当地特色文化，提升文化软实力'
     }
@@ -416,9 +419,6 @@ onMounted(() => {
 }
 
 .header-right {
-  .project-icon {
-    font-size: 64px;
-  }
 }
 
 .project-meta {
@@ -542,14 +542,14 @@ onMounted(() => {
 
 .policy-item {
   padding: 20px;
-  background: #ecf5ff;
-  border-left: 4px solid #409eff;
+  background: #fff1f0;
+  border-left: none;
   border-radius: 8px;
 
   h4 {
     font-size: 16px;
     font-weight: 600;
-    color: #409eff;
+    color: #f56c6c;
     margin: 0 0 8px 0;
   }
 
