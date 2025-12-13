@@ -169,14 +169,26 @@
               </el-form-item>
             </el-form>
 
+            <el-divider />
+
+            <CouponSelector
+              v-model="selectedCoupon"
+              :order-amount="goodsTotal"
+              @change="handleCouponChange"
+            />
+
             <div class="total-section">
               <div class="total-row">
                 <span>商品总价</span>
-                <span class="total-price">¥{{ totalPrice }}</span>
+                <span class="total-price">¥{{ goodsTotal }}</span>
               </div>
               <div class="total-row">
                 <span>运费</span>
                 <span class="shipping-fee">{{ shippingFee === 0 ? '免运费' : `¥${shippingFee}` }}</span>
+              </div>
+              <div v-if="selectedCoupon" class="total-row">
+                <span>优惠券</span>
+                <span class="coupon-discount">-¥{{ couponDiscount }}</span>
               </div>
               <el-divider />
               <div class="total-row final">
@@ -215,11 +227,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import CouponSelector from '@/components/CouponSelector.vue'
 import {
   ArrowLeft,
   Location,
@@ -315,8 +328,11 @@ const purchaseForm = ref({
   notes: ''
 })
 
-// 计算总价
-const totalPrice = computed(() => {
+// 选中的优惠券
+const selectedCoupon = ref(null)
+
+// 计算商品总价
+const goodsTotal = computed(() => {
   let price = product.value.price
   const spec = purchaseForm.value.specification
   
@@ -330,15 +346,31 @@ const totalPrice = computed(() => {
   return Math.round(price * purchaseForm.value.quantity)
 })
 
+// 计算总价（兼容旧代码）
+const totalPrice = computed(() => goodsTotal.value)
+
 // 运费（满100免运费）
 const shippingFee = computed(() => {
-  return totalPrice.value >= 100 ? 0 : 10
+  return goodsTotal.value >= 100 ? 0 : 10
+})
+
+// 计算优惠金额
+const couponDiscount = computed(() => {
+  if (!selectedCoupon.value) return 0
+  const discountValue = selectedCoupon.value.discountValue || selectedCoupon.value.amount || 0
+  const subtotal = goodsTotal.value + shippingFee.value
+  return Math.min(discountValue, subtotal)
 })
 
 // 最终价格
 const finalPrice = computed(() => {
-  return totalPrice.value + shippingFee.value
+  return Math.max(0, goodsTotal.value + shippingFee.value - couponDiscount.value)
 })
+
+// 处理优惠券变化
+const handleCouponChange = (coupon: any) => {
+  selectedCoupon.value = coupon
+}
 
 // 返回上一页
 const goBack = () => {
@@ -648,6 +680,11 @@ onMounted(() => {
   padding: 8px 0;
   font-size: 15px;
   color: #606266;
+
+  .coupon-discount {
+    color: #67c23a;
+    font-weight: 600;
+  }
 
   &.final {
     font-size: 18px;

@@ -1,7 +1,34 @@
 <template>
-  <div class="coupon-management">
+  <div class="admin-list-modern">
     <BackButton />
     
+    <!-- 页面头部 -->
+    <div class="page-header-modern">
+      <div class="header-left">
+        <div class="header-icon">
+          <el-icon :size="32"><Tickets /></el-icon>
+        </div>
+        <div class="header-title">
+          <h1>优惠券管理</h1>
+          <p>管理文旅平台的优惠券配置</p>
+          <div class="status-info">
+            <div class="status-text">
+              <el-icon class="status-icon"><Refresh /></el-icon>
+              <span>数据每30秒自动刷新</span>
+            </div>
+            <span v-if="lastUpdateTime" class="update-time">{{ lastUpdateTime }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <el-button type="primary" class="action-btn" @click="handleAdd">
+          <el-icon><Plus /></el-icon>
+          新增优惠券
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 筛选卡片 -->
     <el-card class="filter-card-modern" shadow="never">
       <div class="filter-header">
         <el-icon><Search /></el-icon>
@@ -10,7 +37,12 @@
       <el-form :model="filters" class="filter-form">
         <div class="filter-row">
           <el-form-item label="优惠券名称">
-            <el-input v-model="filters.name" placeholder="请输入优惠券名称" clearable />
+            <el-input
+              v-model="filters.name"
+              placeholder="请输入优惠券名称"
+              clearable
+              @keyup.enter="handleSearch"
+            />
           </el-form-item>
           <el-form-item label="优惠券类型">
             <el-select v-model="filters.type" placeholder="请选择优惠券类型" clearable>
@@ -29,7 +61,15 @@
               <el-option label="已下架" :value="4" />
             </el-select>
           </el-form-item>
-          <el-form-item label=" " class="filter-actions">
+          <el-form-item label="使用范围">
+            <el-select v-model="filters.scope" placeholder="请选择使用范围" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="全场通用" :value="1" />
+              <el-option label="指定分类" :value="2" />
+              <el-option label="指定商品" :value="3" />
+            </el-select>
+          </el-form-item>
+          <el-form-item class="filter-actions">
             <el-button class="reset-btn" @click="handleReset">
               重置筛选
             </el-button>
@@ -38,20 +78,57 @@
       </el-form>
     </el-card>
 
-    <el-card class="table-card">
-      <div class="table-header">
-        <h3>优惠券列表</h3>
-        <div class="actions">
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>
-            新增优惠券
-          </el-button>
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <el-icon :size="24"><Clock /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">未开始</div>
+          <div class="stat-value">{{ stats.notStarted }}</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
+          <el-icon :size="24"><VideoPlay /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">进行中</div>
+          <div class="stat-value">{{ stats.active }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
+          <el-icon :size="24"><Trophy /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">已发放</div>
+          <div class="stat-value">{{ stats.totalIssued }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">
+          <el-icon :size="24"><Money /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">已使用</div>
+          <div class="stat-value">{{ stats.totalUsed }}</div>
+        </div>
+      </div>
+    </div>
 
-      <el-table :data="couponList" style="width: 100%" v-loading="loading">
+    <!-- 优惠券列表 -->
+    <el-card class="table-card-modern" shadow="never">
+      <div class="table-wrapper">
+        <el-table
+          :data="couponList"
+          v-loading="loading"
+          class="modern-table"
+          :row-class-name="getRowClassName"
+        >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="优惠券名称" width="200" />
+        <el-table-column prop="name" label="优惠券名称" width="200" show-overflow-tooltip />
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag :type="getTypeTagType(row.type)" size="small">
@@ -59,20 +136,22 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="优惠内容" width="150">
+        <el-table-column label="优惠内容" width="180">
           <template #default="{ row }">
-            <span v-if="row.discountType === 1" class="discount-value">
-              满{{ row.minAmount }}减{{ row.discountValue }}
-            </span>
-            <span v-else class="discount-value">
-              {{ row.discountValue * 10 }}折
-              <span v-if="row.maxDiscount" class="max-discount">
-                (最高减{{ row.maxDiscount }}元)
+            <div class="discount-content">
+              <span v-if="row.discountType === 1" class="discount-value">
+                满{{ row.minAmount }}减{{ row.discountValue }}元
               </span>
-            </span>
+              <span v-else class="discount-value">
+                {{ (row.discountValue * 10).toFixed(1) }}折
+                <span v-if="row.maxDiscount" class="max-discount">
+                  (最高减{{ row.maxDiscount }}元)
+                </span>
+              </span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="发行数量" width="120">
+        <el-table-column label="发行数量" width="140">
           <template #default="{ row }">
             <div class="count-info">
               <div>总量: {{ row.totalCount }}</div>
@@ -93,62 +172,89 @@
               领取后{{ row.validDays }}天内有效
             </div>
             <div v-else class="valid-info">
-              <div>{{ row.startTime }}</div>
-              <div>至 {{ row.endTime }}</div>
+              <div>{{ formatDateTime(row.startTime) }}</div>
+              <div>至 {{ formatDateTime(row.endTime) }}</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
+            <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="250">
+        <el-table-column prop="createTime" label="创建时间" width="160">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button
-              v-if="row.status === 2"
-              link
-              type="warning"
-              size="small"
-              @click="handleToggleStatus(row, 4)"
-            >
-              <el-icon><VideoPlay /></el-icon>
-              下架
-            </el-button>
-            <el-button
-              v-if="row.status === 4"
-              link
-              type="success"
-              size="small"
-              @click="handleToggleStatus(row, 2)"
-            >
-              <el-icon><VideoPause /></el-icon>
-              上架
-            </el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>
-              删除
-            </el-button>
+            <span>{{ formatDateTime(row.createTime) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="280" align="center">
+          <template #default="{ row }">
+            <div class="action-buttons">
+              <el-button type="info" size="small" text @click="handleEdit(row)">
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button
+                v-if="row.status === 2"
+                type="warning"
+                size="small"
+                text
+                @click="handleToggleStatus(row, 4)"
+              >
+                <el-icon><VideoPause /></el-icon>
+                下架
+              </el-button>
+              <el-button
+                v-if="row.status === 4"
+                type="success"
+                size="small"
+                text
+                @click="handleToggleStatus(row, 2)"
+              >
+                <el-icon><VideoPlay /></el-icon>
+                上架
+              </el-button>
+              <el-button type="danger" size="small" text @click="handleDelete(row)">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.size"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-        class="pagination"
-      />
+      <div class="pagination-container-modern simple-pagination">
+        <el-button
+          class="page-btn"
+          :disabled="pagination.page <= 1"
+          @click="handlePageChange(pagination.page - 1)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="page-info">
+          {{ pagination.page }} / {{ Math.max(1, Math.ceil((pagination.total || 1) / (pagination.size || 10))) }}
+        </span>
+        <el-button
+          class="page-btn"
+          :disabled="pagination.page >= Math.ceil((pagination.total || 1) / (pagination.size || 10))"
+          @click="handlePageChange(pagination.page + 1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+        <div class="page-jump">
+          <span>前往</span>
+          <el-input
+            v-model.number="pageJump"
+            size="small"
+            class="page-jump-input"
+            @input="handlePageJump"
+          />
+          <span>页</span>
+        </div>
+      </div>
     </el-card>
 
     <!-- 新增/编辑优惠券对话框 -->
@@ -166,7 +272,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="优惠券类型" prop="type">
-              <el-select v-model="couponForm.type" placeholder="请选择">
+              <el-select v-model="couponForm.type" placeholder="请选择" style="width: 100%">
                 <el-option label="满减券" :value="1" />
                 <el-option label="折扣券" :value="2" />
                 <el-option label="兑换券" :value="3" />
@@ -175,7 +281,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="优惠方式" prop="discountType">
-              <el-select v-model="couponForm.discountType" placeholder="请选择">
+              <el-select v-model="couponForm.discountType" placeholder="请选择" style="width: 100%">
                 <el-option label="固定金额" :value="1" />
                 <el-option label="折扣比例" :value="2" />
               </el-select>
@@ -194,7 +300,8 @@
                 :min="0"
                 :max="couponForm.discountType === 1 ? 9999 : 1"
                 :step="couponForm.discountType === 1 ? 1 : 0.1"
-                :precision="couponForm.discountType === 1 ? 2 : 2"
+                :precision="couponForm.discountType === 1 ? 0 : 1"
+                style="width: 100%"
               />
               <span v-if="couponForm.discountType === 1" style="margin-left: 8px;">元</span>
               <span v-else style="margin-left: 8px;">折</span>
@@ -202,7 +309,12 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="最低使用金额" prop="minAmount">
-              <el-input-number v-model="couponForm.minAmount" :min="0" :precision="2" />
+              <el-input-number
+                v-model="couponForm.minAmount"
+                :min="0"
+                :precision="2"
+                style="width: 100%"
+              />
               <span style="margin-left: 8px;">元</span>
             </el-form-item>
           </el-col>
@@ -213,19 +325,34 @@
           label="最高优惠金额"
           prop="maxDiscount"
         >
-          <el-input-number v-model="couponForm.maxDiscount" :min="0" :precision="2" />
+          <el-input-number
+            v-model="couponForm.maxDiscount"
+            :min="0"
+            :precision="2"
+            style="width: 100%"
+          />
           <span style="margin-left: 8px;">元（选填）</span>
         </el-form-item>
 
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="发行总量" prop="totalCount">
-              <el-input-number v-model="couponForm.totalCount" :min="1" :step="1" />
+              <el-input-number
+                v-model="couponForm.totalCount"
+                :min="1"
+                :step="1"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="每人限领" prop="perUserLimit">
-              <el-input-number v-model="couponForm.perUserLimit" :min="1" :step="1" />
+              <el-input-number
+                v-model="couponForm.perUserLimit"
+                :min="1"
+                :step="1"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -246,7 +373,12 @@
         </el-form-item>
 
         <el-form-item v-if="validType === 'days'" label="有效天数" prop="validDays">
-          <el-input-number v-model="couponForm.validDays" :min="1" :step="1" />
+          <el-input-number
+            v-model="couponForm.validDays"
+            :min="1"
+            :step="1"
+            style="width: 100%"
+          />
           <span style="margin-left: 8px;">天（从领取之日起）</span>
         </el-form-item>
 
@@ -257,6 +389,7 @@
             range-separator="至"
             start-placeholder="开始时间"
             end-placeholder="结束时间"
+            style="width: 100%"
           />
         </el-form-item>
 
@@ -278,31 +411,47 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
-  Refresh,
   Plus,
   Edit,
   Delete,
   VideoPlay,
-  VideoPause
+  VideoPause,
+  Tickets,
+  Clock,
+  Trophy,
+  Money,
+  Refresh,
+  ArrowLeft,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
+import { formatDateTime } from '@/utils'
 import request from '@/utils/request'
+import type { FormInstance } from 'element-plus'
 
 // 筛选条件
 const filters = reactive({
   name: '',
   type: '',
-  status: ''
+  status: '',
+  scope: ''
 })
 
 // 优惠券列表
 const couponList = ref([])
-
 const loading = ref(false)
+
+// 统计数据
+const stats = reactive({
+  notStarted: 0,
+  active: 0,
+  totalIssued: 0,
+  totalUsed: 0
+})
 
 // 分页
 const pagination = reactive({
@@ -314,8 +463,79 @@ const pagination = reactive({
 // 对话框
 const dialogVisible = ref(false)
 const dialogTitle = computed(() => (couponForm.id ? '编辑优惠券' : '新增优惠券'))
-const formRef = ref()
+const formRef = ref<FormInstance>()
 const validType = ref('days')
+
+// 翻页跳转
+const pageJump = ref<number | null>(null)
+
+const handlePageJump = () => {
+  const totalPages = Math.max(1, Math.ceil((pagination.total || 1) / (pagination.size || 10)))
+  let target = Number(pageJump.value || 1)
+  if (!Number.isFinite(target)) return
+  if (target < 1) target = 1
+  if (target > totalPages) target = totalPages
+  if (target === pagination.page) return
+  handlePageChange(target)
+}
+
+// 最后更新时间
+const lastUpdateTime = ref('')
+
+// 格式化当前时间
+const formatCurrentTime = () => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+// 获取行类名
+const getRowClassName = ({ row, rowIndex }: { row: any; rowIndex: number }) => {
+  return rowIndex % 2 === 0 ? 'even-row' : 'odd-row'
+}
+
+// 监听筛选条件变化，自动触发搜索（使用防抖）
+let searchTimeout: NodeJS.Timeout | null = null
+watch(
+  () => [filters.name, filters.type, filters.status, filters.scope],
+  () => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    searchTimeout = setTimeout(() => {
+      pagination.page = 1
+      loadCoupons()
+    }, 500)
+  },
+  { deep: true }
+)
+
+// 自动刷新配置
+const refreshInterval = ref(30000) // 30秒刷新一次
+const autoRefreshTimer = ref<NodeJS.Timeout | null>(null)
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+  }
+  autoRefreshTimer.value = setInterval(() => {
+    console.log('自动刷新优惠券列表...')
+    loadCoupons()
+  }, refreshInterval.value)
+  console.log(`自动刷新已启动，间隔: ${refreshInterval.value / 1000}秒`)
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+    autoRefreshTimer.value = null
+    console.log('自动刷新已停止')
+  }
+}
 const timeRange = ref<any>(null)
 
 // 表单数据
@@ -408,9 +628,12 @@ const handleSearch = () => {
 
 // 重置
 const handleReset = () => {
-  filters.name = ''
-  filters.type = ''
-  filters.status = ''
+  Object.assign(filters, {
+    name: '',
+    type: '',
+    status: '',
+    scope: ''
+  })
   pagination.page = 1
   loadCoupons()
 }
@@ -426,17 +649,37 @@ const loadCoupons = async () => {
     if (filters.name) params.name = filters.name
     if (filters.type) params.type = filters.type
     if (filters.status) params.status = filters.status
+    if (filters.scope) params.scope = filters.scope
     
     const res = await request.get('/admin/culture/coupon/page', { params })
     if (res.code === 200) {
       couponList.value = res.data.records || []
       pagination.total = res.data.total || 0
+      
+      // 更新统计数据
+      updateStats()
+      
+      // 更新最后刷新时间
+      lastUpdateTime.value = formatCurrentTime()
+    } else {
+      ElMessage.error(res.message || '加载优惠券列表失败')
     }
   } catch (error) {
     ElMessage.error('加载优惠券列表失败')
   } finally {
     loading.value = false
   }
+}
+
+// 更新统计数据
+const updateStats = () => {
+  stats.notStarted = couponList.value.filter((item: any) => item.status === 1).length
+  stats.active = couponList.value.filter((item: any) => item.status === 2).length
+  stats.totalIssued = couponList.value.reduce((sum: number, item: any) => {
+    return sum + ((item.totalCount || 0) - (item.remainingCount || 0))
+  }, 0)
+  // 已使用数量需要从后端获取统计数据
+  stats.totalUsed = 0
 }
 
 // 新增
@@ -599,6 +842,11 @@ const handlePageChange = (page: number) => {
 // 页面加载
 onMounted(() => {
   loadCoupons()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -607,59 +855,33 @@ onMounted(() => {
 </style>
 
 <style scoped lang="scss">
-.coupon-management {
-  padding: 20px;
 
-  .table-card {
-    .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
+.discount-content {
+  .discount-value {
+    font-weight: 500;
+    color: #f56c6c;
+  }
 
-      h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 500;
-      }
-
-      .actions {
-        display: flex;
-        gap: 10px;
-      }
-    }
-
-    .discount-value {
-      font-weight: 500;
-      color: #f56c6c;
-    }
-
-    .max-discount {
-      font-size: 12px;
-      color: #909399;
-    }
-
-    .count-info {
-      font-size: 12px;
-
-      .low-stock {
-        color: #f56c6c;
-        font-weight: 500;
-      }
-    }
-
-    .valid-info {
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .pagination {
-      margin-top: 20px;
-      justify-content: flex-end;
-    }
+  .max-discount {
+    font-size: 12px;
+    color: #909399;
+    margin-left: 4px;
   }
 }
+
+.count-info {
+  font-size: 13px;
+  line-height: 1.6;
+
+  .low-stock {
+    color: #f56c6c;
+    font-weight: 500;
+  }
+}
+
+.valid-info {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #606266;
+}
 </style>
-
-
-

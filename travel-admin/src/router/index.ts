@@ -76,7 +76,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'culture',
         name: 'CultureManagement',
-        component: () => import('@/views/culture/index.vue'),
+        component: () => import('@/views/admin/culture/index.vue'),
         meta: { title: '文旅对接' }
       },
       {
@@ -346,11 +346,118 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admin/ai/index.vue'),
         meta: { title: 'AI管理', icon: 'MagicStick' }
       },
+      // 农家乐管理
       {
-        path: 'admin/culture',
-        name: 'AdminCulture',
-        component: () => import('@/views/admin/culture/index.vue'),
-        meta: { title: '文旅管理', icon: 'Shop' }
+        path: 'admin/culture/services',
+        name: 'AdminCultureServices',
+        component: () => import('@/views/admin/culture/services/index.vue'),
+        meta: { title: '农家乐管理', icon: 'House' }
+      },
+      {
+        path: 'admin/culture/services/create',
+        name: 'AdminCultureServicesCreate',
+        component: () => import('@/views/admin/culture/services/create.vue'),
+        meta: { title: '添加农家乐', icon: 'House' }
+      },
+      {
+        path: 'admin/culture/services/edit/:id',
+        name: 'AdminCultureServicesEdit',
+        component: () => import('@/views/admin/culture/services/create.vue'),
+        meta: { title: '编辑农家乐', icon: 'House' }
+      },
+      // 特色民宿管理
+      {
+        path: 'admin/culture/homestays',
+        name: 'AdminCultureHomestays',
+        component: () => import('@/views/admin/culture/homestays/index.vue'),
+        meta: { title: '特色民宿管理', icon: 'HomeFilled' }
+      },
+      {
+        path: 'admin/culture/homestays/create',
+        name: 'AdminCultureHomestaysCreate',
+        component: () => import('@/views/admin/culture/homestays/create.vue'),
+        meta: { title: '添加民宿', icon: 'HomeFilled' }
+      },
+      {
+        path: 'admin/culture/homestays/edit/:id',
+        name: 'AdminCultureHomestaysEdit',
+        component: () => import('@/views/admin/culture/homestays/create.vue'),
+        meta: { title: '编辑民宿', icon: 'HomeFilled' }
+      },
+      // 农特产品管理
+      {
+        path: 'admin/culture/products',
+        name: 'AdminCultureProducts',
+        component: () => import('@/views/admin/culture/products/index.vue'),
+        meta: { title: '农特产品管理', icon: 'ShoppingBag' }
+      },
+      {
+        path: 'admin/culture/products/create',
+        name: 'AdminCultureProductsCreate',
+        component: () => import('@/views/admin/culture/products/create.vue'),
+        meta: { title: '添加产品', icon: 'ShoppingBag' }
+      },
+      {
+        path: 'admin/culture/products/edit/:id',
+        name: 'AdminCultureProductsEdit',
+        component: () => import('@/views/admin/culture/products/create.vue'),
+        meta: { title: '编辑产品', icon: 'ShoppingBag' }
+      },
+      // 政策对接管理
+      {
+        path: 'admin/culture/projects',
+        name: 'AdminCultureProjects',
+        component: () => import('@/views/admin/culture/projects/index.vue'),
+        meta: { title: '政策对接管理', icon: 'Document' }
+      },
+      {
+        path: 'admin/culture/projects/create',
+        name: 'AdminCultureProjectsCreate',
+        component: () => import('@/views/admin/culture/projects/create.vue'),
+        meta: { title: '添加项目', icon: 'Document' }
+      },
+      {
+        path: 'admin/culture/projects/edit/:id',
+        name: 'AdminCultureProjectsEdit',
+        component: () => import('@/views/admin/culture/projects/create.vue'),
+        meta: { title: '编辑项目', icon: 'Document' }
+      },
+      // 文化体验管理
+      {
+        path: 'admin/culture/experiences',
+        name: 'AdminCultureExperiences',
+        component: () => import('@/views/admin/culture/experiences/index.vue'),
+        meta: { title: '文化体验管理', icon: 'Star' }
+      },
+      {
+        path: 'admin/culture/experiences/create',
+        name: 'AdminCultureExperiencesCreate',
+        component: () => import('@/views/admin/culture/experiences/create.vue'),
+        meta: { title: '添加体验', icon: 'Star' }
+      },
+      {
+        path: 'admin/culture/experiences/edit/:id',
+        name: 'AdminCultureExperiencesEdit',
+        component: () => import('@/views/admin/culture/experiences/create.vue'),
+        meta: { title: '编辑体验', icon: 'Star' }
+      },
+      {
+        path: 'admin/culture/souvenirs',
+        name: 'AdminCultureSouvenirs',
+        component: () => import('@/views/admin/culture/souvenirs/index.vue'),
+        meta: { title: '特色周边管理', icon: 'ShoppingBag' }
+      },
+      {
+        path: 'admin/culture/souvenirs/create',
+        name: 'AdminCultureSouvenirsCreate',
+        component: () => import('@/views/admin/culture/souvenirs/create.vue'),
+        meta: { title: '创建特色周边', icon: 'ShoppingBag' }
+      },
+      {
+        path: 'admin/culture/souvenirs/edit/:id',
+        name: 'AdminCultureSouvenirsEdit',
+        component: () => import('@/views/admin/culture/souvenirs/create.vue'),
+        meta: { title: '编辑特色周边', icon: 'ShoppingBag' }
       },
       {
         path: 'admin/banner',
@@ -411,6 +518,12 @@ const routes: RouteRecordRaw[] = [
         name: 'AdminCultureCoupons',
         component: () => import('@/views/admin/culture/coupons.vue'),
         meta: { title: '优惠券管理', icon: 'Tickets' }
+      },
+      {
+        path: 'admin/culture/appointments',
+        name: 'AdminCultureAppointments',
+        component: () => import('@/views/admin/culture/appointments.vue'),
+        meta: { title: '预约管理', icon: 'Tickets' }
       },
       {
         path: 'admin/culture/bookings',

@@ -570,13 +570,13 @@
 
     <!-- 右侧固定导航条 -->
     <div class="side-nav">
-      <div class="nav-item" @click="scrollToSection('welcome')">
-        <el-icon><UserFilled /></el-icon>
-        <span class="nav-text">欢迎区</span>
-      </div>
       <div class="nav-item" @click="scrollToSection('carousel')">
         <el-icon><Picture /></el-icon>
         <span class="nav-text">精选推荐</span>
+      </div>
+      <div class="nav-item" @click="scrollToSection('welcome')">
+        <el-icon><UserFilled /></el-icon>
+        <span class="nav-text">欢迎区</span>
       </div>
       <div class="nav-item" @click="scrollToSection('features')">
         <el-icon><Grid /></el-icon>
@@ -586,6 +586,14 @@
         <el-icon><User /></el-icon>
         <span class="nav-text">个人中心</span>
       </div>
+      <div class="nav-item" @click="scrollToSection('level-guide')">
+        <el-icon><TrophyBase /></el-icon>
+        <span class="nav-text">升级指南</span>
+      </div>
+      <div class="nav-item" @click="scrollToSection('culture')">
+        <el-icon><Shop /></el-icon>
+        <span class="nav-text">文旅体验</span>
+      </div>
       <div class="nav-item" @click="scrollToSection('recommendations')">
         <el-icon><LocationFilled /></el-icon>
         <span class="nav-text">为你推荐</span>
@@ -593,10 +601,6 @@
       <div class="nav-item" @click="scrollToSection('plans')">
         <el-icon><Document /></el-icon>
         <span class="nav-text">热门攻略</span>
-      </div>
-      <div class="nav-item" @click="scrollToSection('culture')">
-        <el-icon><Shop /></el-icon>
-        <span class="nav-text">文旅体验</span>
       </div>
     </div>
 
@@ -1891,40 +1895,61 @@ const scrollToSection = (sectionId) => {
   console.log('🎯 点击导航:', sectionId)
   const element = document.getElementById(sectionId)
   
-  if (element) {
-    console.log('✅ 找到元素:', element)
-    
-    // 查找滚动容器（el-main）
-    const scrollContainer = document.querySelector('.el-main') || document.querySelector('.main-content')
-    
-    if (scrollContainer) {
-      console.log('📦 找到滚动容器:', scrollContainer)
-      const headerOffset = 80 // 顶部导航栏高度
-      const containerRect = scrollContainer.getBoundingClientRect()
-      const elementRect = element.getBoundingClientRect()
-      const scrollTop = scrollContainer.scrollTop
-      
-      // 计算目标位置
-      const targetPosition = scrollTop + (elementRect.top - containerRect.top) - headerOffset
-      
-      console.log('📍 滚动位置:', {
-        containerScrollTop: scrollTop,
-        elementTop: elementRect.top,
-        containerTop: containerRect.top,
-        targetPosition
-      })
-      
-      scrollContainer.scrollTo({
-        top: targetPosition,
-        behavior: 'smooth'
-      })
-    } else {
-      // 兜底方案：使用浏览器原生滚动
-      console.log('⚠️ 未找到滚动容器，使用默认滚动')
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  } else {
+  if (!element) {
     console.error('❌ 未找到元素:', sectionId)
+    return
+  }
+  
+  console.log('✅ 找到元素:', element)
+  
+  // 查找滚动容器（优先查找 .main-content，然后是 .el-main）
+  const scrollContainer = document.querySelector('.main-content') || 
+                          document.querySelector('.el-main') || 
+                          document.documentElement
+  
+  if (scrollContainer) {
+    console.log('📦 找到滚动容器:', scrollContainer)
+    
+    // 获取元素相对于滚动容器的位置
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const elementRect = element.getBoundingClientRect()
+    const currentScrollTop = scrollContainer.scrollTop || window.pageYOffset || document.documentElement.scrollTop
+    
+    // 计算元素相对于滚动容器的实际位置
+    // elementRect.top 是元素相对于视口的位置
+    // containerRect.top 是滚动容器相对于视口的位置
+    // 两者相减得到元素相对于滚动容器的位置，再加上当前滚动位置
+    const elementOffsetTop = elementRect.top - containerRect.top + currentScrollTop
+    
+    // 顶部导航栏高度（header高度 + 可能的padding）
+    const headerOffset = 100
+    
+    // 计算目标滚动位置
+    const targetPosition = Math.max(0, elementOffsetTop - headerOffset)
+    
+    console.log('📍 滚动位置计算:', {
+      sectionId,
+      currentScrollTop,
+      elementRectTop: elementRect.top,
+      containerRectTop: containerRect.top,
+      elementOffsetTop,
+      headerOffset,
+      targetPosition
+    })
+    
+    // 执行滚动
+    scrollContainer.scrollTo({
+      top: targetPosition,
+      behavior: 'smooth'
+    })
+  } else {
+    // 兜底方案：使用浏览器原生滚动
+    console.log('⚠️ 未找到滚动容器，使用默认滚动')
+    element.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start',
+      inline: 'nearest'
+    })
   }
 }
 

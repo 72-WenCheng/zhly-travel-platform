@@ -77,9 +77,23 @@
             </el-form-item>
           </el-form>
 
+          <el-divider />
+
+          <CouponSelector
+            v-model="selectedCoupon"
+            :order-amount="totalPrice"
+            @change="handleCouponChange"
+          />
+
           <div class="total">
-            <span>总计</span>
-            <span class="amount">¥{{ totalPrice }}</span>
+            <div class="total-row">
+              <span>总计</span>
+              <span class="amount">¥{{ finalPrice }}</span>
+            </div>
+            <div v-if="selectedCoupon" class="coupon-discount">
+              <span>已优惠</span>
+              <span class="discount-amount">-¥{{ couponDiscount }}</span>
+            </div>
           </div>
 
           <el-button class="book-btn" type="primary" size="large" @click="handleBook">
@@ -91,10 +105,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import CouponSelector from '@/components/CouponSelector.vue'
 
 const homestay = ref({
   id: 1,
@@ -122,12 +137,32 @@ const form = ref({
   notes: ''
 })
 
-const disablePast = (time) => time.getTime() < Date.now() - 24 * 60 * 60 * 1000
+const disablePast = (time: Date) => time.getTime() < Date.now() - 24 * 60 * 60 * 1000
+
+// 选中的优惠券
+const selectedCoupon = ref(null)
 
 const totalPrice = computed(() => {
   const nights = form.value.nights || 1
   return homestay.value.price * nights
 })
+
+// 计算优惠金额
+const couponDiscount = computed(() => {
+  if (!selectedCoupon.value) return 0
+  const discountValue = selectedCoupon.value.discountValue || selectedCoupon.value.amount || 0
+  return Math.min(discountValue, totalPrice.value)
+})
+
+// 计算最终价格
+const finalPrice = computed(() => {
+  return Math.max(0, totalPrice.value - couponDiscount.value)
+})
+
+// 处理优惠券变化
+const handleCouponChange = (coupon: any) => {
+  selectedCoupon.value = coupon
+}
 
 const handleBook = () => {
   if (!form.value.date) {
@@ -298,6 +333,30 @@ const handleBook = () => {
 }
 
 .total {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .coupon-discount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #909399;
+    padding-top: 8px;
+    border-top: 1px solid #e4e7ed;
+
+    .discount-amount {
+      color: #67c23a;
+      font-weight: 600;
+    }
+  }
   display: flex;
   justify-content: space-between;
   align-items: center;

@@ -34,11 +34,70 @@
           <span>评论管理</span>
         </el-menu-item>
         
+        <!-- 文旅管理分组 -->
+        <div class="menu-group-title" v-if="!isCollapse">文旅管理</div>
+        <el-menu-item index="/home/admin/culture/services">
+          <el-icon><House /></el-icon>
+          <span>农家乐管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/homestays">
+          <el-icon><HomeFilled /></el-icon>
+          <span>特色民宿管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/products">
+          <el-icon><ShoppingBag /></el-icon>
+          <span>农特产品管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/projects">
+          <el-icon><Document /></el-icon>
+          <span>政策对接管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/experiences">
+          <el-icon><Tickets /></el-icon>
+          <span>文化体验管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/souvenirs">
+          <el-icon><ShoppingBag /></el-icon>
+          <span>特色周边管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/orders">
+          <el-icon><ShoppingCart /></el-icon>
+          <span>订单管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/appointments">
+          <el-icon><Tickets /></el-icon>
+          <span>预约管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/bookings">
+          <el-icon><Calendar /></el-icon>
+          <span>预订管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/applications">
+          <el-icon><Files /></el-icon>
+          <span>申请管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/culture/coupons">
+          <el-icon><Tickets /></el-icon>
+          <span>优惠券管理</span>
+        </el-menu-item>
+        
         <!-- 运营管理分组 -->
         <div class="menu-group-title" v-if="!isCollapse">运营管理</div>
         <el-menu-item index="/home/admin/banner">
           <el-icon><Picture /></el-icon>
           <span>轮播图管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/announcement">
+          <el-icon><Bell /></el-icon>
+          <span>公告管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/ai">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI管理</span>
+        </el-menu-item>
+        <el-menu-item index="/home/admin/report">
+          <el-icon><Warning /></el-icon>
+          <span>举报审核</span>
         </el-menu-item>
         
         <!-- 用户管理分组 -->
@@ -55,44 +114,9 @@
           <el-icon><Clock /></el-icon>
           <span>浏览历史</span>
         </el-menu-item>
-        <el-menu-item index="/home/admin/announcement">
-          <el-icon><Bell /></el-icon>
-          <span>公告管理</span>
-        </el-menu-item>
-        
-        <!-- 文旅管理分组 -->
-        <div class="menu-group-title" v-if="!isCollapse">文旅管理</div>
-        <el-menu-item index="/home/admin/culture">
-          <el-icon><Grid /></el-icon>
-          <span>内容管理</span>
-        </el-menu-item>
-        <el-menu-item index="/home/admin/culture/orders">
-          <el-icon><ShoppingCart /></el-icon>
-          <span>订单管理</span>
-        </el-menu-item>
-        <el-menu-item index="/home/admin/culture/coupons">
-          <el-icon><Ticket /></el-icon>
-          <span>优惠券管理</span>
-        </el-menu-item>
-        <el-menu-item index="/home/admin/culture/bookings">
-          <el-icon><Calendar /></el-icon>
-          <span>预订管理</span>
-        </el-menu-item>
-        <el-menu-item index="/home/admin/culture/applications">
-          <el-icon><Document /></el-icon>
-          <span>申请管理</span>
-        </el-menu-item>
         
         <!-- 其他管理分组 -->
         <div class="menu-group-title" v-if="!isCollapse">其他管理</div>
-        <el-menu-item index="/home/admin/ai">
-          <el-icon><MagicStick /></el-icon>
-          <span>AI管理</span>
-        </el-menu-item>
-        <el-menu-item index="/home/admin/report">
-          <el-icon><Warning /></el-icon>
-          <span>举报审核</span>
-        </el-menu-item>
         <el-menu-item index="/home/admin/system">
           <el-icon><Setting /></el-icon>
           <span>系统设置</span>
@@ -315,15 +339,16 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import { 
   Location, SwitchButton, ArrowDown, Fold, Expand,
-  Odometer, User, Document, MagicStick, Shop, Files,
-  ChatDotRound, Operation, Picture, Star, TrendCharts,
-  Trophy, Medal, Coin, DataAnalysis, Warning, Setting,
-  TrophyBase, Grid, ShoppingCart, Ticket, Calendar, Lock, CircleClose,
-  Clock, Bell, Message
+  Odometer, User, Document, MagicStick, Shop,
+  ChatDotRound, Picture, Star, TrendCharts,
+  Coin, DataAnalysis, Warning, Setting,
+  TrophyBase, Lock, CircleClose,
+  Clock, Bell, Message, House, HomeFilled,
+  ShoppingBag, Tickets, Files, Calendar, ShoppingCart
 } from '@element-plus/icons-vue'
 import { changePassword, deactivateAccount } from '@/api/user'
 import { getPublicSecurityConfig } from '@/api/systemConfig'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
@@ -341,7 +366,7 @@ const systemTitle = ref('')
 
 // 用户活跃状态监控
 const isUserActive = ref(true) // 默认活跃（绿色）
-let inactivityTimer: NodeJS.Timeout | null = null
+let inactivityTimer: number | null = null
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000 // 5分钟 = 300000毫秒
 
 // 重置不活跃定时器
@@ -489,6 +514,76 @@ const adminMenuActionMap: Record<string, MenuUsageMeta> = {
     actionIcon: 'ChatDotRound',
     actionPath: '/home/admin/comment'
   },
+  '/home/admin/culture/services': {
+    actionCode: 'adminCultureServices',
+    actionName: '农家乐管理',
+    actionDesc: '管理农家乐服务',
+    actionIcon: 'House',
+    actionPath: '/home/admin/culture/services'
+  },
+  '/home/admin/culture/homestays': {
+    actionCode: 'adminCultureHomestays',
+    actionName: '特色民宿管理',
+    actionDesc: '管理特色民宿',
+    actionIcon: 'HomeFilled',
+    actionPath: '/home/admin/culture/homestays'
+  },
+  '/home/admin/culture/products': {
+    actionCode: 'adminCultureProducts',
+    actionName: '农特产品管理',
+    actionDesc: '管理农特产品',
+    actionIcon: 'ShoppingBag',
+    actionPath: '/home/admin/culture/products'
+  },
+  '/home/admin/culture/projects': {
+    actionCode: 'adminCultureProjects',
+    actionName: '政策对接管理',
+    actionDesc: '管理政策对接',
+    actionIcon: 'Document',
+    actionPath: '/home/admin/culture/projects'
+  },
+  '/home/admin/culture/experiences': {
+    actionCode: 'adminCultureExperiences',
+    actionName: '文化体验管理',
+    actionDesc: '管理文化体验',
+    actionIcon: 'Star',
+    actionPath: '/home/admin/culture/experiences'
+  },
+  '/home/admin/culture/souvenirs': {
+    actionCode: 'adminCultureSouvenirs',
+    actionName: '特色周边管理',
+    actionDesc: '管理特色周边产品',
+    actionIcon: 'ShoppingBag',
+    actionPath: '/home/admin/culture/souvenirs'
+  },
+  '/home/admin/culture/orders': {
+    actionCode: 'adminCultureOrders',
+    actionName: '订单管理',
+    actionDesc: '管理文旅订单',
+    actionIcon: 'ShoppingCart',
+    actionPath: '/home/admin/culture/orders'
+  },
+  '/home/admin/culture/bookings': {
+    actionCode: 'adminCultureBookings',
+    actionName: '预订管理',
+    actionDesc: '管理预订信息',
+    actionIcon: 'Calendar',
+    actionPath: '/home/admin/culture/bookings'
+  },
+  '/home/admin/culture/applications': {
+    actionCode: 'adminCultureApplications',
+    actionName: '申请管理',
+    actionDesc: '管理项目申请',
+    actionIcon: 'Files',
+    actionPath: '/home/admin/culture/applications'
+  },
+  '/home/admin/culture/coupons': {
+    actionCode: 'adminCultureCoupons',
+    actionName: '优惠券管理',
+    actionDesc: '管理优惠券',
+    actionIcon: 'Tickets',
+    actionPath: '/home/admin/culture/coupons'
+  },
   '/home/admin/banner': {
     actionCode: 'adminBanner',
     actionName: '轮播图管理',
@@ -523,41 +618,6 @@ const adminMenuActionMap: Record<string, MenuUsageMeta> = {
     actionDesc: '发布系统公告',
     actionIcon: 'Bell',
     actionPath: '/home/admin/announcement'
-  },
-  '/home/admin/culture': {
-    actionCode: 'adminCulture',
-    actionName: '文旅内容',
-    actionDesc: '管理文旅项目',
-    actionIcon: 'Grid',
-    actionPath: '/home/admin/culture'
-  },
-  '/home/admin/culture/orders': {
-    actionCode: 'adminCultureOrders',
-    actionName: '订单管理',
-    actionDesc: '处理文旅订单',
-    actionIcon: 'ShoppingCart',
-    actionPath: '/home/admin/culture/orders'
-  },
-  '/home/admin/culture/coupons': {
-    actionCode: 'adminCultureCoupons',
-    actionName: '优惠券管理',
-    actionDesc: '配置优惠权益',
-    actionIcon: 'Ticket',
-    actionPath: '/home/admin/culture/coupons'
-  },
-  '/home/admin/culture/bookings': {
-    actionCode: 'adminCultureBookings',
-    actionName: '预订管理',
-    actionDesc: '处理预约需求',
-    actionIcon: 'Calendar',
-    actionPath: '/home/admin/culture/bookings'
-  },
-  '/home/admin/culture/applications': {
-    actionCode: 'adminCultureApplications',
-    actionName: '申请管理',
-    actionDesc: '审核项目申请',
-    actionIcon: 'Files',
-    actionPath: '/home/admin/culture/applications'
   },
   '/home/admin/ai': {
     actionCode: 'adminAi',
@@ -928,6 +988,9 @@ watch(
   will-change: width;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   
   .sidebar-header {
     height: 70px;
@@ -938,6 +1001,7 @@ watch(
     background: rgba(0, 0, 0, 0.1);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
     
     .collapse-btn-sidebar {
       cursor: pointer;
@@ -979,6 +1043,17 @@ watch(
   background: transparent;
   padding: 10px 0;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  // 隐藏滚动条但保持滚动功能
+  scrollbar-width: none; // Firefox
+  -ms-overflow-style: none; // IE 和 Edge
+  
+  &::-webkit-scrollbar {
+    display: none; // Chrome, Safari, Opera
+  }
   
   .menu-group-title {
     color: rgba(255, 255, 255, 0.6);

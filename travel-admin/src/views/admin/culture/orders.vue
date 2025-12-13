@@ -1,7 +1,74 @@
 <template>
-  <div class="order-management">
+  <div class="admin-list-modern">
     <BackButton />
     
+    <!-- 页面头部 -->
+    <div class="page-header-modern">
+      <div class="header-left">
+        <div class="header-icon">
+          <el-icon :size="32"><ShoppingCart /></el-icon>
+        </div>
+        <div class="header-title">
+          <h1>订单管理</h1>
+          <p>管理农特产品和特色周边的购买订单</p>
+          <div class="status-info">
+            <div class="status-text">
+              <el-icon class="status-icon"><Refresh /></el-icon>
+              <span>数据每30秒自动刷新</span>
+            </div>
+            <span v-if="lastUpdateTime" class="update-time">{{ lastUpdateTime }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <el-button type="success" class="action-btn" @click="handleExport">
+          <el-icon><Download /></el-icon>
+          导出数据
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <el-icon :size="24"><Clock /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">待支付</div>
+          <div class="stat-value">{{ stats.pending }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
+          <el-icon :size="24"><Box /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">待发货</div>
+          <div class="stat-value">{{ stats.shipped }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
+          <el-icon :size="24"><CircleCheck /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">已完成</div>
+          <div class="stat-value">{{ stats.completed }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">
+          <el-icon :size="24"><Money /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">总金额</div>
+          <div class="stat-value">¥{{ stats.totalAmount }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选和搜索 -->
     <el-card class="filter-card-modern" shadow="never">
       <div class="filter-header">
         <el-icon><Search /></el-icon>
@@ -10,19 +77,23 @@
       <el-form :model="filters" class="filter-form">
         <div class="filter-row">
           <el-form-item label="订单编号">
-            <el-input v-model="filters.orderNo" placeholder="请输入订单编号" clearable />
+            <el-input
+              v-model="filters.orderNo"
+              placeholder="请输入订单编号"
+              clearable
+              @keyup.enter="handleSearch"
+            />
           </el-form-item>
-          <el-form-item label="商品类型">
-            <el-select v-model="filters.productType" placeholder="请选择商品类型" clearable>
-              <el-option label="全部" value="" />
-              <el-option label="特色产品" :value="1" />
-              <el-option label="文化体验" :value="2" />
-              <el-option label="农家乐/民宿" :value="3" />
-            </el-select>
+          <el-form-item label="商品名称">
+            <el-input
+              v-model="filters.productName"
+              placeholder="请输入商品名称"
+              clearable
+              @keyup.enter="handleSearch"
+            />
           </el-form-item>
           <el-form-item label="订单状态">
             <el-select v-model="filters.orderStatus" placeholder="请选择订单状态" clearable>
-              <el-option label="全部" value="" />
               <el-option label="待支付" :value="1" />
               <el-option label="已支付" :value="2" />
               <el-option label="已发货" :value="3" />
@@ -31,6 +102,20 @@
               <el-option label="已退款" :value="6" />
             </el-select>
           </el-form-item>
+          <el-form-item label="支付方式">
+            <el-select v-model="filters.paymentMethod" placeholder="请选择支付方式" clearable>
+              <el-option label="微信支付" value="wechat" />
+              <el-option label="支付宝" value="alipay" />
+              <el-option label="银行卡" value="bank" />
+            </el-select>
+          </el-form-item>
+          <el-form-item class="filter-actions">
+            <el-button class="reset-btn" @click="handleReset">
+              重置筛选
+            </el-button>
+          </el-form-item>
+        </div>
+        <div class="filter-row">
           <el-form-item label="下单时间">
             <el-date-picker
               v-model="filters.dateRange"
@@ -38,31 +123,39 @@
               range-separator="至"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
-              style="width: 100%;"
+              style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label=" " class="filter-actions">
-            <el-button class="reset-btn" @click="handleReset">
-              重置筛选
-            </el-button>
+          <el-form-item label="收货人">
+            <el-input
+              v-model="filters.receiverName"
+              placeholder="请输入收货人姓名"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="联系电话">
+            <el-input
+              v-model="filters.receiverPhone"
+              placeholder="请输入联系电话"
+              clearable
+              @keyup.enter="handleSearch"
+            />
           </el-form-item>
         </div>
       </el-form>
     </el-card>
 
-    <el-card class="table-card">
-      <div class="table-header">
-        <h3>订单列表</h3>
-        <div class="actions">
-          <el-button type="success" @click="handleExport">
-            <el-icon><Download /></el-icon>
-            导出订单
-          </el-button>
-        </div>
-      </div>
-
-      <el-table :data="orderList" style="width: 100%" v-loading="loading">
-        <el-table-column prop="orderNo" label="订单编号" width="180" fixed />
+    <!-- 订单列表 -->
+    <el-card class="table-card-modern" shadow="never">
+      <div class="table-wrapper">
+        <el-table
+          :data="orderList"
+          v-loading="loading"
+          class="modern-table"
+          :row-class-name="getRowClassName"
+        >
+        <el-table-column prop="orderNo" label="订单编号" width="180" fixed="left" />
         <el-table-column label="商品信息" width="300">
           <template #default="{ row }">
             <div class="product-info">
@@ -73,30 +166,55 @@
               />
               <div class="product-details">
                 <div class="product-name">{{ row.productName }}</div>
-                <div class="product-type">
-                  <el-tag size="small">{{ getProductTypeName(row.productType) }}</el-tag>
+                <div class="product-spec" v-if="row.specification">
+                  规格：{{ row.specification }}
                 </div>
+                <div class="product-quantity">数量：{{ row.quantity }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="contactName" label="联系人" width="120" />
-        <el-table-column prop="contactPhone" label="联系电话" width="130" />
-        <el-table-column label="订单金额" width="120">
+        <el-table-column label="收货信息" width="200">
+          <template #default="{ row }">
+            <div class="receiver-info">
+              <div>{{ row.receiverName }}</div>
+              <div>{{ row.receiverPhone }}</div>
+              <div class="address" v-if="row.address">{{ row.address }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="订单金额" width="150">
           <template #default="{ row }">
             <div class="amount-info">
               <div class="total">¥{{ row.totalAmount }}</div>
               <div class="final" v-if="row.couponDiscount > 0">
-                实付: ¥{{ row.finalAmount }}
+                实付：¥{{ row.finalAmount }}
               </div>
             </div>
           </template>
         </el-table-column>
+        <el-table-column label="支付方式" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" v-if="row.paymentMethod">
+              {{ getPaymentMethodName(row.paymentMethod) }}
+            </el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="订单状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.orderStatus)">
+            <el-tag :type="getStatusType(row.orderStatus)" size="small">
               {{ getStatusName(row.orderStatus) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="物流信息" width="180">
+          <template #default="{ row }">
+            <div v-if="row.shipCompany && row.shipNo" class="logistics-info">
+              <div>{{ row.shipCompany }}</div>
+              <div class="ship-no">{{ row.shipNo }}</div>
+            </div>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="下单时间" width="160">
@@ -104,53 +222,75 @@
             <span>{{ formatDateTime(row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" width="250">
+        <el-table-column label="操作" fixed="right" width="200" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleViewDetail(row)">
-              <el-icon><View /></el-icon>
-              查看详情
-            </el-button>
-            <el-button
-              v-if="row.orderStatus === 2"
-              link
-              type="success"
-              size="small"
-              @click="handleShip(row)"
-            >
-              <el-icon><Van /></el-icon>
-              发货
-            </el-button>
-            <el-button
-              v-if="row.orderStatus === 1"
-              link
-              type="danger"
-              size="small"
-              @click="handleCancel(row)"
-            >
-              <el-icon><Close /></el-icon>
-              取消订单
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="info" size="small" text @click="handleViewDetail(row)">
+                <el-icon><View /></el-icon>
+                详情
+              </el-button>
+              <el-button
+                v-if="row.orderStatus === 2"
+                type="success"
+                size="small"
+                text
+                @click="handleShip(row)"
+              >
+                <el-icon><Box /></el-icon>
+                发货
+              </el-button>
+              <el-button
+                v-if="row.orderStatus === 1"
+                type="danger"
+                size="small"
+                text
+                @click="handleCancel(row)"
+              >
+                <el-icon><Close /></el-icon>
+                取消
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.size"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-        class="pagination"
-      />
+      <div class="pagination-container-modern simple-pagination">
+        <el-button
+          class="page-btn"
+          :disabled="pagination.page <= 1"
+          @click="handlePageChange(pagination.page - 1)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="page-info">
+          {{ pagination.page }} / {{ Math.max(1, Math.ceil((pagination.total || 1) / (pagination.size || 10))) }}
+        </span>
+        <el-button
+          class="page-btn"
+          :disabled="pagination.page >= Math.ceil((pagination.total || 1) / (pagination.size || 10))"
+          @click="handlePageChange(pagination.page + 1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+        <div class="page-jump">
+          <span>前往</span>
+          <el-input
+            v-model.number="pageJump"
+            size="small"
+            class="page-jump-input"
+            @input="handlePageJump"
+          />
+          <span>页</span>
+        </div>
+      </div>
     </el-card>
 
     <!-- 发货对话框 -->
     <el-dialog v-model="shipDialogVisible" title="订单发货" width="500px">
       <el-form :model="shipForm" label-width="100px">
         <el-form-item label="物流公司" required>
-          <el-select v-model="shipForm.shipCompany" placeholder="请选择物流公司">
+          <el-select v-model="shipForm.shipCompany" placeholder="请选择物流公司" style="width: 100%">
             <el-option label="顺丰速运" value="顺丰速运" />
             <el-option label="中通快递" value="中通快递" />
             <el-option label="圆通快递" value="圆通快递" />
@@ -184,42 +324,38 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="订单编号">{{ currentOrder.orderNo }}</el-descriptions-item>
           <el-descriptions-item label="订单状态">
-            <el-tag :type="getStatusType(currentOrder.orderStatus)">
+            <el-tag :type="getStatusType(currentOrder.orderStatus)" size="small">
               {{ getStatusName(currentOrder.orderStatus) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="商品名称">{{ currentOrder.productName }}</el-descriptions-item>
-          <el-descriptions-item label="商品类型">
-            {{ getProductTypeName(currentOrder.productType) }}
+          <el-descriptions-item label="商品名称" :span="2">{{ currentOrder.productName }}</el-descriptions-item>
+          <el-descriptions-item label="商品规格" v-if="currentOrder.specification">
+            {{ currentOrder.specification }}
           </el-descriptions-item>
           <el-descriptions-item label="购买数量">{{ currentOrder.quantity }}</el-descriptions-item>
           <el-descriptions-item label="商品单价">¥{{ currentOrder.productPrice }}</el-descriptions-item>
           <el-descriptions-item label="商品总额">¥{{ currentOrder.totalAmount }}</el-descriptions-item>
-          <el-descriptions-item label="优惠金额">¥{{ currentOrder.couponDiscount }}</el-descriptions-item>
+          <el-descriptions-item label="优惠金额" v-if="currentOrder.couponDiscount > 0">
+            ¥{{ currentOrder.couponDiscount }}
+          </el-descriptions-item>
           <el-descriptions-item label="实付金额" :span="2">
             <span style="color: #f56c6c; font-size: 18px; font-weight: bold;">
               ¥{{ currentOrder.finalAmount }}
             </span>
           </el-descriptions-item>
-          <el-descriptions-item label="联系人">{{ currentOrder.contactName }}</el-descriptions-item>
-          <el-descriptions-item label="联系电话">{{ currentOrder.contactPhone }}</el-descriptions-item>
+          <el-descriptions-item label="收货人">{{ currentOrder.receiverName }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentOrder.receiverPhone }}</el-descriptions-item>
           <el-descriptions-item label="收货地址" :span="2">
             {{ currentOrder.province }} {{ currentOrder.city }} {{ currentOrder.district }} {{ currentOrder.detailedAddress }}
-          </el-descriptions-item>
-          <el-descriptions-item label="发票类型">
-            {{ getInvoiceTypeName(currentOrder.invoiceType) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="发票抬头" v-if="currentOrder.invoiceType > 1">
-            {{ currentOrder.invoiceTitle }}
           </el-descriptions-item>
           <el-descriptions-item label="买家留言" :span="2" v-if="currentOrder.buyerMessage">
             {{ currentOrder.buyerMessage }}
           </el-descriptions-item>
           <el-descriptions-item label="支付方式" v-if="currentOrder.paymentMethod">
-            {{ currentOrder.paymentMethod }}
+            {{ getPaymentMethodName(currentOrder.paymentMethod) }}
           </el-descriptions-item>
           <el-descriptions-item label="支付时间" v-if="currentOrder.paymentTime">
-            {{ currentOrder.paymentTime }}
+            {{ formatDateTime(currentOrder.paymentTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="物流公司" v-if="currentOrder.shipCompany">
             {{ currentOrder.shipCompany }}
@@ -236,15 +372,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
-  Refresh,
   Download,
+  ShoppingCart,
+  Clock,
+  Box,
+  CircleCheck,
+  Money,
+  Refresh,
   View,
-  Van,
-  Close
+  Close,
+  ArrowLeft,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
@@ -253,15 +395,25 @@ import request from '@/utils/request'
 // 筛选条件
 const filters = reactive({
   orderNo: '',
-  productType: '',
+  productName: '',
   orderStatus: '',
-  dateRange: null as any
+  paymentMethod: '',
+  dateRange: null as any,
+  receiverName: '',
+  receiverPhone: ''
 })
 
 // 订单列表
 const orderList = ref([])
-
 const loading = ref(false)
+
+// 统计数据
+const stats = reactive({
+  pending: 0,
+  shipped: 0,
+  completed: 0,
+  totalAmount: 0
+})
 
 // 分页
 const pagination = reactive({
@@ -283,14 +435,85 @@ const shipForm = reactive({
 const detailDialogVisible = ref(false)
 const currentOrder = ref<any>(null)
 
-// 获取商品类型名称
-const getProductTypeName = (type: number) => {
-  const map: Record<number, string> = {
-    1: '特色产品',
-    2: '文化体验',
-    3: '农家乐/民宿'
+// 翻页跳转
+const pageJump = ref<number | null>(null)
+
+const handlePageJump = () => {
+  const totalPages = Math.max(1, Math.ceil((pagination.total || 1) / (pagination.size || 10)))
+  let target = Number(pageJump.value || 1)
+  if (!Number.isFinite(target)) return
+  if (target < 1) target = 1
+  if (target > totalPages) target = totalPages
+  if (target === pagination.page) return
+  handlePageChange(target)
+}
+
+// 最后更新时间
+const lastUpdateTime = ref('')
+
+// 格式化当前时间
+const formatCurrentTime = () => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+// 获取行类名
+const getRowClassName = ({ row, rowIndex }: { row: any; rowIndex: number }) => {
+  return rowIndex % 2 === 0 ? 'even-row' : 'odd-row'
+}
+
+// 监听筛选条件变化，自动触发搜索（使用防抖）
+let searchTimeout: NodeJS.Timeout | null = null
+watch(
+  () => [filters.orderNo, filters.productName, filters.orderStatus, filters.paymentMethod, filters.dateRange, filters.receiverName, filters.receiverPhone],
+  () => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    searchTimeout = setTimeout(() => {
+      pagination.page = 1
+      loadOrders()
+    }, 500)
+  },
+  { deep: true }
+)
+
+// 自动刷新配置
+const refreshInterval = ref(30000) // 30秒刷新一次
+const autoRefreshTimer = ref<NodeJS.Timeout | null>(null)
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
   }
-  return map[type] || '未知'
+  autoRefreshTimer.value = setInterval(() => {
+    console.log('自动刷新订单列表...')
+    loadOrders()
+  }, refreshInterval.value)
+  console.log(`自动刷新已启动，间隔: ${refreshInterval.value / 1000}秒`)
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+    autoRefreshTimer.value = null
+    console.log('自动刷新已停止')
+  }
+}
+
+// 获取支付方式名称
+const getPaymentMethodName = (method: string) => {
+  const map: Record<string, string> = {
+    wechat: '微信支付',
+    alipay: '支付宝',
+    bank: '银行卡'
+  }
+  return map[method] || method
 }
 
 // 获取订单状态名称
@@ -306,7 +529,7 @@ const getStatusName = (status: number) => {
   return map[status] || '未知'
 }
 
-// 获取状态类型（Element Plus Tag类型）
+// 获取状态类型
 const getStatusType = (status: number) => {
   const map: Record<number, string> = {
     1: 'warning',
@@ -319,16 +542,6 @@ const getStatusType = (status: number) => {
   return map[status] || 'info'
 }
 
-// 获取发票类型名称
-const getInvoiceTypeName = (type: number) => {
-  const map: Record<number, string> = {
-    1: '不开发票',
-    2: '个人',
-    3: '企业'
-  }
-  return map[type] || '未知'
-}
-
 // 搜索
 const handleSearch = () => {
   pagination.page = 1
@@ -337,10 +550,15 @@ const handleSearch = () => {
 
 // 重置
 const handleReset = () => {
-  filters.orderNo = ''
-  filters.productType = ''
-  filters.orderStatus = ''
-  filters.dateRange = null
+  Object.assign(filters, {
+    orderNo: '',
+    productName: '',
+    orderStatus: '',
+    paymentMethod: '',
+    dateRange: null,
+    receiverName: '',
+    receiverPhone: ''
+  })
   pagination.page = 1
   loadOrders()
 }
@@ -351,22 +569,48 @@ const loadOrders = async () => {
   try {
     const params: any = {
       page: pagination.page,
-      size: pagination.size
+      size: pagination.size,
+      productType: 1 // 只查询农特产品和特色周边的订单
     }
     if (filters.orderNo) params.orderNo = filters.orderNo
-    if (filters.productType) params.productType = filters.productType
+    if (filters.productName) params.productName = filters.productName
     if (filters.orderStatus) params.orderStatus = filters.orderStatus
+    if (filters.paymentMethod) params.paymentMethod = filters.paymentMethod
+    if (filters.receiverName) params.receiverName = filters.receiverName
+    if (filters.receiverPhone) params.receiverPhone = filters.receiverPhone
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      params.startDate = filters.dateRange[0]
+      params.endDate = filters.dateRange[1]
+    }
     
     const res = await request.get('/admin/culture/order/page', { params })
     if (res.code === 200) {
       orderList.value = res.data.records || []
       pagination.total = res.data.total || 0
+      
+      // 更新统计数据
+      updateStats()
+      
+      // 更新最后刷新时间
+      lastUpdateTime.value = formatCurrentTime()
+    } else {
+      ElMessage.error(res.message || '加载订单列表失败')
     }
   } catch (error) {
     ElMessage.error('加载订单列表失败')
   } finally {
     loading.value = false
   }
+}
+
+// 更新统计数据
+const updateStats = () => {
+  stats.pending = orderList.value.filter((item: any) => item.orderStatus === 1).length
+  stats.shipped = orderList.value.filter((item: any) => item.orderStatus === 2).length
+  stats.completed = orderList.value.filter((item: any) => item.orderStatus === 4).length
+  stats.totalAmount = orderList.value.reduce((sum: number, item: any) => {
+    return sum + (parseFloat(item.finalAmount || item.totalAmount) || 0)
+  }, 0)
 }
 
 // 查看详情
@@ -435,13 +679,19 @@ const handleCancel = async (row: any) => {
   }
 }
 
-// 导出订单
+// 导出数据
 const handleExport = async () => {
   try {
-    const params: any = {}
+    const params: any = {
+      productType: 1 // 只导出农特产品和特色周边的订单
+    }
     if (filters.orderNo) params.orderNo = filters.orderNo
-    if (filters.productType) params.productType = filters.productType
+    if (filters.productName) params.productName = filters.productName
     if (filters.orderStatus) params.orderStatus = filters.orderStatus
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      params.startDate = filters.dateRange[0]
+      params.endDate = filters.dateRange[1]
+    }
     
     const response = await request.get('/admin/culture/order/export', {
       params,
@@ -478,6 +728,11 @@ const handlePageChange = (page: number) => {
 // 页面加载
 onMounted(() => {
   loadOrders()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -486,83 +741,77 @@ onMounted(() => {
 </style>
 
 <style scoped lang="scss">
-.order-management {
-  padding: 20px;
 
-  .table-card {
-    .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
+.product-info {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 
-      h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 500;
-      }
-
-      .actions {
-        display: flex;
-        gap: 10px;
-      }
-    }
-
-    .product-info {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-
-      .product-image {
-        width: 60px;
-        height: 60px;
-        border-radius: 4px;
-      }
-
-      .product-details {
-        flex: 1;
-        min-width: 0;
-
-        .product-name {
-          font-size: 14px;
-          font-weight: 500;
-          margin-bottom: 4px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .product-type {
-          font-size: 12px;
-          color: #909399;
-        }
-      }
-    }
-
-    .amount-info {
-      .total {
-        font-size: 14px;
-        font-weight: 500;
-        margin-bottom: 2px;
-      }
-
-      .final {
-        font-size: 12px;
-        color: #f56c6c;
-      }
-    }
-
-    .pagination {
-      margin-top: 20px;
-      justify-content: flex-end;
-    }
+  .product-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
   }
 
-  .order-detail {
-    padding: 10px 0;
+  .product-details {
+    flex: 1;
+    min-width: 0;
+
+    .product-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .product-spec,
+    .product-quantity {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 2px;
+    }
   }
 }
+
+.receiver-info {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #606266;
+
+  .address {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
+  }
+}
+
+.amount-info {
+  .total {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .final {
+    font-size: 12px;
+    color: #f56c6c;
+  }
+}
+
+.logistics-info {
+  font-size: 13px;
+  line-height: 1.6;
+
+  .ship-no {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
+  }
+}
+
+.order-detail {
+  padding: 10px 0;
+}
 </style>
-
-
-

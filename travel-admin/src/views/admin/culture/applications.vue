@@ -1,7 +1,40 @@
 <template>
-  <div class="application-management">
+  <div class="admin-list-modern">
     <BackButton />
     
+    <!-- 页面头部 -->
+    <div class="page-header-modern">
+      <div class="header-left">
+        <div class="header-icon">
+          <el-icon :size="32"><Files /></el-icon>
+        </div>
+        <div class="header-title">
+          <h1>申请管理</h1>
+          <p>管理政策对接的申请信息</p>
+          <div class="status-info">
+            <div class="status-text">
+              <el-icon class="status-icon"><Refresh /></el-icon>
+              <span>数据每30秒自动刷新</span>
+            </div>
+            <span v-if="lastUpdateTime" class="update-time">{{ lastUpdateTime }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <el-badge :value="pendingCount" :max="99" class="badge-item">
+          <el-button type="warning" class="action-btn">
+            <el-icon><Bell /></el-icon>
+            待审核
+          </el-button>
+        </el-badge>
+        <el-button type="success" class="action-btn" @click="handleExport">
+          <el-icon><Download /></el-icon>
+          导出数据
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 筛选卡片 -->
     <el-card class="filter-card-modern" shadow="never">
       <div class="filter-header">
         <el-icon><Search /></el-icon>
@@ -10,7 +43,20 @@
       <el-form :model="filters" class="filter-form">
         <div class="filter-row">
           <el-form-item label="申请编号">
-            <el-input v-model="filters.applicationNo" placeholder="请输入申请编号" clearable />
+            <el-input
+              v-model="filters.applicationNo"
+              placeholder="请输入申请编号"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="项目名称">
+            <el-input
+              v-model="filters.projectTitle"
+              placeholder="请输入项目名称"
+              clearable
+              @keyup.enter="handleSearch"
+            />
           </el-form-item>
           <el-form-item label="申请人类型">
             <el-select v-model="filters.applicantType" placeholder="请选择申请人类型" clearable>
@@ -37,10 +83,26 @@
               range-separator="至"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
-              style="width: 100%;"
+              style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label=" " class="filter-actions">
+          <el-form-item label="申请人/企业">
+            <el-input
+              v-model="filters.applicantName"
+              placeholder="请输入申请人或企业名称"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="联系电话">
+            <el-input
+              v-model="filters.contactPhone"
+              placeholder="请输入联系电话"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item class="filter-actions">
             <el-button class="reset-btn" @click="handleReset">
               重置筛选
             </el-button>
@@ -49,25 +111,56 @@
       </el-form>
     </el-card>
 
-    <el-card class="table-card">
-      <div class="table-header">
-        <h3>项目申请列表</h3>
-        <div class="actions">
-          <el-button type="success" @click="handleExport">
-            <el-icon><Download /></el-icon>
-            导出申请
-          </el-button>
-          <el-badge :value="pendingCount" :max="99" class="badge-item">
-            <el-button type="warning">
-              <el-icon><Bell /></el-icon>
-              待审核
-            </el-button>
-          </el-badge>
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <el-icon :size="24"><Clock /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">待审核</div>
+          <div class="stat-value">{{ stats.pending }}</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
+          <el-icon :size="24"><Loading /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">审核中</div>
+          <div class="stat-value">{{ stats.reviewing }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
+          <el-icon :size="24"><CircleCheck /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">已通过</div>
+          <div class="stat-value">{{ stats.approved }}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">
+          <el-icon :size="24"><Money /></el-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">申请总额(万)</div>
+          <div class="stat-value">¥{{ stats.totalAmount }}</div>
+        </div>
+      </div>
+    </div>
 
-      <el-table :data="applicationList" style="width: 100%" v-loading="loading">
-        <el-table-column prop="applicationNo" label="申请编号" width="180" fixed />
+    <!-- 申请列表 -->
+    <el-card class="table-card-modern" shadow="never">
+      <div class="table-wrapper">
+        <el-table
+          :data="applicationList"
+          v-loading="loading"
+          class="modern-table"
+          :row-class-name="getRowClassName"
+        >
+        <el-table-column prop="applicationNo" label="申请编号" width="180" fixed="left" />
         <el-table-column prop="projectTitle" label="项目名称" width="220" show-overflow-tooltip />
         <el-table-column label="申请人类型" width="100">
           <template #default="{ row }">
@@ -85,64 +178,92 @@
             <div class="amount">¥{{ row.applyAmount }}万</div>
           </template>
         </el-table-column>
+        <el-table-column label="批准金额" width="120">
+          <template #default="{ row }">
+            <div class="amount" v-if="row.approvalAmount">¥{{ row.approvalAmount }}万</div>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="申请状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
+            <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="submitTime" label="提交时间" width="160" />
-        <el-table-column label="操作" fixed="right" width="280">
+        <el-table-column label="操作" fixed="right" width="300" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleViewDetail(row)">
-              <el-icon><View /></el-icon>
-              查看详情
-            </el-button>
-            <el-button
-              v-if="row.status === 1 || row.status === 2"
-              link
-              type="success"
-              size="small"
-              @click="handleApprove(row)"
-            >
-              <el-icon><Check /></el-icon>
-              通过
-            </el-button>
-            <el-button
-              v-if="row.status === 1 || row.status === 2"
-              link
-              type="danger"
-              size="small"
-              @click="handleReject(row)"
-            >
-              <el-icon><Close /></el-icon>
-              拒绝
-            </el-button>
-            <el-button
-              v-if="row.status === 3"
-              link
-              type="warning"
-              size="small"
-              @click="handleContract(row)"
-            >
-              <el-icon><Document /></el-icon>
-              合同管理
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="info" size="small" text @click="handleViewDetail(row)">
+                <el-icon><View /></el-icon>
+                详情
+              </el-button>
+              <el-button
+                v-if="row.status === 1 || row.status === 2"
+                type="success"
+                size="small"
+                text
+                @click="handleApprove(row)"
+              >
+                <el-icon><Check /></el-icon>
+                通过
+              </el-button>
+              <el-button
+                v-if="row.status === 1 || row.status === 2"
+                type="danger"
+                size="small"
+                text
+                @click="handleReject(row)"
+              >
+                <el-icon><Close /></el-icon>
+                拒绝
+              </el-button>
+              <el-button
+                v-if="row.status === 3"
+                type="warning"
+                size="small"
+                text
+                @click="handleContract(row)"
+              >
+                <el-icon><Document /></el-icon>
+                合同
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.size"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-        class="pagination"
-      />
+      <div class="pagination-container-modern simple-pagination">
+        <el-button
+          class="page-btn"
+          :disabled="pagination.page <= 1"
+          @click="handlePageChange(pagination.page - 1)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="page-info">
+          {{ pagination.page }} / {{ Math.max(1, Math.ceil((pagination.total || 1) / (pagination.size || 10))) }}
+        </span>
+        <el-button
+          class="page-btn"
+          :disabled="pagination.page >= Math.ceil((pagination.total || 1) / (pagination.size || 10))"
+          @click="handlePageChange(pagination.page + 1)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+        <div class="page-jump">
+          <span>前往</span>
+          <el-input
+            v-model.number="pageJump"
+            size="small"
+            class="page-jump-input"
+            @input="handlePageJump"
+          />
+          <span>页</span>
+        </div>
+      </div>
     </el-card>
 
     <!-- 申请详情对话框 -->
@@ -151,7 +272,7 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="申请编号">{{ currentApplication.applicationNo }}</el-descriptions-item>
           <el-descriptions-item label="申请状态">
-            <el-tag :type="getStatusType(currentApplication.status)">
+            <el-tag :type="getStatusType(currentApplication.status)" size="small">
               {{ getStatusName(currentApplication.status) }}
             </el-tag>
           </el-descriptions-item>
@@ -186,6 +307,11 @@
               ¥{{ currentApplication.applyAmount }}万元
             </span>
           </el-descriptions-item>
+          <el-descriptions-item label="批准金额" v-if="currentApplication.approvalAmount" :span="2">
+            <span style="color: #67c23a; font-size: 18px; font-weight: bold;">
+              ¥{{ currentApplication.approvalAmount }}万元
+            </span>
+          </el-descriptions-item>
           <el-descriptions-item label="项目描述" :span="2">
             <div class="description-text">{{ currentApplication.projectDescription }}</div>
           </el-descriptions-item>
@@ -201,25 +327,19 @@
           <el-descriptions-item label="拒绝原因" :span="2" v-if="currentApplication.rejectReason">
             <span style="color: #f56c6c;">{{ currentApplication.rejectReason }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="批准金额" v-if="currentApplication.approvalAmount">
-            ¥{{ currentApplication.approvalAmount }}万元
-          </el-descriptions-item>
-          <el-descriptions-item label="审核时间" v-if="currentApplication.reviewTime">
-            {{ currentApplication.reviewTime }}
-          </el-descriptions-item>
           <el-descriptions-item label="合同编号" v-if="currentApplication.contractNo">
             {{ currentApplication.contractNo }}
           </el-descriptions-item>
           <el-descriptions-item label="合同签订时间" v-if="currentApplication.contractSignTime">
-            {{ currentApplication.contractSignTime }}
+            {{ formatDateTime(currentApplication.contractSignTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="项目开始时间" v-if="currentApplication.projectStartTime">
-            {{ currentApplication.projectStartTime }}
+            {{ formatDateTime(currentApplication.projectStartTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="项目结束时间" v-if="currentApplication.projectEndTime">
-            {{ currentApplication.projectEndTime }}
+            {{ formatDateTime(currentApplication.projectEndTime) }}
           </el-descriptions-item>
-          <el-descriptions-item label="提交时间">{{ currentApplication.submitTime }}</el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ formatDateTime(currentApplication.submitTime) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatDateTime(currentApplication.updateTime) }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2" v-if="currentApplication.remark">
             {{ currentApplication.remark }}
@@ -232,7 +352,12 @@
     <el-dialog v-model="approveDialogVisible" title="审核通过" width="600px">
       <el-form :model="approveForm" label-width="120px">
         <el-form-item label="批准金额" required>
-          <el-input-number v-model="approveForm.approvalAmount" :min="0" :precision="2" />
+          <el-input-number
+            v-model="approveForm.approvalAmount"
+            :min="0"
+            :precision="2"
+            style="width: 100%"
+          />
           <span style="margin-left: 8px;">万元</span>
         </el-form-item>
         <el-form-item label="审核意见" required>
@@ -250,6 +375,7 @@
             range-separator="至"
             start-placeholder="项目开始时间"
             end-placeholder="项目结束时间"
+            style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="备注">
@@ -296,6 +422,7 @@
             v-model="contractForm.contractSignTime"
             type="datetime"
             placeholder="选择签订时间"
+            style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="项目时间" required>
@@ -305,6 +432,7 @@
             range-separator="至"
             start-placeholder="项目开始时间"
             end-placeholder="项目结束时间"
+            style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="备注">
@@ -325,18 +453,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
-  Refresh,
   Download,
+  Files,
   Bell,
+  Clock,
+  Loading,
+  CircleCheck,
+  Money,
+  Refresh,
   View,
   Check,
   Close,
-  Document
+  Document,
+  ArrowLeft,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
@@ -345,15 +480,25 @@ import request from '@/utils/request'
 // 筛选条件
 const filters = reactive({
   applicationNo: '',
+  projectTitle: '',
   applicantType: '',
   status: '',
-  dateRange: null as any
+  dateRange: null as any,
+  applicantName: '',
+  contactPhone: ''
 })
 
 // 申请列表
 const applicationList = ref([])
-
 const loading = ref(false)
+
+// 统计数据
+const stats = reactive({
+  pending: 0,
+  reviewing: 0,
+  approved: 0,
+  totalAmount: 0
+})
 
 // 分页
 const pagination = reactive({
@@ -364,12 +509,83 @@ const pagination = reactive({
 
 // 待审核数量
 const pendingCount = computed(() => {
-  return applicationList.value.filter(item => item.status === 1 || item.status === 2).length
+  return applicationList.value.filter((item: any) => item.status === 1 || item.status === 2).length
 })
 
 // 详情对话框
 const detailDialogVisible = ref(false)
 const currentApplication = ref<any>(null)
+
+// 翻页跳转
+const pageJump = ref<number | null>(null)
+
+const handlePageJump = () => {
+  const totalPages = Math.max(1, Math.ceil((pagination.total || 1) / (pagination.size || 10)))
+  let target = Number(pageJump.value || 1)
+  if (!Number.isFinite(target)) return
+  if (target < 1) target = 1
+  if (target > totalPages) target = totalPages
+  if (target === pagination.page) return
+  handlePageChange(target)
+}
+
+// 最后更新时间
+const lastUpdateTime = ref('')
+
+// 格式化当前时间
+const formatCurrentTime = () => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+// 获取行类名
+const getRowClassName = ({ row, rowIndex }: { row: any; rowIndex: number }) => {
+  return rowIndex % 2 === 0 ? 'even-row' : 'odd-row'
+}
+
+// 监听筛选条件变化，自动触发搜索（使用防抖）
+let searchTimeout: NodeJS.Timeout | null = null
+watch(
+  () => [filters.applicationNo, filters.projectTitle, filters.applicantType, filters.status, filters.dateRange, filters.applicantName, filters.contactPhone],
+  () => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    searchTimeout = setTimeout(() => {
+      pagination.page = 1
+      loadApplications()
+    }, 500)
+  },
+  { deep: true }
+)
+
+// 自动刷新配置
+const refreshInterval = ref(30000) // 30秒刷新一次
+const autoRefreshTimer = ref<NodeJS.Timeout | null>(null)
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+  }
+  autoRefreshTimer.value = setInterval(() => {
+    console.log('自动刷新申请列表...')
+    loadApplications()
+  }, refreshInterval.value)
+  console.log(`自动刷新已启动，间隔: ${refreshInterval.value / 1000}秒`)
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+    autoRefreshTimer.value = null
+    console.log('自动刷新已停止')
+  }
+}
 
 // 审核通过对话框
 const approveDialogVisible = ref(false)
@@ -397,6 +613,8 @@ const contractForm = reactive({
   remark: ''
 })
 const contractTimeRange = ref<any>(null)
+
+const route = useRoute()
 
 // 获取申请人类型名称
 const getApplicantTypeName = (type: number) => {
@@ -450,15 +668,18 @@ const handleSearch = () => {
 
 // 重置
 const handleReset = () => {
-  filters.applicationNo = ''
-  filters.applicantType = ''
-  filters.status = ''
-  filters.dateRange = null
+  Object.assign(filters, {
+    applicationNo: '',
+    projectTitle: '',
+    applicantType: '',
+    status: '',
+    dateRange: null,
+    applicantName: '',
+    contactPhone: ''
+  })
   pagination.page = 1
   loadApplications()
 }
-
-const route = useRoute()
 
 // 加载申请列表
 const loadApplications = async () => {
@@ -469,8 +690,15 @@ const loadApplications = async () => {
       size: pagination.size
     }
     if (filters.applicationNo) params.applicationNo = filters.applicationNo
+    if (filters.projectTitle) params.projectTitle = filters.projectTitle
     if (filters.applicantType) params.applicantType = filters.applicantType
     if (filters.status) params.status = filters.status
+    if (filters.applicantName) params.applicantName = filters.applicantName
+    if (filters.contactPhone) params.contactPhone = filters.contactPhone
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      params.startDate = filters.dateRange[0]
+      params.endDate = filters.dateRange[1]
+    }
     
     // 从路由参数中获取项目ID（用于从内容管理页面跳转过来时筛选）
     const projectId = route.query.projectId as string
@@ -482,12 +710,30 @@ const loadApplications = async () => {
     if (res.code === 200) {
       applicationList.value = res.data.records || []
       pagination.total = res.data.total || 0
+      
+      // 更新统计数据
+      updateStats()
+      
+      // 更新最后刷新时间
+      lastUpdateTime.value = formatCurrentTime()
+    } else {
+      ElMessage.error(res.message || '加载申请列表失败')
     }
   } catch (error) {
     ElMessage.error('加载申请列表失败')
   } finally {
     loading.value = false
   }
+}
+
+// 更新统计数据
+const updateStats = () => {
+  stats.pending = applicationList.value.filter((item: any) => item.status === 1).length
+  stats.reviewing = applicationList.value.filter((item: any) => item.status === 2).length
+  stats.approved = applicationList.value.filter((item: any) => item.status === 3).length
+  stats.totalAmount = applicationList.value.reduce((sum: number, item: any) => {
+    return sum + (parseFloat(item.applyAmount) || 0)
+  }, 0)
 }
 
 // 查看详情
@@ -576,7 +822,7 @@ const handleContract = (row: any) => {
   contractForm.contractSignTime = row.contractSignTime ? new Date(row.contractSignTime) : null
   contractForm.remark = row.remark || ''
   contractTimeRange.value = row.projectStartTime && row.projectEndTime
-    ? [row.projectStartTime, row.projectEndTime]
+    ? [new Date(row.projectStartTime), new Date(row.projectEndTime)]
     : null
   contractDialogVisible.value = true
 }
@@ -592,8 +838,8 @@ const confirmContract = async () => {
     const contractInfo: any = {
       contractNo: contractForm.contractNo,
       contractSignTime: contractForm.contractSignTime.toISOString(),
-      projectStartTime: contractTimeRange.value[0],
-      projectEndTime: contractTimeRange.value[1]
+      projectStartTime: contractTimeRange.value[0].toISOString(),
+      projectEndTime: contractTimeRange.value[1].toISOString()
     }
     if (contractForm.remark) {
       contractInfo.remark = contractForm.remark
@@ -612,13 +858,18 @@ const confirmContract = async () => {
   }
 }
 
-// 导出申请
+// 导出数据
 const handleExport = async () => {
   try {
     const params: any = {}
     if (filters.applicationNo) params.applicationNo = filters.applicationNo
+    if (filters.projectTitle) params.projectTitle = filters.projectTitle
     if (filters.applicantType) params.applicantType = filters.applicantType
     if (filters.status) params.status = filters.status
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      params.startDate = filters.dateRange[0]
+      params.endDate = filters.dateRange[1]
+    }
     
     const projectId = route.query.projectId as string
     if (projectId) params.projectId = projectId
@@ -658,6 +909,11 @@ const handlePageChange = (page: number) => {
 // 页面加载
 onMounted(() => {
   loadApplications()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -666,59 +922,67 @@ onMounted(() => {
 </style>
 
 <style scoped lang="scss">
-.application-management {
-  padding: 20px;
+.badge-item {
+  :deep(.el-badge__content) {
+    top: 8px;
+    right: 20px;
+  }
+}
 
-  .table-card {
-    .table-header {
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+
+  .stat-card {
+    .stat-content {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      gap: 16px;
 
-      h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 500;
+      .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
       }
 
-      .actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
+      .stat-info {
+        flex: 1;
 
-        .badge-item {
-          :deep(.el-badge__content) {
-            top: 8px;
-            right: 20px;
-          }
+        .stat-value {
+          font-size: 24px;
+          font-weight: 700;
+          color: #303133;
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
+          font-size: 14px;
+          color: #909399;
         }
       }
     }
-
-    .amount {
-      font-size: 14px;
-      font-weight: 500;
-      color: #f56c6c;
-    }
-
-    .pagination {
-      margin-top: 20px;
-      justify-content: flex-end;
-    }
   }
+}
 
-  .application-detail {
-    padding: 10px 0;
+.amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f56c6c;
+}
 
-    .description-text {
-      line-height: 1.8;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+.application-detail {
+  padding: 10px 0;
+
+  .description-text {
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 }
 </style>
-
-
-

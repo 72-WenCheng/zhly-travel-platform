@@ -99,7 +99,7 @@
             <div>
               <p class="eyebrow">体验提示</p>
               <ul class="info-list">
-                <li v-for="item in experience.preparations" :key="item">
+                <li v-for="item in (experience.preparations || [])" :key="item">
                   <el-icon color="#e6a23c"><WarningFilled /></el-icon>
                   <span>{{ item }}</span>
                 </li>
@@ -176,10 +176,22 @@
               </el-form-item>
             </el-form>
 
+            <el-divider />
+
+            <CouponSelector
+              v-model="selectedCoupon"
+              :order-amount="totalPrice"
+              @change="handleCouponChange"
+            />
+
             <div class="total-box">
               <div class="total-row">
                 <span>合计</span>
-                <span class="amount">¥{{ totalPrice }}</span>
+                <span class="amount">¥{{ finalPrice }}</span>
+              </div>
+              <div v-if="selectedCoupon" class="coupon-discount">
+                <span>已优惠</span>
+                <span class="discount-amount">-¥{{ couponDiscount }}</span>
               </div>
               <p class="tips">下单后客服将与您确认具体时间与人数</p>
             </div>
@@ -211,11 +223,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import CouponSelector from '@/components/CouponSelector.vue'
 import * as cultureExperienceApi from '@/api/cultureExperience'
 import {
   Calendar,
@@ -293,7 +306,27 @@ const bookingForm = ref({
   notes: ''
 })
 
+// 选中的优惠券
+const selectedCoupon = ref(null)
+
 const totalPrice = computed(() => Math.max(bookingForm.value.participants || 1, 1) * (experience.value.price || 0))
+
+// 计算优惠金额
+const couponDiscount = computed(() => {
+  if (!selectedCoupon.value) return 0
+  const discountValue = selectedCoupon.value.discountValue || selectedCoupon.value.amount || 0
+  return Math.min(discountValue, totalPrice.value)
+})
+
+// 计算最终价格
+const finalPrice = computed(() => {
+  return Math.max(0, totalPrice.value - couponDiscount.value)
+})
+
+// 处理优惠券变化
+const handleCouponChange = (coupon: any) => {
+  selectedCoupon.value = coupon
+}
 
 const disabledDate = (date) => date < new Date(new Date().setHours(0, 0, 0, 0))
 
@@ -392,11 +425,11 @@ const loadDetail = async () => {
         tags: data.tags ? normalizeImages(data.tags) : experience.value.tags,
         description: data.description || experience.value.description,
         highlights: data.features
-          ? normalizeImages(data.features).map((item) =>
-              typeof item === 'string'
+          ? normalizeImages(data.features).map((item) => {
+              return typeof item === 'string'
                 ? { emoji: '✨', title: item, description: '' }
                 : { emoji: item.emoji || '✨', title: item.title, description: item.description || '' }
-            )
+            })
           : experience.value.highlights,
         schedule: flow.length ? flow : experience.value.schedule,
         includes: data.includes ? normalizeImages(data.includes) : experience.value.includes,
@@ -730,6 +763,22 @@ onMounted(() => {
 .amount {
   font-size: 22px;
   color: #f56c6c;
+}
+
+.coupon-discount {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #909399;
+  padding-top: 8px;
+  border-top: 1px solid #e4e7ed;
+  margin-top: 8px;
+
+  .discount-amount {
+    color: #67c23a;
+    font-weight: 600;
+  }
 }
 
 .tips {

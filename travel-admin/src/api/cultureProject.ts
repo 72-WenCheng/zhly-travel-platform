@@ -89,6 +89,43 @@ export function getProjectStatistics() {
   return request.get<any>('/culture-project/statistics')
 }
 
+// ========== 管理端API ==========
+
+// 获取政策对接项目列表（管理端）
+export function getAdminProjectList(params: ProjectListParams) {
+  return request.get<ProjectListResponse>('/admin/culture/project/page', { params })
+}
+
+// 获取政策对接项目详情（管理端）
+export function getAdminProjectById(id: number) {
+  return request.get<CultureProject>(`/admin/culture/project/${id}`)
+}
+
+// 创建政策对接项目（管理端）
+export function createAdminProject(data: CultureProject) {
+  return request.post<string>('/admin/culture/project', data)
+}
+
+// 更新政策对接项目（管理端）
+export function updateAdminProject(id: number, data: CultureProject) {
+  return request.put<string>(`/admin/culture/project/${id}`, data)
+}
+
+// 删除政策对接项目（管理端）
+export function deleteAdminProject(id: number) {
+  return request.delete<string>(`/admin/culture/project/${id}`)
+}
+
+// 切换政策对接项目状态（管理端）
+export function toggleAdminProjectStatus(id: number, status: number) {
+  return request.put<string>(`/admin/culture/project/${id}/status`, { status })
+}
+
+// 获取政策对接项目统计（管理端）
+export function getAdminProjectStatistics() {
+  return request.get<any>('/admin/culture/project/stats')
+}
+
 
 
 

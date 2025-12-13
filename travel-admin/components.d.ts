@@ -11,6 +11,7 @@ declare module 'vue' {
     AttractionForm: typeof import('./src/components/AttractionForm.vue')['default']
     BackButton: typeof import('./src/components/BackButton.vue')['default']
     CommentSection: typeof import('./src/components/CommentSection.vue')['default']
+    CouponSelector: typeof import('./src/components/CouponSelector.vue')['default']
     CultureProjectForm: typeof import('./src/components/CultureProjectForm.vue')['default']
     DataTable: typeof import('./src/components/DataTable.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']

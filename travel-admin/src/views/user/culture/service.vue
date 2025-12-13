@@ -3,9 +3,9 @@
     <!-- 返回按钮 -->
     <BackButton />
 
-    <el-row :gutter="24">
+    <el-row :gutter="0">
       <!-- 左侧：服务详情 -->
-      <el-col :span="16">
+      <el-col :span="16" class="left-content">
         <!-- 服务头图 -->
         <div class="detail-header">
           <el-carousel :interval="4000" arrow="never" height="450px">
@@ -95,7 +95,7 @@
       </el-col>
 
       <!-- 右侧：预订信息 -->
-      <el-col :span="8">
+      <el-col :span="8" class="right-content">
         <div class="booking-card-sticky">
           <el-card class="booking-card">
             <h3 class="booking-title">预订信息</h3>
@@ -142,9 +142,22 @@
               </el-form-item>
             </el-form>
 
+            <el-divider v-if="selectedPackage" />
+
+            <CouponSelector
+              v-if="selectedPackage"
+              v-model="selectedCoupon"
+              :order-amount="totalPrice"
+              @change="handleCouponChange"
+            />
+
             <div v-if="selectedPackage" class="total-price">
               <span>总计</span>
-              <span class="total-amount">¥{{ totalPrice }}</span>
+              <span class="total-amount">¥{{ finalPrice }}</span>
+              <div v-if="selectedCoupon" class="coupon-discount">
+                <span>已优惠</span>
+                <span class="discount-amount">-¥{{ couponDiscount }}</span>
+              </div>
             </div>
 
             <el-button
@@ -169,11 +182,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
+import CouponSelector from '@/components/CouponSelector.vue'
 import {
   ArrowLeft,
   Location,
@@ -287,12 +301,32 @@ const bookingForm = ref({
   notes: ''
 })
 
+// 选中的优惠券
+const selectedCoupon = ref(null)
+
 // 计算总价
 const totalPrice = computed(() => {
   if (!selectedPackage.value) return 0
   const qty = bookingForm.value.quantity || 1
   return selectedPackage.value.price * qty
 })
+
+// 计算优惠金额
+const couponDiscount = computed(() => {
+  if (!selectedCoupon.value) return 0
+  const discountValue = selectedCoupon.value.discountValue || selectedCoupon.value.amount || 0
+  return Math.min(discountValue, totalPrice.value)
+})
+
+// 计算最终价格
+const finalPrice = computed(() => {
+  return Math.max(0, totalPrice.value - couponDiscount.value)
+})
+
+// 处理优惠券变化
+const handleCouponChange = (coupon: any) => {
+  selectedCoupon.value = coupon
+}
 
 // 禁用过去的日期
 const disabledDate = (date) => {
@@ -321,7 +355,7 @@ const handleBooking = async () => {
 
   try {
     await ElMessageBox.confirm(
-      `确认预订 ${service.value.title}？\n套餐：${selectedPackage.value.name}\n人数：${bookingForm.value.quantity || 1}人\n总计：¥${totalPrice.value}`,
+      `确认预订 ${service.value.title}？\n套餐：${selectedPackage.value.name}\n人数：${bookingForm.value.quantity || 1}人\n${selectedCoupon.value ? `优惠券：${selectedCoupon.value.name || selectedCoupon.value.couponName}\n优惠：-¥${couponDiscount.value}\n` : ''}总计：¥${finalPrice.value}`,
       '确认预订',
       {
         confirmButtonText: '确认',
@@ -336,7 +370,10 @@ const handleBooking = async () => {
       serviceName: service.value.title,
       package: selectedPackage.value,
       ...bookingForm.value,
-      totalPrice: totalPrice.value
+      totalPrice: totalPrice.value,
+      finalPrice: finalPrice.value,
+      couponId: selectedCoupon.value?.id || null,
+      couponDiscount: couponDiscount.value
     })
 
     ElMessage.success('预订成功！我们会尽快与您联系确认详情')
@@ -367,7 +404,15 @@ onMounted(() => {
 .service-detail {
   min-height: 100vh;
   background: #f5f7fa;
-  padding: 24px;
+  padding: 0;
+}
+
+.left-content {
+  padding: 24px 24px 24px 0;
+}
+
+.right-content {
+  padding: 24px 0 24px 24px;
 }
 
 .detail-header {
@@ -656,8 +701,8 @@ onMounted(() => {
 
 .total-price {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   padding: 16px;
   background: #f5f7fa;
   border-radius: 8px;
@@ -665,9 +710,30 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
 
+  > div:first-child {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .total-amount {
     font-size: 24px;
     color: #f56c6c;
+  }
+
+  .coupon-discount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #909399;
+    padding-top: 8px;
+    border-top: 1px solid #e4e7ed;
+
+    .discount-amount {
+      color: #67c23a;
+      font-weight: 600;
+    }
   }
 }
 
