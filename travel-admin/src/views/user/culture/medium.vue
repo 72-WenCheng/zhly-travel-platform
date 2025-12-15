@@ -178,6 +178,7 @@
             </div>
           </div>
         </div>
+        <div v-if="!currentServices.length" class="empty-hint">暂无产业振兴数据</div>
       </div>
     </div>
 
@@ -234,6 +235,7 @@
           </div>
         </div>
       </div>
+      <div v-if="!govProjects.length" class="empty-hint">暂无政策对接项目</div>
     </div>
 
     <!-- 文化体验 -->
@@ -274,6 +276,7 @@
           </div>
         </div>
       </div>
+      <div v-if="!cultureExperiences.length" class="empty-hint">暂无文化体验项目</div>
     </div>
 
     <!-- 特色周边 -->
@@ -283,15 +286,15 @@
         特色周边
       </h2>
       <div class="products-grid">
-        <div v-for="product in localProducts" :key="product.id" class="product-card" @click="handleProductClick(product)">
+        <div v-for="product in services.products" :key="product.id" class="product-card" @click="handleProductClick(product)">
           <div class="product-badge">{{ product.badge }}</div>
           <div class="product-header">
-            <h4>{{ product.name }}</h4>
+            <h4>{{ product.name || product.title }}</h4>
           </div>
           <div class="product-meta">
             <span class="meta-item">
               <el-icon><Location /></el-icon>
-              {{ product.origin }}
+              {{ product.origin || product.location }}
             </span>
             <span class="meta-item">
               <el-icon><StarFilled /></el-icon>
@@ -304,6 +307,7 @@
           </div>
         </div>
       </div>
+      <div v-if="!services.products.length" class="empty-hint">暂无特色周边</div>
     </div>
 
 
@@ -380,13 +384,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import request from '@/utils/request'
 import { 
   Star, Grid, Service, OfficeBuilding, Tickets, ShoppingBag, Trophy, UserFilled, Top,
   ArrowLeft, ArrowRight, Location, Calendar, Coin, Clock, StarFilled, View, TrendCharts, Box,
   House, User, Setting, Phone
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
-import request from '@/utils/request'
 import { useSystemStore } from '@/stores/system'
 import { storeToRefs } from 'pinia'
 import * as cultureExperienceApi from '@/api/cultureExperience'
@@ -619,208 +623,9 @@ const activeTab = ref('farmstay')
 
 // 服务数据
 const services = ref({
-  farmstay: [
-    {
-      id: 1,
-      title: '云雾山庄农家乐',
-      location: '重庆市巴南区云雾山',
-      origin: '云雾山脚下·自营农场',
-      badge: '政府推荐',
-      unit: '/人',
-      features: ['采摘体验', '农家餐饮', '垂钓', '烧烤', '儿童乐园'],
-      highlights: ['免费停车', '免费WiFi', '农家餐厅'],
-      summary: '云雾山脚田园度假，农家菜+采摘+垂钓，亲子休闲好去处。',
-      rating: 4.8,
-      views: 1234,
-      price: 88,
-      contactPhone: '023-6688-1122'
-    },
-    {
-      id: 2,
-      title: '桃花源生态农庄',
-      location: '重庆市江津区',
-      origin: '江津·生态果园',
-      badge: '热门',
-      unit: '/人',
-      features: ['有机蔬菜', '户外烧烤', '儿童乐园'],
-      highlights: ['果园采摘', '烧烤场地', '亲子游乐'],
-      summary: '有机果蔬+户外烧烤，家庭周末亲子游的热门选择。',
-      rating: 4.9,
-      views: 980,
-      price: 128,
-      contactPhone: '023-6688-1133'
-    },
-    {
-      id: 3,
-      title: '翠竹山居',
-      location: '重庆市北碚区',
-      origin: '北碚·竹林小院',
-      badge: '新上架',
-      unit: '/人',
-      features: ['竹林漫步', '茶艺体验', '农耕体验'],
-      highlights: ['茶室小憩', '竹林氧吧', '乡野露营'],
-      summary: '竹林环绕的小院，主打茶艺体验与竹林徒步，清新安静。',
-      rating: 4.7,
-      views: 660,
-      price: 98,
-      contactPhone: '023-6688-1144'
-    },
-    {
-      id: 4,
-      title: '金色田园',
-      location: '重庆市璧山区',
-      origin: '璧山·稻田农庄',
-      badge: '政府扶持',
-      unit: '/人',
-      features: ['稻田观光', '农事体验', '土鸡美食'],
-      highlights: ['稻田露营', '土鸡柴火饭', '亲子插秧'],
-      summary: '稻田景观和农事体验为亮点，土鸡柴火饭和乡野露营广受好评。',
-      rating: 4.6,
-      views: 520,
-      price: 76,
-      contactPhone: '023-6688-1155'
-    }
-  ],
-  homestay: [
-    {
-      id: 1,
-      title: '山水间·云舍',
-      location: '重庆市武隆区',
-      badge: '精品民宿',
-      roomType: '景观大床房 · 1室1厅1卫',
-      capacity: 2,
-      amenities: ['空调', 'WiFi', '观景阳台', '早餐', '停车位'],
-      highlightTags: ['峡谷观景', '管家服务', '私密小院'],
-      highlights: '位于武隆峡谷旁，观景露台与私密小院，管家式服务与双早餐。',
-      features: ['景观房', '管家服务', '双早套餐', '私人影院'],
-      summary: '峡谷景观房与贴心管家服务，适合度假小憩。',
-      rating: 4.9,
-      views: 236,
-      price: 368,
-      cover: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'
-    },
-    {
-      id: 2,
-      title: '老街记忆客栈',
-      location: '重庆市磁器口',
-      badge: '文化特色',
-      roomType: '双人房 · 1室1卫',
-      capacity: 2,
-      amenities: ['早餐', 'WiFi', '老街步行可达'],
-      highlightTags: ['古镇风情', '传统装饰'],
-      highlights: '置身古镇的慢生活，木质小院与地道早餐相得益彰。',
-      features: ['古镇风情', '传统装饰', '特色早餐'],
-      summary: '靠近磁器口老街，传统风情与特色早餐。',
-      rating: 4.8,
-      views: 310,
-      price: 228,
-      cover: 'https://images.unsplash.com/photo-1496417263034-38ec4f0b665a?auto=format&fit=crop&w=1200&q=80'
-    },
-    {
-      id: 3,
-      title: '竹海深处',
-      location: '重庆市永川区',
-      badge: '生态体验',
-      roomType: '庭院房 · 1室1厅',
-      capacity: 3,
-      amenities: ['早餐', '停车位', '竹林步道'],
-      highlightTags: ['竹林氧吧', '静谧环境'],
-      highlights: '竹海氧吧里的安静民宿，主打林间漫步与清新空气。',
-      features: ['竹海环绕', '天然氧吧', '静谧环境'],
-      summary: '竹林环绕，空气清新，适合放松发呆。',
-      rating: 4.7,
-      views: 280,
-      price: 198,
-      cover: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80'
-    },
-    {
-      id: 4,
-      title: '江畔小筑',
-      location: '重庆市长寿区',
-      badge: '江景房',
-      roomType: '江景大床房 · 1室1卫',
-      capacity: 2,
-      amenities: ['观景露台', '早餐', 'WiFi'],
-      highlightTags: ['江景露台', '江鲜美食'],
-      highlights: '江景露台与江鲜美食的组合，适合周末放松。',
-      features: ['临江观景', '江鲜美食', '垂钓平台'],
-      summary: '临江观景，江鲜美食，周末度假的自在选择。',
-      rating: 4.8,
-      views: 360,
-      price: 268,
-      cover: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80'
-    }
-  ],
-  products: [
-    {
-      id: 1,
-      title: '云雾绿茶礼盒',
-      location: '重庆市忠县',
-      origin: '重庆忠县·高山茶园',
-      badge: '当季新茶',
-      unit: '/盒',
-      features: ['春茶新采', '源头直发', '可定制'],
-      highlights: ['单芽茶', '溯源质检', '礼盒装'],
-      summary: '900米云雾茶园春采单芽，礼盒装支持定制，产地直发。',
-      rating: 4.8,
-      price: 168,
-      sales: 1560,
-      viewCount: 3086,
-      shelfLife: '18个月',
-      cover: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1200&q=80'
-    },
-    {
-      id: 2,
-      title: '竹编工艺套装',
-      location: '重庆市江津区',
-      origin: '江津·非遗工坊',
-      badge: '非遗好物',
-      unit: '/套',
-      features: ['纯手工', '环保材质', '礼赠优选'],
-      highlights: ['非遗师傅', '竹料可溯', '可定制'],
-      summary: '手工竹编茶席与收纳盒组合，兼具实用与非遗美学，支持定制。',
-      rating: 4.7,
-      price: 198,
-      sales: 980,
-      viewCount: 2230,
-      shelfLife: '可长期使用',
-      cover: 'https://images.unsplash.com/photo-1505764706515-aa95265c5abc?auto=format&fit=crop&w=1200&q=80'
-    },
-    {
-      id: 3,
-      title: '山地蜂蜜',
-      location: '重庆市酉阳县',
-      origin: '酉阳·高山林场',
-      badge: '生态养殖',
-      unit: '/瓶',
-      features: ['原生态', '溯源可查', '营养丰富'],
-      highlights: ['高山放养', '低温灌装', '花源可溯'],
-      summary: '高山放养蜂场直供，花源清晰可溯，低温灌装保留活性，口感清甜。',
-      rating: 4.9,
-      price: 128,
-      sales: 1860,
-      viewCount: 4120,
-      shelfLife: '24个月',
-      cover: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&w=1200&q=80'
-    },
-    {
-      id: 4,
-      title: '土鸡蛋礼盒',
-      location: '重庆市武隆区',
-      origin: '武隆·山地农场',
-      badge: '农场直供',
-      unit: '/盒',
-      features: ['散养土鸡', '每日新鲜', '蛋香浓郁'],
-      highlights: ['日捡日发', '粗粮喂养', '礼盒装'],
-      summary: '散养土鸡每日新鲜收集，蛋香浓郁，礼盒装家庭早餐优选。',
-      rating: 4.6,
-      price: 76,
-      sales: 2320,
-      viewCount: 3650,
-      shelfLife: '35天',
-      cover: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=1200&q=80'
-    }
-  ]
+  farmstay: [],
+  homestay: [],
+  products: []
 })
 
 const currentServices = computed(() => {
@@ -828,125 +633,10 @@ const currentServices = computed(() => {
 })
 
 // 政策对接
-const govProjects = ref([
-  {
-    id: 1,
-    title: '巴南区乡村振兴示范项目',
-    location: '重庆市巴南区',
-    description: '以农旅融合为核心，打造集观光、体验、度假为一体的乡村旅游综合体，带动当地农民增收致富。',
-    tags: ['乡村振兴', '产业融合', '就业扶持'],
-    startDate: '2024-03',
-    investment: 5000,
-    beneficiaries: 320,
-    statusText: '进行中',
-    statusClass: 'status-active',
-    contactName: '张经理',
-    contactPhone: '023-6688-3344',
-    goalBrief: '目标：产业链年产值8000万+，就业500人+，示范乡村样板。'
-  },
-  {
-    id: 2,
-    title: '武隆区文化遗产保护与开发',
-    location: '重庆市武隆区',
-    description: '保护和传承当地非物质文化遗产，结合旅游开发，实现文化传承与经济发展双赢。',
-    tags: ['文化传承', '非遗保护', '旅游开发'],
-    startDate: '2024-01',
-    investment: 3200,
-    beneficiaries: 180,
-    statusText: '招募中',
-    statusClass: 'status-recruiting',
-    contactName: '李主任',
-    contactPhone: '023-6688-5566',
-    goalBrief: '目标：完成非遗场馆建设与运营，年接待游客30万+。'
-  },
-  {
-    id: 3,
-    title: '江津区特色农产品推广计划',
-    location: '重庆市江津区',
-    description: '建立线上线下一体化销售平台，帮助当地农产品拓展销售渠道，提升品牌影响力。',
-    tags: ['农产品', '电商扶持', '品牌打造'],
-    startDate: '2024-02',
-    investment: 1500,
-    beneficiaries: 450,
-    statusText: '进行中',
-    statusClass: 'status-active',
-    contactName: '王老师',
-    contactPhone: '023-6688-7788',
-    goalBrief: '目标：打造区域公用品牌，新增线上销售额3000万+。'
-  }
-])
+const govProjects = ref([])
 
 // 文化体验项目（与管理端数据结构对应）
 const cultureExperiences = ref([])
-
-const fallbackExperiences = [
-  {
-    id: 1,
-    name: '蜀绣体验工坊',
-    categoryName: '非遗体验',
-    location: '成都·锦里',
-    price: 168,
-    duration: '约2小时',
-    rating: 4.8,
-    status: 'hot',
-    image: 'https://images.unsplash.com/photo-1611780876184-c2c63e8f51c6?w=800&h=600&fit=crop'
-  },
-  {
-    id: 2,
-    name: '川渝火锅体验馆',
-    categoryName: '美食文化',
-    location: '重庆·解放碑',
-    price: 128,
-    duration: '约3小时',
-    rating: 4.9,
-    status: 'hot',
-    image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&h=600&fit=crop'
-  },
-  {
-    id: 3,
-    name: '民俗山峡走读',
-    categoryName: '历史探访',
-    location: '重庆·磁器口',
-    price: 88,
-    duration: '半天',
-    rating: 4.7,
-    status: 'featured',
-    image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop'
-  },
-  {
-    id: 4,
-    name: '竹编手工课',
-    categoryName: '手工制作',
-    location: '重庆·梁平',
-    price: 128,
-    duration: '约3小时',
-    rating: 4.7,
-    status: 'featured',
-    image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=800&h=600&fit=crop'
-  },
-  {
-    id: 5,
-    name: '古镇文化游',
-    categoryName: '历史探访',
-    location: '重庆·磁器口',
-    price: 88,
-    duration: '半天',
-    rating: 4.6,
-    status: 'featured',
-    image: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&h=600&fit=crop'
-  },
-  {
-    id: 6,
-    name: '土家织锦技艺',
-    categoryName: '非遗体验',
-    location: '重庆·酉阳',
-    price: 158,
-    duration: '约2.5小时',
-    rating: 4.8,
-    status: 'hot',
-    image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800&h=600&fit=crop'
-  }
-]
 
 const normalizeImages = (images) => {
   if (!images) return []
@@ -960,7 +650,7 @@ const normalizeImages = (images) => {
 
 const loadCultureExperiences = async () => {
   try {
-    const res = await cultureExperienceApi.getUserExperienceList({ page: 1, size: 9 })
+    const res = await cultureExperienceApi.getUserExperienceList({ page: 1, size: 6 })
     if (res.code === 200 && (res.data?.list?.length || 0) > 0) {
       cultureExperiences.value = res.data.list.map((item, index) => {
         const imgs = normalizeImages(item.images)
@@ -977,24 +667,128 @@ const loadCultureExperiences = async () => {
         }
       })
     } else {
-      console.warn('文化体验列表为空，使用本地示例数据')
-      cultureExperiences.value = fallbackExperiences
+      cultureExperiences.value = []
     }
   } catch (error) {
     console.error('加载文化体验列表失败', error)
-    cultureExperiences.value = fallbackExperiences
+    cultureExperiences.value = []
   }
 }
 
-// 特色周边
-const localProducts = ref([
-  { id: 1, name: '巴南银针茶', origin: '重庆巴南', badge: '地理标志', price: 128, sales: 2356, rating: 4.9 },
-  { id: 2, name: '江津花椒', origin: '重庆江津', badge: '原产地直供', price: 68, sales: 5678, rating: 4.8 },
-  { id: 3, name: '手工竹编', origin: '重庆梁平', badge: '非遗工艺', price: 158, sales: 892, rating: 4.7 },
-  { id: 4, name: '土家织锦', origin: '重庆酉阳', badge: '文创精品', price: 368, sales: 456, rating: 4.9 },
-  { id: 5, name: '涪陵榨菜', origin: '重庆涪陵', badge: '老字号', price: 45, sales: 12356, rating: 4.6 },
-  { id: 6, name: '石柱蜂蜜', origin: '重庆石柱', badge: '天然有机', price: 98, sales: 3456, rating: 4.8 }
-])
+// 加载农家乐
+const loadFarmstay = async () => {
+  try {
+    const res = await request.get('/culture/services/page', { params: { page: 1, size: 4 } })
+    const list = res?.data?.records || res?.data?.list || []
+    if (Array.isArray(list) && list.length) {
+      services.value.farmstay = list.map((item, idx) => ({
+        id: item.id || idx,
+        title: item.title || item.name || `农家乐 ${idx + 1}`,
+        location: item.location || '待定',
+        price: item.packages?.[0]?.price || item.price || 0,
+        unit: item.packages?.[0]?.unit || '/人',
+        summary: item.description || item.summary || '',
+        rating: item.rating || 4.8,
+        views: item.views || item.viewCount || 0,
+        contactPhone: item.contactPhone || '',
+        features: item.features || item.facilities?.map((f) => f.name).filter(Boolean) || [],
+        highlights: item.highlights || item.features || []
+      }))
+    } else {
+      services.value.farmstay = []
+    }
+  } catch (error) {
+    console.warn('加载农家乐失败，保持空数据', error)
+    services.value.farmstay = []
+  }
+}
+
+// 加载民宿
+const loadHomestay = async () => {
+  try {
+    const res = await request.get('/api/culture/homestays/page', { params: { page: 1, size: 4 } })
+    const list = res?.data?.records || res?.data?.list || []
+    if (Array.isArray(list) && list.length) {
+      services.value.homestay = list.map((item, idx) => ({
+        id: item.id || idx,
+        title: item.title || item.name || `民宿 ${idx + 1}`,
+        location: item.location || '待定',
+        price: item.price || 0,
+        rating: item.rating || 4.7,
+        views: item.views || 0,
+        roomType: item.roomType,
+        capacity: item.capacity,
+        features: item.features || item.amenities || [],
+        highlights: item.highlightTags || item.amenities || [],
+        summary: item.description || item.summary || '',
+        contactPhone: item.contactPhone || ''
+      }))
+    } else {
+      services.value.homestay = []
+    }
+  } catch (error) {
+    console.warn('加载民宿失败，保持空数据', error)
+    services.value.homestay = []
+  }
+}
+
+// 加载农特产品
+const loadProducts = async () => {
+  try {
+    const res = await request.get('/api/culture/products/page', { params: { page: 1, size: 6 } })
+    const list = res?.data?.records || res?.data?.list || []
+    if (Array.isArray(list) && list.length) {
+      services.value.products = list.map((item, idx) => ({
+        id: item.id || idx,
+        title: item.title || item.name || `产品 ${idx + 1}`,
+        name: item.name || item.title || `产品 ${idx + 1}`,
+        location: item.location || item.origin || '待定',
+        origin: item.origin || '本地',
+        badge: item.badge || '',
+        price: Number(item.price || 0),
+        sales: item.sales || item.views || 0,
+        rating: item.rating || 4.6,
+        unit: item.unit || '/盒',
+        viewCount: item.viewCount || item.views || 0
+      }))
+    } else {
+      services.value.products = []
+    }
+  } catch (error) {
+    console.warn('加载农特产品失败，保持空数据', error)
+    services.value.products = []
+  }
+}
+
+// 加载政策对接
+const loadGovProjects = async () => {
+  try {
+    const res = await request.get('/api/culture-project/list', { params: { page: 1, size: 3 } })
+    const list = res?.data?.list || res?.data?.records || res?.data || []
+    if (Array.isArray(list) && list.length) {
+      govProjects.value = list.slice(0, 3).map((item, idx) => ({
+        id: item.id || idx,
+        title: item.title || item.name || `项目 ${idx + 1}`,
+        location: item.location || item.region || '待定',
+        description: item.description || item.summary || '',
+        tags: item.tags || item.features || [],
+        startDate: item.startDate || item.createTime?.slice(0, 10) || '',
+        investment: item.investment || item.budget || 0,
+        beneficiaries: item.beneficiaries || item.people || 0,
+        statusText: item.statusText || item.statusName || '进行中',
+        statusClass: item.statusClass || 'status-active',
+        contactName: item.contactName || '',
+        contactPhone: item.contactPhone || '',
+        goalBrief: item.goalBrief || ''
+      }))
+    } else {
+      govProjects.value = []
+    }
+  } catch (error) {
+    console.warn('加载政策对接失败，保持空数据', error)
+    govProjects.value = []
+  }
+}
 
 // 成功案例
 const successCases = ref([
@@ -1249,7 +1043,11 @@ const handleScroll = (event) => {
 // 页面挂载时添加滚动监听
 onMounted(() => {
   loadBanners() // 加载轮播图数据
-  loadCultureExperiences() // 加载文化体验列表（含分类标签）
+  loadCultureExperiences() // 文化体验
+  loadFarmstay() // 农家乐
+  loadHomestay() // 民宿
+  loadProducts() // 农特产品
+  loadGovProjects() // 政策对接
   startNavAutoplay()
   const scrollContainer = getScrollContainer()
   if (scrollContainer) {
@@ -1739,6 +1537,13 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
   border-radius: 18px;
 }
 
+.empty-hint {
+  padding: 16px 0;
+  color: #909399;
+  text-align: center;
+  font-size: 14px;
+}
+
 .gov-project-card,
 .experience-card,
 .product-card {
@@ -2143,7 +1948,7 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 
 .service-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -2311,7 +2116,7 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 /* 政策对接 */
 .gov-projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -2470,7 +2275,7 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 
 .experience-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 32px;
 }
 
@@ -2602,7 +2407,7 @@ console.log('✅ 中等版本文旅页面数据初始化完成')
 /* 特色周边 */
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
 }
 

@@ -130,17 +130,8 @@ const formatDate = (date: string | Date) => {
 // 加载可用优惠券
 const loadAvailableCoupons = async () => {
   try {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo') || '{}')
-    const userId = userInfo.id || userInfo.userId
-    
-    if (!userId) {
-      availableCoupons.value = []
-      return
-    }
-    
     const response = await request.get('/user/coupon/available', {
       params: {
-        userId,
         orderAmount: props.orderAmount || 0
       }
     })

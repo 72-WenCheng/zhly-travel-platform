@@ -390,6 +390,22 @@ const formatCurrentTime = () => {
   return `${hours}:${minutes}:${seconds}`
 }
 
+// 统一图片格式为数组
+const normalizeImages = (images: any): string[] => {
+  if (!images) return []
+  if (Array.isArray(images)) return images
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // ignore
+    }
+    return images.split(',').map((url: string) => url.trim()).filter(Boolean)
+  }
+  return []
+}
+
 // 获取状态名称
 const getStatusName = (status: number) => {
   const statusMap: Record<number, string> = {
@@ -467,11 +483,35 @@ const loadServiceList = async () => {
     const result = await getProductList(params)
     
     if (result.code === 200 && result.data) {
-      serviceList.value = result.data.list || []
-      pagination.total = result.data.total || 0
+      const raw: any[] =
+        result.data.list ||
+        result.data.records ||
+        result.data.rows ||
+        []
+      serviceList.value = raw.map((item: any, idx: number) => ({
+        id: item.id ?? idx,
+        name: item.name || item.title || '',
+        origin: item.origin || item.location || '',
+        badge: item.badge || item.tag || '',
+        price: item.price ?? item.packages?.[0]?.price ?? 0,
+        unit: item.unit || '/件',
+        stock: item.stock ?? -1,
+        rating: item.rating ?? item.score ?? 0,
+        sales: item.sales ?? item.orderCount ?? 0,
+        views: item.views ?? item.viewCount ?? 0,
+        images: normalizeImages(item.images || item.cover || item.image),
+        status: item.status ?? 1,
+        createTime: item.createTime || item.gmtCreate || item.createdAt || ''
+      }))
+      pagination.total =
+        result.data.total ||
+        result.data.count ||
+        result.data.totalCount ||
+        serviceList.value.length ||
+        0
       
       // 更新统计数据
-      updateStats(serviceList.value)
+      updateStats(serviceList.value as any)
     } else {
       ElMessage.error(result.message || '加载服务列表失败')
     }

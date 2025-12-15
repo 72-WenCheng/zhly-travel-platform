@@ -138,7 +138,6 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import request from '@/utils/request'
-import { getCurrentUserId } from '@/utils/user'
 import {
   Ticket,
   CircleCheck,
@@ -190,16 +189,8 @@ const filteredCoupons = computed(() => {
 const loadCoupons = async () => {
   loading.value = true
   try {
-    const userId = getCurrentUserId()
-    
-    if (!userId) {
-      ElMessage.error('请先登录')
-      return
-    }
-    
     const response = await request.get('/user/coupon/list', {
       params: {
-        userId,
         page: pagination.page,
         limit: pagination.size
       }
@@ -227,12 +218,7 @@ const loadCoupons = async () => {
 // 加载统计数据
 const loadCouponStats = async () => {
   try {
-    const userId = getCurrentUserId()
-    if (!userId) return
-    
-    const response = await request.get('/user/coupon/stats', {
-      params: { userId }
-    })
+    const response = await request.get('/user/coupon/stats')
     
     if (response.code === 200 && response.data) {
       stats.available = response.data.available || 0

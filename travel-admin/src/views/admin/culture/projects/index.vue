@@ -393,6 +393,15 @@ const formatCurrentTime = () => {
   return `${hours}:${minutes}:${seconds}`
 }
 
+const normalizeStatus = (status: any): number => {
+  if (status === undefined || status === null) return 1
+  if (typeof status === 'string') {
+    const num = Number(status)
+    if (!Number.isNaN(num)) return num
+  }
+  return status
+}
+
 // 获取状态名称
 const getStatusName = (status: number) => {
   const statusMap: Record<number, string> = {
@@ -470,11 +479,35 @@ const loadServiceList = async () => {
     const result = await getAdminProjectList(params)
     
     if (result.code === 200 && result.data) {
-      serviceList.value = result.data.list || []
-      pagination.total = result.data.total || 0
+      const raw: any[] =
+        result.data.list ||
+        result.data.records ||
+        result.data.rows ||
+        []
+      serviceList.value = raw.map((item: any, idx: number) => ({
+        id: item.id ?? idx,
+        name: item.name || item.title || '',
+        region: item.region || item.location || '',
+        location: item.location || '',
+        price: item.price ?? item.investment ?? 0,
+        contactPerson: item.contactPerson || item.principal || '',
+        contactPhone: item.contactPhone || item.phone || '',
+        rating: item.rating ?? item.score ?? 0,
+        viewCount: item.viewCount ?? item.views ?? 0,
+        orderCount: item.orderCount ?? item.sales ?? 0,
+        status: normalizeStatus(item.status),
+        description: item.description || '',
+        createTime: item.createTime || item.gmtCreate || item.createdAt || ''
+      }))
+      pagination.total =
+        result.data.total ||
+        result.data.count ||
+        result.data.totalCount ||
+        serviceList.value.length ||
+        0
       
       // 更新统计数据
-      updateStats(serviceList.value)
+      updateStats(serviceList.value as any)
     } else {
       ElMessage.error(result.message || '加载服务列表失败')
     }

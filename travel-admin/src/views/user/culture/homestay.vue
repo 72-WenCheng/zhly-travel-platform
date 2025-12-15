@@ -106,27 +106,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import CouponSelector from '@/components/CouponSelector.vue'
+import request from '@/utils/request'
+
+const route = useRoute()
+const router = useRouter()
 
 const homestay = ref({
-  id: 1,
-  title: '山水间·云舍',
-  location: '重庆市武隆区',
-  rating: 4.9,
-  views: 236,
-  price: 368,
-  roomType: '景观大床房 · 1室1厅1卫',
-  capacity: 2,
-  contactPhone: '023-6688-1122',
-  summary: '峡谷景观房与贴心管家服务，适合度假小憩。',
-  features: ['景观房', '管家服务', '双早套餐', '私人影院'],
-  amenities: ['空调', 'WiFi', '观景阳台', '早餐', '停车位'],
-  highlightTags: ['峡谷观景', '管家服务', '私密小院'],
-  highlights: '位于武隆峡谷旁，拥有观景露台与私密小院，提供管家式服务与双早餐。',
-  cover: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'
+  id: null,
+  title: '',
+  location: '',
+  rating: 0,
+  views: 0,
+  price: 0,
+  roomType: '',
+  capacity: 0,
+  contactPhone: '',
+  summary: '',
+  features: [] as string[],
+  amenities: [] as string[],
+  highlightTags: [] as string[],
+  highlights: '',
+  cover: ''
 })
 
 const form = ref({
@@ -164,7 +169,7 @@ const handleCouponChange = (coupon: any) => {
   selectedCoupon.value = coupon
 }
 
-const handleBook = () => {
+const handleBook = async () => {
   if (!form.value.date) {
     ElMessage.warning('请选择入住日期')
     return
@@ -177,8 +182,95 @@ const handleBook = () => {
     ElMessage.warning('请输入联系电话')
     return
   }
-  ElMessage.success(`已提交预订：${homestay.value.title}，共${form.value.nights || 1}晚`)
+
+  try {
+    await ElMessageBox.confirm(
+      `确认预订「${homestay.value.title}」？\n入住日期：${form.value.date}\n晚数：${form.value.nights || 1}晚\n${selectedCoupon.value ? `优惠券：${selectedCoupon.value.name || selectedCoupon.value.couponName}\n优惠：-¥${couponDiscount.value}\n` : ''}总计：¥${finalPrice.value}`,
+      '确认预订',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+
+    const payload = {
+      bookingType: 3,
+      homestayId: homestay.value.id,
+      itemName: homestay.value.title,
+      date: form.value.date,
+      timeSlot: `${form.value.nights || 1}晚`,
+      quantity: form.value.nights || 1,
+      contactName: form.value.name,
+      contactPhone: form.value.phone,
+      notes: form.value.notes,
+      totalAmount: finalPrice.value,
+      unitPrice: homestay.value.price,
+      couponId: selectedCoupon.value?.id || null,
+      couponDiscount: couponDiscount.value
+    }
+
+    const res = await request.post('/culture/booking', payload)
+    if (res.code === 200) {
+      ElMessage.success('预订成功！我们会尽快与您联系确认详情')
+      setTimeout(() => {
+        router.push('/home/user/culture/bookings')
+      }, 1200)
+    } else {
+      ElMessage.error(res.message || '预订失败')
+    }
+  } catch {
+    // 用户取消
+  }
 }
+
+const loadDetail = async () => {
+  const id = route.params.id
+  if (!id) return
+  try {
+    const res = await request.get(`/culture/homestays/${id}`)
+    if (res.code === 200 && res.data) {
+      const data = res.data as any
+      homestay.value = {
+        id: data.id,
+        title: data.title,
+        location: data.location,
+        rating: data.rating || 0,
+        views: data.views || 0,
+        price: Number(data.price || 0),
+        roomType: data.roomType || '',
+        capacity: data.capacity || 0,
+        contactPhone: data.contactPhone || '',
+        summary: data.description || '',
+        features: normalizeArray(data.features),
+        amenities: normalizeArray(data.amenities),
+        highlightTags: normalizeArray(data.highlightTags),
+        highlights: data.highlights || '',
+        cover: data.cover || ''
+      }
+    } else {
+      ElMessage.error(res.message || '加载民宿详情失败')
+    }
+  } catch (error) {
+    console.error('加载民宿详情失败', error)
+    ElMessage.error('加载民宿详情失败')
+  }
+}
+
+const normalizeArray = (val: any) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  try {
+    const parsed = JSON.parse(val)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+onMounted(() => {
+  loadDetail()
+})
 </script>
 
 <style scoped lang="scss">

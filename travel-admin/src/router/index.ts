@@ -243,6 +243,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '确认订单', icon: 'Document' }
       },
       {
+        path: 'user/culture/center',
+        name: 'CultureCenter',
+        component: () => import('@/views/user/culture/center.vue'),
+        meta: { title: '我的文旅', icon: 'Shop' }
+      },
+      {
         path: 'user/culture/orders',
         name: 'CultureOrders',
         component: () => import('@/views/user/culture/orders.vue'),

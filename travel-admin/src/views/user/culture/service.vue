@@ -186,6 +186,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '@/utils/request'
 import BackButton from '@/components/BackButton.vue'
 import CouponSelector from '@/components/CouponSelector.vue'
 import {
@@ -202,92 +203,19 @@ const router = useRouter()
 
 // 服务详情数据
 const service = ref({
-  id: 1,
-  title: '云雾山庄农家乐',
-  badge: '政府推荐',
-  location: '重庆市巴南区云雾山',
-  rating: 4.8,
-  views: 1234,
-  contactPhone: '023-6688-1122',
-  description: '云雾山庄位于巴南区云雾山脚下，环境优美，空气清新。我们提供正宗的农家菜、采摘体验、垂钓娱乐等服务。这里远离城市喧嚣，是周末休闲、家庭聚会的理想之地。我们的食材全部来自自家农场，绿色健康，让您享受真正的田园生活。',
-  images: [
-    'https://picsum.photos/800/450?random=10',
-    'https://picsum.photos/800/450?random=11',
-    'https://picsum.photos/800/450?random=12',
-    'https://picsum.photos/800/450?random=13'
-  ],
-  features: [
-    '采摘体验',
-    '农家餐饮',
-    '垂钓',
-    '烧烤',
-    '儿童游乐区',
-    '停车场',
-    '免费WiFi',
-    '宠物友好'
-  ],
-  facilities: [
-    { icon: 'https://api.iconify.design/mdi:parking.svg?color=%230f172a', name: '免费停车' },
-    { icon: 'https://api.iconify.design/mdi:wifi.svg?color=%230f172a', name: '免费WiFi' },
-    { icon: 'https://api.iconify.design/mdi:silverware-fork-knife.svg?color=%230f172a', name: '农家餐厅' },
-    { icon: 'https://api.iconify.design/mdi:fish.svg?color=%230f172a', name: '垂钓池塘' },
-    { icon: 'https://api.iconify.design/mdi:pine-tree.svg?color=%230f172a', name: '采摘果园' },
-    { icon: 'https://api.iconify.design/mdi:home-variant.svg?color=%230f172a', name: '休息凉亭' },
-    { icon: 'https://api.iconify.design/mdi:gamepad-variant.svg?color=%230f172a', name: '儿童乐园' },
-    { icon: 'https://api.iconify.design/mdi:paw.svg?color=%230f172a', name: '宠物友好' }
-  ],
-  packages: [
-    {
-      id: 1,
-      name: '基础套餐',
-      price: 88,
-      unit: '人',
-      description: '包含农家午餐，采摘体验1小时',
-      includes: ['农家午餐', '采摘体验1小时', '茶水饮料']
-    },
-    {
-      id: 2,
-      name: '标准套餐',
-      price: 128,
-      unit: '人',
-      description: '包含午餐+晚餐，采摘+垂钓体验',
-      includes: ['农家午餐', '农家晚餐', '采摘体验2小时', '垂钓体验2小时', '烧烤食材']
-    },
-    {
-      id: 3,
-      name: '豪华套餐',
-      price: 198,
-      unit: '人',
-      description: '包含三餐，全天体验，住宿一晚',
-      includes: ['三餐', '采摘不限时', '垂钓不限时', '烧烤套餐', '住宿一晚', '早餐']
-    }
-  ],
-  reviews: [
-    {
-      id: 1,
-      userName: '周末游玩',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=11',
-      rating: 5,
-      date: '2024-10-21',
-      content: '非常棒的农家乐！环境优美，空气清新。农家菜味道正宗，孩子们在果园玩得很开心。老板热情好客，下次还会再来！'
-    },
-    {
-      id: 2,
-      userName: '家庭聚会',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=12',
-      rating: 5,
-      date: '2024-10-19',
-      content: '带着全家老小来的，大家都很满意。停车方便，设施齐全，食材新鲜。特别推荐烤全羊，太美味了！'
-    },
-    {
-      id: 3,
-      userName: '公司团建',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=13',
-      rating: 4,
-      date: '2024-10-15',
-      content: '公司团建选的这里，同事们都玩得很开心。采摘、垂钓、烧烤一条龙，很适合团建活动。性价比高！'
-    }
-  ]
+  id: null,
+  title: '',
+  badge: '',
+  location: '',
+  rating: 0,
+  views: 0,
+  contactPhone: '',
+  description: '',
+  images: [],
+  features: [],
+  facilities: [],
+  packages: [],
+  reviews: []
 })
 
 // 选中的套餐
@@ -364,24 +292,31 @@ const handleBooking = async () => {
       }
     )
 
-    // TODO: 调用后端API提交预订
-    console.log('预订信息:', {
+    const payload = {
+      bookingType: 2,
       serviceId: service.value.id,
       serviceName: service.value.title,
-      package: selectedPackage.value,
-      ...bookingForm.value,
-      totalPrice: totalPrice.value,
-      finalPrice: finalPrice.value,
+      packageId: selectedPackage.value.id,
+      packageName: selectedPackage.value.name,
+      quantity: bookingForm.value.quantity || 1,
+      contactName: bookingForm.value.contactName,
+      contactPhone: bookingForm.value.contactPhone,
+      notes: bookingForm.value.notes,
+      totalAmount: finalPrice.value,
+      unitPrice: selectedPackage.value.price,
       couponId: selectedCoupon.value?.id || null,
       couponDiscount: couponDiscount.value
-    })
+    }
 
-    ElMessage.success('预订成功！我们会尽快与您联系确认详情')
-    
-    // 2秒后跳转到预订列表
-    setTimeout(() => {
-      router.push('/home/user/culture/bookings')
-    }, 2000)
+    const res = await request.post('/culture/booking', payload)
+    if (res.code === 200) {
+      ElMessage.success('预订成功！我们会尽快与您联系确认详情')
+      setTimeout(() => {
+        router.push('/home/user/culture/bookings')
+      }, 1200)
+    } else {
+      ElMessage.error(res.message || '预订失败')
+    }
   } catch {
     // 用户取消
   }
@@ -390,14 +325,50 @@ const handleBooking = async () => {
 // 页面加载
 onMounted(() => {
   const id = route.params.id
-  console.log('加载服务详情，ID:', id)
-  // TODO: 根据ID从后端加载实际数据
-  
-  // 默认选中第一个套餐
-  if (service.value.packages.length > 0) {
-    selectedPackage.value = service.value.packages[0]
-  }
+  loadDetail(id)
 })
+
+const loadDetail = async (id) => {
+  try {
+    const res = await request.get(`/culture/services/${id}`)
+    if (res.code === 200 && res.data) {
+      const data = res.data
+      service.value = {
+        id: data.id,
+        title: data.title,
+        badge: data.badge || '',
+        location: data.location,
+        rating: data.rating || 0,
+        views: data.views || 0,
+        contactPhone: data.contactPhone || '',
+        description: data.description || '',
+        images: normalizeArray(data.images),
+        features: normalizeArray(data.features),
+        facilities: normalizeArray(data.facilities),
+        packages: Array.isArray(data.packages) ? data.packages : []
+      }
+      if (service.value.packages.length > 0) {
+        selectedPackage.value = service.value.packages[0]
+      }
+    } else {
+      ElMessage.error(res.message || '加载服务详情失败')
+    }
+  } catch (error) {
+    console.error('加载服务详情失败', error)
+    ElMessage.error('加载服务详情失败')
+  }
+}
+
+const normalizeArray = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  try {
+    const parsed = JSON.parse(val)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 </script>
 
 <style scoped lang="scss">

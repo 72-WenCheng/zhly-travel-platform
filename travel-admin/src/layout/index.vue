@@ -77,6 +77,10 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item command="culture">
+                  <el-icon><Shop /></el-icon>
+                  <span>我的文旅</span>
+                </el-dropdown-item>
                 <!-- 管理平台（/dashboard）不应该显示切换到用户端，因为管理员不应该访问用户平台 -->
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
@@ -144,6 +148,9 @@ const handleCommand = async (command: string) => {
     case 'profile':
       // 跳转到个人中心
       router.push('/dashboard/user/profile')
+      break
+    case 'culture':
+      router.push('/dashboard/user/culture/center')
       break
     case 'settings':
       // 跳转到系统设置

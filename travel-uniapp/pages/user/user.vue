@@ -114,6 +114,11 @@
 
     <!-- 其他功能 -->
     <view class="other-functions">
+      <view class="function-row" @click="goToOrders">
+        <text class="row-icon">🧾</text>
+        <text class="row-text">我的订单</text>
+        <text class="row-arrow">></text>
+      </view>
       <view class="function-row" @click="goToProfile">
         <text class="row-icon">👤</text>
         <text class="row-text">个人信息</text>
@@ -260,6 +265,17 @@ const goToMyHistory = () => {
   }
   uni.navigateTo({
     url: '/pages/user/history'
+  })
+}
+
+// 跳转到订单
+const goToOrders = () => {
+  if (!isLoggedIn.value) {
+    goToLogin()
+    return
+  }
+  uni.navigateTo({
+    url: '/pages/order/list'
   })
 }
 

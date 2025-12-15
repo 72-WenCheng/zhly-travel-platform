@@ -388,6 +388,29 @@ const formatCurrentTime = () => {
   return `${hours}:${minutes}:${seconds}`
 }
 
+const normalizeImages = (images: any): string[] => {
+  if (!images) return []
+  if (Array.isArray(images)) return images
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // ignore
+    }
+    return images.split(',').map((url: string) => url.trim()).filter(Boolean)
+  }
+  return []
+}
+
+const normalizeStatus = (status: any): string => {
+  if (typeof status === 'string') return status
+  if (status === 1) return 'active'
+  if (status === 2) return 'maintenance'
+  if (status === 0) return 'inactive'
+  return 'inactive'
+}
+
 // 获取状态名称
 const getStatusName = (status: string | number) => {
   if (typeof status === 'string') {
@@ -483,11 +506,35 @@ const loadServiceList = async () => {
     const result = await getExperienceList(params)
     
     if (result.code === 200 && result.data) {
-      serviceList.value = result.data.list || []
-      pagination.total = result.data.total || 0
+      const raw: any[] =
+        result.data.list ||
+        result.data.records ||
+        result.data.rows ||
+        []
+      serviceList.value = raw.map((item: any, idx: number) => ({
+        id: item.id ?? idx,
+        name: item.name || item.title || '',
+        categoryName: item.categoryName || item.category || '',
+        location: item.location || item.address || '',
+        price: item.price ?? 0,
+        duration: item.duration || '',
+        rating: item.rating ?? item.score ?? 0,
+        viewCount: item.viewCount ?? item.views ?? 0,
+        orderCount: item.orderCount ?? item.sales ?? 0,
+        status: normalizeStatus(item.status),
+        images: normalizeImages(item.images || item.cover || item.image),
+        description: item.description || '',
+        createTime: item.createTime || item.gmtCreate || item.createdAt || ''
+      }))
+      pagination.total =
+        result.data.total ||
+        result.data.count ||
+        result.data.totalCount ||
+        serviceList.value.length ||
+        0
       
       // 更新统计数据
-      updateStats(serviceList.value)
+      updateStats(serviceList.value as any)
     } else {
       ElMessage.error(result.message || '加载服务列表失败')
     }

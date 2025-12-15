@@ -196,6 +196,13 @@
                   {{ attractionDetail.ticketPrice === 0 || attractionDetail.ticketPrice === '0' ? '免费' : `¥${attractionDetail.ticketPrice}` }}
                 </span>
               </div>
+            <div class="ticket-action">
+              <div class="quantity">
+                <span>数量：</span>
+                <el-input-number v-model="orderQuantity" :min="1" :max="10" size="small" />
+              </div>
+              <el-button type="primary" @click="handleBuyTicket">立即购票</el-button>
+            </div>
             </div>
           </el-card>
 
@@ -381,7 +388,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import {
   Location,
   Clock,
@@ -420,6 +427,7 @@ const { userPlatformName } = storeToRefs(systemStore);
 const attractionId = ref(parseInt(route.params.id));
 const loading = ref(false);
 const attractionDetail = ref({});
+const orderQuantity = ref(1);
 const nearbyAttractions = ref([]);
 const relatedPlans = ref([]);
 const ratingSummary = ref({
@@ -594,6 +602,42 @@ const handleRatingChange = async (value: number) => {
     ElMessage.error(error?.message || '评分失败，请稍后重试');
   } finally {
     ratingSubmitting.value = false;
+  }
+};
+
+// 购票下单
+const handleBuyTicket = async () => {
+  const qty = orderQuantity.value || 1;
+  if (qty <= 0) {
+    ElMessage.warning('请输入正确的购票数量');
+    return;
+  }
+  const price = Number(attractionDetail.value.ticketPrice || 0);
+  const total = price * qty;
+  try {
+    await ElMessageBox.confirm(
+      `确认购买「${attractionDetail.value.name || '景点'}」门票？\n数量：${qty}\n总计：¥${total}`,
+      '确认购票',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+    );
+    const payload = {
+      productId: attractionDetail.value.id,
+      productType: 1, // 作为商品/门票下单
+      productName: attractionDetail.value.name,
+      productImage: attractionImages.value[0],
+      productPrice: price,
+      quantity: qty,
+      totalAmount: total,
+      finalAmount: total
+    };
+    const res = await request.post('/culture/order', payload);
+    if (res.code === 200) {
+      ElMessage.success('下单成功！');
+    } else {
+      ElMessage.error(res.message || '下单失败');
+    }
+  } catch {
+    // 用户取消
   }
 };
 

@@ -25,6 +25,10 @@
           <el-icon><Plus /></el-icon>
           新增优惠券
         </el-button>
+        <el-button type="success" class="action-btn" @click="openGrantDialog">
+          <el-icon><Tickets /></el-icon>
+          发放给用户
+        </el-button>
       </div>
     </div>
 
@@ -407,6 +411,55 @@
         <el-button type="primary" @click="confirmSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 发放优惠券对话框 -->
+    <el-dialog
+      v-model="grantDialogVisible"
+      title="发放优惠券给用户"
+      width="520px"
+    >
+      <el-form :model="grantForm" label-width="120px">
+        <el-form-item label="目标用户ID">
+          <el-input
+            v-model="grantForm.userId"
+            placeholder="请输入用户ID"
+            type="number"
+          />
+        </el-form-item>
+        <el-form-item label="选择优惠券">
+          <el-select
+            v-model="grantForm.couponId"
+            placeholder="请选择优惠券"
+            filterable
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="item in couponList"
+              :key="item.id"
+              :label="`${item.name}（满${item.minAmount}减${item.discountValue}）`"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="有效天数(可选)">
+          <el-input
+            v-model="grantForm.validDays"
+            placeholder="留空使用券默认有效期"
+            type="number"
+          />
+        </el-form-item>
+        <el-form-item label="来源说明">
+          <el-input
+            v-model="grantForm.sourceDesc"
+            placeholder="如：客服补偿、活动奖励"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="grantDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="grantLoading" @click="submitGrant">确认发放</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -426,7 +479,8 @@ import {
   Money,
   Refresh,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Tickets as Present
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
@@ -465,6 +519,16 @@ const dialogVisible = ref(false)
 const dialogTitle = computed(() => (couponForm.id ? '编辑优惠券' : '新增优惠券'))
 const formRef = ref<FormInstance>()
 const validType = ref('days')
+
+// 发放对话框
+const grantDialogVisible = ref(false)
+const grantLoading = ref(false)
+const grantForm = reactive({
+  userId: '',
+  couponId: null as number | null,
+  validDays: '',
+  sourceDesc: ''
+})
 
 // 翻页跳转
 const pageJump = ref<number | null>(null)
@@ -826,6 +890,38 @@ const resetForm = () => {
   couponForm.description = ''
   validType.value = 'days'
   timeRange.value = null
+}
+
+// 打开发放弹窗
+const openGrantDialog = () => {
+  grantDialogVisible.value = true
+}
+
+// 提交发放
+const submitGrant = async () => {
+  if (!grantForm.userId || !grantForm.couponId) {
+    ElMessage.warning('请填写用户ID并选择优惠券')
+    return
+  }
+  grantLoading.value = true
+  try {
+    const res = await request.post('/admin/user/coupon/grant', {
+      userId: grantForm.userId,
+      couponId: grantForm.couponId,
+      validDays: grantForm.validDays || undefined,
+      sourceDesc: grantForm.sourceDesc || '管理端发放'
+    })
+    if (res.code === 200) {
+      ElMessage.success('发放成功')
+      grantDialogVisible.value = false
+    } else {
+      ElMessage.error(res.message || '发放失败')
+    }
+  } catch (error) {
+    ElMessage.error('发放失败，请重试')
+  } finally {
+    grantLoading.value = false
+  }
 }
 
 // 分页变化

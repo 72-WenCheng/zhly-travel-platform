@@ -299,94 +299,41 @@ import {
   Brush,
   Present
 } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
 
 const product = ref({
-  id: 1,
-  name: '云雾绿茶礼盒',
-  category: '农特产品 / 茶叶',
-  price: 168,
-  unit: '/盒',
-  sales: 1560,
-  stock: 320,
-  viewCount: 3086,
-  rating: 4.8,
-  reviewCount: 86,
-  certified: true,
-  origin: '重庆市忠县',
-  shelfLife: '18个月',
-  shippingDesc: '全场满99免邮',
-  badges: ['手工制茶', '当季新茶'],
-  tags: ['高山茶园', '原产地发货', '可定制伴手礼'],
-  mainImage: 'https://picsum.photos/800/600?random=501',
-  images: [
-    'https://picsum.photos/800/600?random=501',
-    'https://picsum.photos/800/600?random=502',
-    'https://picsum.photos/800/600?random=503',
-    'https://picsum.photos/800/600?random=504',
-    'https://picsum.photos/800/600?random=505'
-  ],
-  description:
-    '精选重庆高山云雾茶园春茶嫩芽，经传统手工工艺杀青、揉捻、干燥而成。茶汤清透翠绿，香气清扬持久，滋味鲜爽回甘。礼盒包装大方雅致，送礼自饮皆宜。',
-  features: [
-    { icon: Medal, title: '高山云雾', description: '海拔900米云雾茶园，昼夜温差大，香气更足' },
-    { icon: Brush, title: '手工采摘', description: '一芽一叶，人工精选，确保芽叶完整' },
-    { icon: Discount, title: '地理标志', description: '获得地理标志认证，品质有保障' },
-    { icon: Present, title: '礼盒定制', description: '支持企业/团体定制专属包装与贺卡' }
-  ],
-  specifications: [
-    { label: '产品名称', value: '云雾绿茶礼盒' },
-    { label: '净含量', value: '250g/盒' },
-    { label: '等级', value: '特级' },
-    { label: '产地', value: '重庆忠县' },
-    { label: '采摘时间', value: '清明前' },
-    { label: '加工工艺', value: '手工杀青/低温烘焙' },
-    { label: '包装', value: '礼盒装（含礼袋）' },
-    { label: '贮存方式', value: '密封、避光、干燥、低温' }
-  ],
-  traceability: [
-    { time: '2024-03-18', title: '春茶开采', detail: '早春头采，人工采摘单芽' },
-    { time: '2024-03-19', title: '工艺制作', detail: '杀青、揉捻、理条、烘焙，全程低温锁香' },
-    { time: '2024-03-21', title: '质检入库', detail: '通过农残、重金属检测，批次编号CQ-0321' },
-    { time: '2024-03-22', title: '包装发货', detail: '恒温仓储，48小时内发出' }
-  ],
-  availableSpecs: [
-    { label: '250g 礼盒装', value: '250g' },
-    { label: '500g 礼盒装', value: '500g' },
-    { label: '1000g 商务礼盒', value: '1000g' }
-  ],
-  reviews: [
-    {
-      id: 1,
-      userName: '茶友A',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tea1',
-      rating: 5,
-      date: '2024-10-12',
-      content: '茶香很纯正，回甘快，礼盒质感也很高级，客户很喜欢。'
-    },
-    {
-      id: 2,
-      userName: '山城旅人',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tea2',
-      rating: 4.5,
-      date: '2024-10-05',
-      content: '包装完好，茶叶很新鲜，冲泡三泡后依然有香气。'
-    },
-    {
-      id: 3,
-      userName: '茶语者',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tea3',
-      rating: 5,
-      date: '2024-09-21',
-      content: '下单第二天就收到，客服还帮忙印了定制贺卡，体验不错。'
-    }
-  ]
+  id: null,
+  name: '',
+  category: '',
+  price: 0,
+  unit: '',
+  sales: 0,
+  stock: 0,
+  viewCount: 0,
+  rating: 0,
+  reviewCount: 0,
+  certified: false,
+  origin: '',
+  shelfLife: '',
+  shippingDesc: '',
+  badges: [] as string[],
+  tags: [] as string[],
+  mainImage: '',
+  images: [] as string[],
+  description: '',
+  features: [] as any[],
+  specifications: [] as any[],
+  traceability: [] as any[],
+  availableSpecs: [] as any[],
+  reviews: [] as any[],
+  productType: 4 // 4=特产/商品
 })
 
 const purchaseForm = ref({
-  specification: '250g',
+  specification: '',
   quantity: 1,
   address: '',
   notes: ''
@@ -397,13 +344,7 @@ const selectedCoupon = ref(null)
 
 // 计算商品总价
 const goodsTotal = computed(() => {
-  let base = product.value.price
-  const spec = purchaseForm.value.specification
-
-  if (spec === '500g') base = product.value.price * 1.9
-  if (spec === '1000g') base = product.value.price * 3.6
-
-  return Math.round(base * purchaseForm.value.quantity)
+  return (product.value.price || 0) * (purchaseForm.value.quantity || 1)
 })
 
 // 计算总价（兼容旧代码）
@@ -430,37 +371,46 @@ const handleCouponChange = (coupon: any) => {
 }
 
 const addToCart = () => {
-  const cartItem = {
-    productId: product.value.id,
-    name: product.value.name,
-    image: product.value.mainImage,
-    price: product.value.price,
-    specification: purchaseForm.value.specification,
-    quantity: purchaseForm.value.quantity
-  }
-
-  console.log('加入购物车', cartItem)
-  ElMessage.success('已加入购物车')
+  ElMessage.success('已加入购物车（示例，未落库）')
 }
 
-const buyNow = () => {
+const buyNow = async () => {
   if (!validateForm()) return
 
-  const orderItem = {
-    productId: product.value.id,
-    name: product.value.name,
-    image: product.value.mainImage,
-    price: product.value.price,
-    specification: purchaseForm.value.specification,
-    quantity: purchaseForm.value.quantity,
-    address: purchaseForm.value.address,
-    notes: purchaseForm.value.notes
-  }
+  try {
+    await ElMessageBox.confirm(
+      `确认下单「${product.value.name}」？\n规格：${purchaseForm.value.specification}\n数量：${purchaseForm.value.quantity}\n${selectedCoupon.value ? `优惠券：${selectedCoupon.value.name || selectedCoupon.value.couponName}\n优惠：-¥${couponDiscount.value}\n` : ''}总计：¥${finalPrice.value}`,
+      '确认下单',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+    )
 
-  router.push({
-    path: '/home/user/culture/order',
-    query: { items: JSON.stringify([orderItem]) }
-  })
+    const payload = {
+      productId: product.value.id,
+      productType: product.value.productType || 4,
+      productName: product.value.name,
+      productImage: product.value.mainImage,
+      productPrice: product.value.price,
+      quantity: purchaseForm.value.quantity,
+      specification: purchaseForm.value.specification,
+      address: purchaseForm.value.address,
+      buyerMessage: purchaseForm.value.notes,
+      couponId: selectedCoupon.value?.id || null,
+      couponDiscount: couponDiscount.value,
+      totalAmount: totalPrice.value,
+      finalAmount: finalPrice.value,
+      shippingFee: shippingFee.value
+    }
+
+    const res = await request.post('/culture/order', payload)
+    if (res.code === 200) {
+      ElMessage.success('下单成功！')
+      // TODO: 跳转订单列表/详情
+    } else {
+      ElMessage.error(res.message || '下单失败')
+    }
+  } catch {
+    // 用户取消
+  }
 }
 
 const validateForm = () => {
@@ -468,13 +418,78 @@ const validateForm = () => {
     ElMessage.warning('请填写收货地址')
     return false
   }
+  if (!purchaseForm.value.specification) {
+    ElMessage.warning('请选择规格')
+    return false
+  }
   return true
 }
 
-onMounted(() => {
+const loadDetail = async () => {
   const id = route.params.id
-  console.log('加载农特产品详情，ID:', id)
-  // TODO: 通过ID请求后端获取真实数据
+  if (!id) return
+  try {
+    const res = await request.get(`/culture/products/${id}`)
+    if (res.code === 200 && res.data) {
+      const data = res.data as any
+      const imgs = normalizeArray(data.images)
+      product.value = {
+        id: data.id,
+        name: data.productName || data.name || '',
+        category: data.category || '',
+        price: Number(data.price || 0),
+        unit: data.unit || '',
+        sales: data.salesCount || 0,
+        stock: data.stock ?? 0,
+        viewCount: data.viewCount || data.reviewCount || 0,
+        rating: data.rating || 0,
+        reviewCount: data.reviewCount || 0,
+        certified: false,
+        origin: data.origin || '',
+        shelfLife: data.shelfLife || '',
+        shippingDesc: data.shippingDesc || '',
+        badges: data.badge ? [data.badge] : [],
+        tags: normalizeArray(data.tags || data.features || []),
+        mainImage: imgs[0] || '',
+        images: imgs,
+        description: data.description || data.summary || '',
+        features: [],
+        specifications: normalizeArray(data.specifications).map((s: any) => {
+          if (typeof s === 'string') return { label: s, value: '' }
+          return s
+        }),
+        traceability: [],
+        availableSpecs: normalizeArray(data.availableSpecs).length
+          ? normalizeArray(data.availableSpecs)
+          : [{ label: data.unit || '默认规格', value: data.unit || 'default' }],
+        reviews: [],
+        productType: data.productType || 4
+      }
+      if (!purchaseForm.value.specification && product.value.availableSpecs.length > 0) {
+        purchaseForm.value.specification = product.value.availableSpecs[0].value
+      }
+    } else {
+      ElMessage.error(res.message || '加载商品详情失败')
+    }
+  } catch (error) {
+    console.error('加载商品详情失败', error)
+    ElMessage.error('加载商品详情失败')
+  }
+}
+
+const normalizeArray = (val: any) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  try {
+    const parsed = JSON.parse(val)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+onMounted(() => {
+  loadDetail()
 })
 </script>
 

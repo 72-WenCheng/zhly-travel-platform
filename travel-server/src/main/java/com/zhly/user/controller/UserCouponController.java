@@ -5,11 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhly.common.R;
 import com.zhly.entity.UserCoupon;
 import com.zhly.mapper.UserCouponMapper;
+import com.zhly.security.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,10 +23,11 @@ import java.util.Map;
 @Tag(name = "用户端-优惠券管理")
 @RestController
 @RequestMapping("/api/user/coupon")
+@lombok.RequiredArgsConstructor
 public class UserCouponController {
     
-    @Autowired
-    private UserCouponMapper userCouponMapper;
+    private final UserCouponMapper userCouponMapper;
+    private final SecurityUtils securityUtils;
     
     /**
      * 获取我的优惠券列表
@@ -34,11 +35,15 @@ public class UserCouponController {
     @Operation(summary = "获取我的优惠券列表")
     @GetMapping("/list")
     public R<Map<String, Object>> getMyCoupons(
-            @RequestParam Long userId,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            HttpServletRequest request) {
         try {
+            Long userId = securityUtils.getLoginUserId(request);
+            if (userId == null) {
+                return R.unauthorized("未登录或Token无效");
+            }
             Page<UserCoupon> pageObj = new Page<>(page, size);
             QueryWrapper<UserCoupon> wrapper = new QueryWrapper<>();
             wrapper.eq("user_id", userId);
@@ -71,9 +76,13 @@ public class UserCouponController {
     @Operation(summary = "获取可用优惠券列表")
     @GetMapping("/available")
     public R<Map<String, Object>> getAvailableCoupons(
-            @RequestParam Long userId,
-            @RequestParam(required = false) java.math.BigDecimal orderAmount) {
+            @RequestParam(required = false) java.math.BigDecimal orderAmount,
+            HttpServletRequest request) {
         try {
+            Long userId = securityUtils.getLoginUserId(request);
+            if (userId == null) {
+                return R.unauthorized("未登录或Token无效");
+            }
             QueryWrapper<UserCoupon> wrapper = new QueryWrapper<>();
             wrapper.eq("user_id", userId)
                    .eq("status", 1) // 1-未使用
@@ -81,7 +90,7 @@ public class UserCouponController {
             
             if (orderAmount != null) {
                 // 如果提供了订单金额，只返回满足最低使用金额的优惠券
-                wrapper.ge("min_amount", orderAmount);
+                wrapper.le("min_amount", orderAmount);
             }
             
             wrapper.orderByAsc("valid_end_time"); // 按有效期升序，优先显示快过期的
@@ -102,8 +111,12 @@ public class UserCouponController {
      */
     @Operation(summary = "获取优惠券统计信息")
     @GetMapping("/stats")
-    public R<Map<String, Object>> getCouponStats(@RequestParam Long userId) {
+    public R<Map<String, Object>> getCouponStats(HttpServletRequest request) {
         try {
+            Long userId = securityUtils.getLoginUserId(request);
+            if (userId == null) {
+                return R.unauthorized("未登录或Token无效");
+            }
             // 更新过期状态
             updateExpiredCoupons(userId);
             

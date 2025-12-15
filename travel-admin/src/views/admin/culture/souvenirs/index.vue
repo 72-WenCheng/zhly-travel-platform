@@ -508,11 +508,37 @@ const loadProductList = async () => {
     const result = await getAdminAttractionList(params)
     
     if (result.code === 200 && result.data) {
-      productList.value = result.data.list || []
-      pagination.total = result.data.total || 0
+      const raw: any[] =
+        result.data.list ||
+        result.data.records ||
+        result.data.rows ||
+        []
+      productList.value = raw.map((item: any, idx: number) => ({
+        id: item.id ?? idx,
+        name: item.name || item.title || '',
+        city: item.city || item.origin || '',
+        province: item.province || '',
+        badge: item.badge || item.tag || '',
+        type: item.type ?? item.category ?? 0,
+        address: item.address || item.location || '',
+        ticketPrice: item.ticketPrice ?? item.price ?? 0,
+        rating: item.rating ?? item.score ?? 0,
+        viewCount: item.viewCount ?? item.views ?? 0,
+        collectCount: item.collectCount ?? item.favorites ?? 0,
+        status: item.status ?? 1,
+        images: item.images || item.image || item.coverImage || [],
+        description: item.description || '',
+        createTime: item.createTime || item.gmtCreate || item.createdAt || ''
+      }))
+      pagination.total =
+        result.data.total ||
+        result.data.count ||
+        result.data.totalCount ||
+        productList.value.length ||
+        0
       
       // 更新统计数据
-      updateStats(productList.value)
+      updateStats(productList.value as any)
     } else {
       ElMessage.error(result.message || '加载产品列表失败')
     }
