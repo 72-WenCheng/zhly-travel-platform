@@ -126,22 +126,23 @@
         </el-divider>
         
         <el-form-item label="产品特点" prop="features">
-          <div v-for="(feature, index) in formData.features" :key="index" class="feature-item">
-            <el-input
-              v-model="formData.features[index]"
-              placeholder="请输入产品特点"
-              style="margin-bottom: 8px;"
-            >
-              <template #append>
-                <el-button @click="removeFeature(index)" :icon="Delete" />
-              </template>
-            </el-input>
-          </div>
-          <el-button type="primary" text @click="addFeature" style="width: 100%;">
-            <el-icon><Plus /></el-icon>
-            添加特点
-          </el-button>
-          <div class="form-tip">每个特点一行，如：国家地理标志产品、有机种植等</div>
+          <el-select
+            v-model="formData.features"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            placeholder="请选择或输入产品特点"
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="item in featureOptions"
+              :key="item"
+              :label="item"
+              :value="item"
+            />
+          </el-select>
+          <div class="form-tip">支持多选，也可手动输入新的特点。如：国家地理标志产品、有机种植等</div>
         </el-form-item>
 
         <!-- 规格参数 -->
@@ -154,10 +155,21 @@
           <div v-for="(spec, index) in formData.specifications" :key="index" class="spec-item">
             <el-row :gutter="10">
               <el-col :span="10">
-                <el-input
+                <el-select
                   v-model="formData.specifications[index].label"
-                  placeholder="参数名称，如：产品名称"
-                />
+                  placeholder="请选择参数名称"
+                  filterable
+                  allow-create
+                  default-first-option
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="item in specLabelOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
+                </el-select>
               </el-col>
               <el-col :span="12">
                 <el-input
@@ -174,7 +186,62 @@
             <el-icon><Plus /></el-icon>
             添加规格参数
           </el-button>
-          <div class="form-tip">如：产品名称、产地、等级、净含量、保质期等</div>
+          <div class="form-tip">参数名称支持下拉选择或自定义，如：产品名称、产地、净含量、保质期等</div>
+        </el-form-item>
+
+        <!-- 购买规格配置 -->
+        <el-divider content-position="left">
+          <el-icon><Document /></el-icon>
+          购买规格（右侧购买表单用）
+        </el-divider>
+        
+        <el-form-item label="购买规格" prop="purchaseSpecs">
+          <div v-for="(spec, index) in formData.purchaseSpecs" :key="index" class="spec-item">
+            <el-row :gutter="10">
+              <el-col :span="10">
+                <el-select
+                  v-model="formData.purchaseSpecs[index].label"
+                  placeholder="请选择规格名称"
+                  filterable
+                  allow-create
+                  default-first-option
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="item in purchaseSpecOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-input
+                  v-model="formData.purchaseSpecs[index].value"
+                  placeholder="规格值，如：250g，或与名称一致"
+                />
+              </el-col>
+              <el-col :span="4">
+                <el-input-number
+                  v-model="formData.purchaseSpecs[index].price"
+                  :min="0"
+                  :precision="2"
+                  placeholder="单价"
+                  style="width: 100%;"
+                />
+              </el-col>
+              <el-col :span="2">
+                <el-button @click="formData.purchaseSpecs.splice(index, 1)" :icon="Delete" />
+              </el-col>
+            </el-row>
+          </div>
+          <el-button type="primary" text @click="formData.purchaseSpecs.push({ label: '', value: '', price: formData.price || 0 })" style="width: 100%; margin-top: 8px;">
+            <el-icon><Plus /></el-icon>
+            添加购买规格
+          </el-button>
+          <div class="form-tip">
+            这里配置前台右侧购买区域的规格和对应单价；如果不配置，则默认只有一个规格，使用上面的基础价格。
+          </div>
         </el-form-item>
 
         <!-- 状态设置 -->
@@ -223,9 +290,47 @@ const imageList = ref<UploadFiles>([])
 const dialogVisible = ref(false)
 const dialogImageUrl = ref('')
 
-const commonTags = [
-  '地理标志', '官方认证', '特色产品', '地方特产', '手工制作',
-  '传统工艺', '有机产品', '绿色食品', '原生态', '品质保证'
+// 产品特点预设选项
+const featureOptions = [
+  '国家地理标志产品',
+  '官方认证',
+  '地方特色产品',
+  '传统手工制作',
+  '有机种植',
+  '绿色食品',
+  '无添加防腐剂',
+  '原生态原产地直供',
+  '限量发售',
+  '非遗工艺',
+  '获奖产品',
+  '品质保证'
+]
+
+// 规格参数名称预设选项
+const specLabelOptions = [
+  '产品名称',
+  '产地',
+  '净含量',
+  '包装规格',
+  '保质期',
+  '生产日期',
+  '贮存条件',
+  '执行标准',
+  '配料',
+  '等级',
+  '生产许可证号',
+  '生产厂家'
+]
+
+// 购买规格预设选项
+const purchaseSpecOptions = [
+  '250g 礼盒装',
+  '500g 礼盒装',
+  '1000g 礼盒装',
+  '单件装',
+  '两件装',
+  '家庭装',
+  '礼盒装'
 ]
 
 const formData = reactive<any>({
@@ -240,6 +345,8 @@ const formData = reactive<any>({
   mainImage: '',
   features: [],
   specifications: [],
+  // 购买规格配置：[{ label, value, price }]
+  purchaseSpecs: [],
   rating: 0,
   status: 1
 })
@@ -305,24 +412,39 @@ const loadSouvenirData = async (id: number) => {
       const souvenir = result.data
       Object.assign(formData, {
         name: souvenir.name || '',
+        // 标签与官方认证从后端字段直接回显
         badge: souvenir.badge || '',
-        certified: souvenir.certified || false,
-        price: souvenir.price || souvenir.ticketPrice || 0,
+        certified: !!souvenir.certified,
+        // 价格：统一读取后端 ticketPrice
+        price: souvenir.ticketPrice || 0,
         unit: souvenir.unit || '/盒',
-        origin: souvenir.origin || souvenir.city || '',
+        // 产地：优先 city，其次 province + city，最后 address
+        origin: souvenir.city || [souvenir.province, souvenir.city].filter(Boolean).join('') || souvenir.address || '',
         description: souvenir.description || '',
         rating: souvenir.rating || 0,
-        features: Array.isArray(souvenir.features) ? souvenir.features : 
-                 (souvenir.features ? souvenir.features.split('\n').filter((f: string) => f.trim()) : []),
-        specifications: Array.isArray(souvenir.specifications) ? souvenir.specifications : 
-                       (souvenir.specifications ? JSON.parse(souvenir.specifications) : []),
+        features: Array.isArray(souvenir.features)
+          ? souvenir.features
+          : (souvenir.features ? souvenir.features.split('\n').filter((f: string) => f.trim()) : []),
+        specifications: Array.isArray(souvenir.specifications)
+          ? souvenir.specifications
+          : (souvenir.specifications ? JSON.parse(souvenir.specifications) : []),
+        // 购买规格配置
+        purchaseSpecs: (() => {
+          if (!souvenir.sellSpecs) return []
+          try {
+            const parsed = JSON.parse(souvenir.sellSpecs)
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return []
+          }
+        })(),
         status: souvenir.status !== undefined ? souvenir.status : 1
       })
       
-      // 处理图片列表
+      // 处理图片列表，去重防止每次编辑叠加一张
       const images: string[] = []
-      if (souvenir.mainImage) images.push(souvenir.mainImage)
       if (souvenir.coverImage) images.push(souvenir.coverImage)
+      if (souvenir.mainImage) images.push(souvenir.mainImage)
       if (souvenir.image) images.push(souvenir.image)
       if (souvenir.images) {
         if (Array.isArray(souvenir.images)) {
@@ -340,16 +462,18 @@ const loadSouvenirData = async (id: number) => {
           }
         }
       }
+
+      const uniqueImages = Array.from(new Set(images.filter((u: string) => !!u)))
       
-      if (images.length > 0) {
-        imageList.value = images.map((url: string, index: number) => ({
+      if (uniqueImages.length > 0) {
+        imageList.value = uniqueImages.map((url: string, index: number) => ({
           uid: index,
           name: `image-${index}`,
           url: url,
           status: 'success'
         }))
-        formData.mainImage = images[0]
-        formData.images = images
+        formData.mainImage = uniqueImages[0]
+        formData.images = uniqueImages
       }
     } else {
       ElMessage.error('加载产品数据失败')
@@ -473,7 +597,6 @@ const resetForm = () => {
     features: [],
     specifications: [],
     rating: 0,
-    features: '',
     status: 1
   })
   imageList.value = []
@@ -500,16 +623,31 @@ const handleSubmit = async () => {
         // 构建提交数据
         const submitData: any = { 
           name: formData.name,
-          badge: formData.badge || undefined,
-          certified: formData.certified || false,
-          price: formData.price || 0,
+          // 标签与官方认证直接对应后端字段
+          badge: formData.badge || null,
+          certified: formData.certified ? 1 : 0,
           unit: formData.unit || '/盒',
-          origin: formData.origin || '',
           description: formData.description || '',
-          images: formData.images || [],
-          mainImage: formData.mainImage || (formData.images && formData.images.length > 0 ? formData.images[0] : undefined),
-          features: Array.isArray(formData.features) ? formData.features : [],
-          specifications: Array.isArray(formData.specifications) ? formData.specifications : [],
+          // 售价映射到后端 ticketPrice 字段
+          ticketPrice: formData.price || 0,
+          // 产地映射到 city / address，便于用户端展示
+          city: formData.origin || '',
+          address: formData.origin || '',
+          // 后端 images 字段是 String，这里统一存成 JSON 字符串
+          images: formData.images && formData.images.length > 0 ? JSON.stringify(formData.images) : null,
+          coverImage: formData.mainImage || (formData.images && formData.images.length > 0 ? formData.images[0] : undefined),
+          // features 字段后端是 String，用换行符拼接
+          features: Array.isArray(formData.features) ? formData.features.join('\n') : (formData.features || ''),
+          // 规格参数同样存成 JSON 字符串，保存到新增的 specifications 字段
+          specifications: Array.isArray(formData.specifications) && formData.specifications.length > 0
+            ? JSON.stringify(formData.specifications)
+            : null,
+          // 购买规格配置存入 sellSpecs 字段
+          sellSpecs: Array.isArray(formData.purchaseSpecs) && formData.purchaseSpecs.length > 0
+            ? JSON.stringify(formData.purchaseSpecs)
+            : null,
+          // 类型：为区分景点与特色周边，这里固定使用一个类型值（如 8 = 购物娱乐/周边）
+          type: 8,
           rating: formData.rating || 0,
           status: formData.status || 1
         }

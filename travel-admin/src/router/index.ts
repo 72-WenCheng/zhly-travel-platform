@@ -267,6 +267,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '我的预订', icon: 'Calendar' }
       },
       {
+        path: 'user/culture/booking-pay/:id',
+        name: 'CultureBookingPay',
+        component: () => import('@/views/user/culture/bookingPay.vue'),
+        meta: { title: '预订支付', icon: 'Wallet' }
+      },
+      {
         path: 'user/culture/applications',
         name: 'CultureApplications',
         component: () => import('@/views/user/culture/applications.vue'),
@@ -277,6 +283,12 @@ const routes: RouteRecordRaw[] = [
         name: 'UserCoupons',
         component: () => import('@/views/user/coupons/index.vue'),
         meta: { title: '我的优惠券', icon: 'Ticket' }
+      },
+      {
+        path: 'user/addresses',
+        name: 'UserAddresses',
+        component: () => import('@/views/user/address/index.vue'),
+        meta: { title: '我的地址', icon: 'Location' }
       },
       // 用户端详情页路由
       {

@@ -242,7 +242,8 @@
                 <el-tag :type="row.serviceType === 'farmstay' ? 'success' : 'primary'" size="small">
                   {{ row.serviceType === 'farmstay' ? '农家乐' : '民宿' }}
                 </el-tag>
-                <div class="package-name" v-if="row.packageName">
+                <!-- 只有农家乐才有套餐 -->
+                <div class="package-name" v-if="row.serviceType === 'farmstay' && row.packageName">
                   套餐：{{ row.packageName }}
                 </div>
               </div>
@@ -253,8 +254,8 @@
           <template #default="{ row }">
             <div class="booking-info">
               <div v-if="row.serviceType === 'homestay'">
-                <div>入住：{{ row.checkInDate }}</div>
-                <div>晚数：{{ row.nights }}晚</div>
+                <div>入住：{{ row.checkInDate || row.bookingDate }}</div>
+                <div>晚数：{{ getRowNights(row) ?? '-' }}晚</div>
               </div>
               <div v-else>
                 <div>日期：{{ row.bookingDate }}</div>
@@ -317,7 +318,7 @@
                 完成
               </el-button>
               <el-button
-                v-if="row.status === 1 || row.status === 2"
+                v-if="(row.status === 1 || row.status === 2) && row.paymentStatus === 1"
                 type="danger"
                 size="small"
                 text
@@ -467,7 +468,7 @@ const filters = reactive({
 })
 
 // 预订列表
-const bookingList = ref([])
+const bookingList = ref<any[]>([])
 const loading = ref(false)
 
 // 统计数据
@@ -623,15 +624,80 @@ const handleReset = () => {
   loadBookings()
 }
 
+// 安全解析图片字段（可能是 JSON 数组 / 字符串）
+const safeParseImages = (val: any): string[] => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      if (Array.isArray(parsed)) return parsed
+      return [val]
+    } catch {
+      return [val]
+    }
+  }
+  return []
+}
+
+// 本地模拟“已支付”的预订 ID（与用户端保持一致，仅开发联调阶段使用）
+const MOCK_PAID_KEY = 'mock_paid_bookings'
+const getMockPaidIds = (): number[] => {
+  try {
+    const raw = localStorage.getItem(MOCK_PAID_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+// 根据字段智能推断服务类型（后端部分数据可能未返回 serviceType）
+const inferServiceType = (record: any): 'farmstay' | 'homestay' => {
+  const st = record.serviceType || record.service_type
+  if (st === 'farmstay' || st === 'homestay') {
+    return st
+  }
+
+  // 有入住日期/晚数，一般为民宿
+  if (record.checkInDate || record.nights) {
+    return 'homestay'
+  }
+
+  // timeSlot 中包含“晚”的，也按民宿处理（兼容早期数据）
+  if (typeof record.timeSlot === 'string' && record.timeSlot.includes('晚')) {
+    return 'homestay'
+  }
+
+  // bookingTime 中包含“晚”的，也按民宿处理（后端常用字段）
+  if (typeof record.bookingTime === 'string' && record.bookingTime.includes('晚')) {
+    return 'homestay'
+  }
+
+  // 默认按农家乐处理
+  return 'farmstay'
+}
+
+const getRowNights = (row: any): number | null => {
+  if (row.nights != null) return Number(row.nights)
+  const src = row.bookingTime || row.timeSlot
+  if (typeof src === 'string') {
+    const m = src.match(/(\d+)\s*晚/)
+    if (m && m[1]) return Number(m[1])
+  }
+  return null
+}
+
 // 加载预订列表
 const loadBookings = async () => {
   loading.value = true
   try {
     const params: any = {
       page: pagination.page,
-      size: pagination.size,
-      bookingType: 2 // 只查询农家乐和民宿的预订
+      size: pagination.size
     }
+    // 农家乐/民宿通过 bookingType 区分：2=农家乐，3=民宿
+    if (filters.serviceType === 'farmstay') params.bookingType = 2
+    if (filters.serviceType === 'homestay') params.bookingType = 3
     if (filters.bookingNo) params.bookingNo = filters.bookingNo
     if (filters.serviceType) params.serviceType = filters.serviceType
     if (filters.status) params.status = filters.status
@@ -645,7 +711,23 @@ const loadBookings = async () => {
     
     const res = await request.get('/admin/culture/booking/page', { params })
     if (res.code === 200) {
-      bookingList.value = res.data.records || []
+      const records = Array.isArray(res.data.records) ? res.data.records : []
+      const mockPaidIds = getMockPaidIds()
+
+      bookingList.value = records.map((b: any) => {
+        const images = safeParseImages(b.serviceImage || b.itemImage)
+        const serviceType =
+          b.bookingType === 3 ? 'homestay' : (b.bookingType === 2 ? 'farmstay' : inferServiceType(b))
+        const isMockPaid = mockPaidIds.includes(b.id)
+
+        return {
+          ...b,
+          serviceType,
+          serviceImage: images[0] || 'https://picsum.photos/120/120?random=21',
+          serviceName: b.serviceName || b.itemName,
+          paymentStatus: isMockPaid ? 2 : b.paymentStatus
+        }
+      })
       pagination.total = res.data.total || 0
       
       // 更新统计数据
@@ -665,11 +747,17 @@ const loadBookings = async () => {
 
 // 更新统计数据
 const updateStats = () => {
+  // 各状态数量（所有订单）
   stats.pending = bookingList.value.filter((item: any) => item.status === 1).length
   stats.confirmed = bookingList.value.filter((item: any) => item.status === 2).length
   stats.completed = bookingList.value.filter((item: any) => item.status === 3).length
+
+  // 总金额：只统计“已支付”的订单金额
   stats.totalAmount = bookingList.value.reduce((sum: number, item: any) => {
-    return sum + (parseFloat(item.totalAmount) || 0)
+    if (item.paymentStatus === 2) {
+      return sum + (parseFloat(item.totalAmount) || 0)
+    }
+    return sum
   }, 0)
 }
 

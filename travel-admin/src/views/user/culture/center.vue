@@ -3,7 +3,8 @@
     <el-card class="page-card">
       <el-row :gutter="16" class="entry-row">
         <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/bookings')">
+          <!-- 我的预约：文化体验 -->
+          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/bookings?mode=experience')">
             <div class="entry-icon primary">
               <span class="icon-base icon-calendar" aria-hidden="true"></span>
             </div>
@@ -23,7 +24,8 @@
         </el-col>
 
         <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/bookings')">
+          <!-- 我的预定：农家乐 / 民宿 -->
+          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/bookings?mode=stay')">
             <div class="entry-icon warning">
               <span class="icon-base icon-ticket" aria-hidden="true"></span>
             </div>

@@ -31,6 +31,14 @@ public class CultureAttraction implements Serializable {
     private String images;
     private String coverImage;
     private String description;
+    /**
+     * 自定义标签（例如 地理标志、特色产品），用于前台角标显示
+     */
+    private String badge;
+    /**
+     * 是否官方认证 0-否 1-是
+     */
+    private Integer certified;
     private BigDecimal rating;
     private BigDecimal score;
     private BigDecimal ticketPrice;
@@ -42,7 +50,18 @@ public class CultureAttraction implements Serializable {
     private Integer suggestedDuration;
     private String bestSeason;
     private String tags;
+    /**
+     * 产品特点，多条以换行或分隔符存储
+     */
     private String features;
+    /**
+     * 规格参数，前端以 JSON 字符串或多行「名称:值」形式存储
+     */
+    private String specifications;
+    /**
+     * 购买规格配置，JSON 数组，如 [{label:'250g 礼盒装', value:'250g', price:128}]
+     */
+    private String sellSpecs;
     private String transportation;
     private String nearbyFood;
     private String nearbyHotel;
@@ -56,6 +75,20 @@ public class CultureAttraction implements Serializable {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

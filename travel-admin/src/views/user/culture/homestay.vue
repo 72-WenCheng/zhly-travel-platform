@@ -6,7 +6,24 @@
       <div class="left">
         <section class="hero-card">
           <div class="hero-left">
-            <img :src="homestay.cover" :alt="homestay.title" class="hero-img" />
+            <el-image
+              v-if="heroCover"
+              :src="heroCover"
+              :preview-src-list="previewImages"
+              fit="cover"
+              class="hero-img"
+            />
+            <div v-else class="hero-img placeholder">暂无图片</div>
+            <div v-if="homestay.images && homestay.images.length > 1" class="thumbs">
+              <el-image
+                v-for="(img, idx) in homestay.images"
+                :key="img + idx"
+                :src="img"
+                :preview-src-list="previewImages"
+                fit="cover"
+                class="thumb"
+              />
+            </div>
           </div>
           <div class="hero-right">
             <h1 class="title">{{ homestay.title }}</h1>
@@ -131,7 +148,27 @@ const homestay = ref({
   amenities: [] as string[],
   highlightTags: [] as string[],
   highlights: '',
-  cover: ''
+  cover: '',
+  images: [] as string[]
+})
+
+const heroCover = computed(() => {
+  if (homestay.value.cover) return homestay.value.cover
+  if (homestay.value.images && homestay.value.images.length) return homestay.value.images[0]
+  return ''
+})
+
+// 预览列表：封面优先，其次是服务图片（去重）
+const previewImages = computed(() => {
+  const imgs = homestay.value.images || []
+  const cover = heroCover.value
+  if (!cover && !imgs.length) return []
+  const result: string[] = []
+  if (cover) result.push(cover)
+  for (const url of imgs) {
+    if (url && !result.includes(url)) result.push(url)
+  }
+  return result
 })
 
 const form = ref({
@@ -164,6 +201,17 @@ const finalPrice = computed(() => {
   return Math.max(0, totalPrice.value - couponDiscount.value)
 })
 
+// 将日期转成 yyyy-MM-dd（使用本地时间，避免 ISO 时区导致少一天）
+const formatDateOnly = (val: any): string | null => {
+  if (!val) return null
+  const d = new Date(val)
+  if (Number.isNaN(d.getTime())) return null
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 // 处理优惠券变化
 const handleCouponChange = (coupon: any) => {
   selectedCoupon.value = coupon
@@ -194,13 +242,16 @@ const handleBook = async () => {
       }
     )
 
+    const nights = form.value.nights || 1
+
+    // 后端 bookingType=3 为民宿预定，需要 homestayId，并且 date 只接受 yyyy-MM-dd
     const payload = {
       bookingType: 3,
       homestayId: homestay.value.id,
       itemName: homestay.value.title,
-      date: form.value.date,
-      timeSlot: `${form.value.nights || 1}晚`,
-      quantity: form.value.nights || 1,
+      date: formatDateOnly(form.value.date),
+      timeSlot: `${nights}晚`,
+      quantity: nights,
       contactName: form.value.name,
       contactPhone: form.value.phone,
       notes: form.value.notes,
@@ -246,7 +297,8 @@ const loadDetail = async () => {
         amenities: normalizeArray(data.amenities),
         highlightTags: normalizeArray(data.highlightTags),
         highlights: data.highlights || '',
-        cover: data.cover || ''
+        cover: data.cover || '',
+        images: normalizeImages(data.images || data.cover || [])
       }
     } else {
       ElMessage.error(res.message || '加载民宿详情失败')
@@ -266,6 +318,21 @@ const normalizeArray = (val: any) => {
   } catch {
     return []
   }
+}
+
+const normalizeImages = (images: any): string[] => {
+  if (!images) return []
+  if (Array.isArray(images)) return images
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images)
+      if (Array.isArray(parsed)) return parsed
+      return [images]
+    } catch {
+      return [images]
+    }
+  }
+  return []
 }
 
 onMounted(() => {
@@ -313,6 +380,7 @@ onMounted(() => {
   height: 320px;
   object-fit: cover;
   border-radius: 12px;
+  background: #f5f7fa;
 }
 
 .title {
@@ -320,6 +388,28 @@ onMounted(() => {
   font-size: 26px;
   font-weight: 800;
   color: #111827;
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.thumb {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.hero-img.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a3a3a3;
+  background: #f5f7fa;
 }
 
 .sub-title {

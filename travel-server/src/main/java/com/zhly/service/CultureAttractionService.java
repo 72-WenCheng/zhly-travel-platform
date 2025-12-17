@@ -19,3 +19,17 @@ public interface CultureAttractionService extends IService<CultureAttraction> {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

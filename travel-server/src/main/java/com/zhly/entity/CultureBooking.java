@@ -20,7 +20,7 @@ public class CultureBooking {
     
     private String bookingNo;
     private Long userId;
-    private Integer bookingType; // 1-文化体验 2-农家乐/民宿
+    private Integer bookingType; // 1-文化体验 2-农家乐 3-民宿
     private Long itemId;
     private String itemName;
     private String itemImage;

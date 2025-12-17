@@ -15,3 +15,17 @@ public interface CultureAppointmentService extends IService<CultureAppointment> 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

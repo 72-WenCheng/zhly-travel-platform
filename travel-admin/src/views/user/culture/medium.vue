@@ -648,6 +648,23 @@ const normalizeImages = (images) => {
   }
 }
 
+// 通用：把字符串 / JSON 字符串 / 数组统一转成数组
+const normalizeArray = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  try {
+    const parsed = JSON.parse(val)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+// 去重并过滤空值
+const dedupeTags = (arr = []) => {
+  return [...new Set((arr || []).filter(Boolean))]
+}
+
 const loadCultureExperiences = async () => {
   try {
     const res = await cultureExperienceApi.getUserExperienceList({ page: 1, size: 6 })
@@ -681,19 +698,55 @@ const loadFarmstay = async () => {
     const res = await request.get('/culture/services/page', { params: { page: 1, size: 4 } })
     const list = res?.data?.records || res?.data?.list || []
     if (Array.isArray(list) && list.length) {
-      services.value.farmstay = list.map((item, idx) => ({
-        id: item.id || idx,
-        title: item.title || item.name || `农家乐 ${idx + 1}`,
-        location: item.location || '待定',
-        price: item.packages?.[0]?.price || item.price || 0,
-        unit: item.packages?.[0]?.unit || '/人',
-        summary: item.description || item.summary || '',
-        rating: item.rating || 4.8,
-        views: item.views || item.viewCount || 0,
-        contactPhone: item.contactPhone || '',
-        features: item.features || item.facilities?.map((f) => f.name).filter(Boolean) || [],
-        highlights: item.highlights || item.features || []
-      }))
+      const baseList = list.map((item, idx) => {
+        const featuresRaw = normalizeArray(item.features)
+        const features = dedupeTags(featuresRaw) // 只用特色字段
+
+        return {
+          id: item.id || idx,
+          title: item.title || item.name || `农家乐 ${idx + 1}`,
+          location: item.location || '待定',
+          // 先用后端直接给的价格字段占位，后面再用详情里的套餐价格覆盖
+          price: item.price || 0,
+          unit: item.unit || '/人',
+          summary: item.description || item.summary || '',
+          rating: item.rating || 4.8,
+          views: item.views || item.viewCount || 0,
+          contactPhone: item.contactPhone || '',
+          features,
+          highlights: [] // 卡片不再使用 highlights
+        }
+      })
+
+      services.value.farmstay = baseList
+
+      // 再补充每个农家乐的套餐价格信息（取所有套餐里最低价）
+      await Promise.all(
+        services.value.farmstay.map(async (svc) => {
+          try {
+            const detailRes = await request.get(`/culture/services/${svc.id}`)
+            if (detailRes.code === 200 && detailRes.data) {
+              const pkgs = Array.isArray(detailRes.data.packages)
+                ? detailRes.data.packages
+                : normalizeArray(detailRes.data.packages)
+              if (pkgs.length) {
+                const minPkg = pkgs.reduce((min, p) => {
+                  if (!p || p.price == null) return min
+                  if (!min || Number(p.price) < Number(min.price)) return p
+                  return min
+                }, null)
+                if (minPkg && minPkg.price != null) {
+                  svc.price = Number(minPkg.price)
+                  svc.unit = minPkg.unit || '/人'
+                }
+              }
+            }
+          } catch (e) {
+            // 单个失败不影响整体
+            console.warn('加载农家乐套餐价格失败', svc.id, e)
+          }
+        })
+      )
     } else {
       services.value.farmstay = []
     }
@@ -706,7 +759,8 @@ const loadFarmstay = async () => {
 // 加载民宿
 const loadHomestay = async () => {
   try {
-    const res = await request.get('/api/culture/homestays/page', { params: { page: 1, size: 4 } })
+    // 注意：已使用全局 baseURL '/api'，这里不要再重复 '/api'
+    const res = await request.get('/culture/homestays/page', { params: { page: 1, size: 4 } })
     const list = res?.data?.records || res?.data?.list || []
     if (Array.isArray(list) && list.length) {
       services.value.homestay = list.map((item, idx) => ({
@@ -718,10 +772,12 @@ const loadHomestay = async () => {
         views: item.views || 0,
         roomType: item.roomType,
         capacity: item.capacity,
-        features: item.features || item.amenities || [],
-        highlights: item.highlightTags || item.amenities || [],
+        features: normalizeArray(item.features) || normalizeArray(item.amenities),
+        highlights: normalizeArray(item.highlightTags) || normalizeArray(item.amenities),
         summary: item.description || item.summary || '',
-        contactPhone: item.contactPhone || ''
+        contactPhone: item.contactPhone || '',
+        amenities: normalizeArray(item.amenities),
+        cover: normalizeImages(item.cover || item.images)?.[0] || ''
       }))
     } else {
       services.value.homestay = []
@@ -732,30 +788,45 @@ const loadHomestay = async () => {
   }
 }
 
-// 加载农特产品
+// 加载特色周边（用户端）——只展示自己的特色周边，不再混用农特产品
 const loadProducts = async () => {
   try {
-    const res = await request.get('/api/culture/products/page', { params: { page: 1, size: 6 } })
+    // type = 8 为特色周边，status 在服务端固定为已上架
+    const res = await request.get('/culture/attractions/page', {
+      params: { page: 1, size: 6, type: 8 }
+    })
     const list = res?.data?.records || res?.data?.list || []
     if (Array.isArray(list) && list.length) {
-      services.value.products = list.map((item, idx) => ({
-        id: item.id || idx,
-        title: item.title || item.name || `产品 ${idx + 1}`,
-        name: item.name || item.title || `产品 ${idx + 1}`,
-        location: item.location || item.origin || '待定',
-        origin: item.origin || '本地',
-        badge: item.badge || '',
-        price: Number(item.price || 0),
-        sales: item.sales || item.views || 0,
-        rating: item.rating || 4.6,
-        unit: item.unit || '/盒',
-        viewCount: item.viewCount || item.views || 0
-      }))
+      services.value.products = list.map((item, idx) => {
+        const price = item.ticketPrice != null ? Number(item.ticketPrice) : 0
+        const rating = item.rating != null ? Number(item.rating) : 4.6
+        const locationParts = [item.province, item.city].filter(Boolean)
+        const tags = Array.isArray(item.tags)
+          ? item.tags
+          : (typeof item.tags === 'string'
+              ? item.tags.split(/[,，、\s]+/).filter(Boolean)
+              : [])
+
+        return {
+          id: item.id || idx,
+          title: item.name || `产品 ${idx + 1}`,
+          name: item.name || `产品 ${idx + 1}`,
+          location: locationParts.join(' · ') || item.address || '待定',
+          origin: item.city || item.province || '本地',
+          // 角标优先使用后台单独的 badge 字段，其次用 tags 的第一个
+          badge: item.badge || tags[0] || '特色周边',
+          price,
+          sales: item.viewCount || 0,
+          rating,
+          unit: '/件',
+          viewCount: item.viewCount || 0
+        }
+      })
     } else {
       services.value.products = []
     }
   } catch (error) {
-    console.warn('加载农特产品失败，保持空数据', error)
+    console.warn('加载特色周边失败，保持空数据', error)
     services.value.products = []
   }
 }
@@ -877,24 +948,21 @@ const handleServiceClick = (service) => {
   }
 }
 
+// 只展示“特色字段”的标签，最多 8 个
 const getFeatures = (service) => {
   const list = Array.isArray(service.features) ? service.features : []
-  return list.slice(0, 4)
+  return dedupeTags(list).slice(0, 8)
 }
 
-const getHighlights = (service) => {
-  if (activeTab.value === 'homestay') {
-    return Array.isArray(service.highlightTags) ? service.highlightTags : []
-  }
-  const list = Array.isArray(service.highlights) ? service.highlights : []
-  return list.slice(0, 4)
+// 高亮标签暂时不参与卡片展示
+const getHighlights = (_service) => {
+  return []
 }
 
-// 合并 features 和 highlights 为统一的标签列表
+// 卡片标签 = 特色字段（已去重）且最多 8 个
 const getAllTags = (service) => {
   const features = getFeatures(service)
-  const highlights = getHighlights(service)
-  return [...features, ...highlights]
+  return dedupeTags(features).slice(0, 8)
 }
 
 const handleProjectClick = (project) => {

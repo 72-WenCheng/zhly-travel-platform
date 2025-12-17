@@ -91,8 +91,22 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="封面图片URL" prop="cover">
-              <el-input v-model="formData.cover" placeholder="封面图片URL（可选）" />
+            <el-form-item label="封面图片" prop="cover">
+              <el-upload
+                v-model:file-list="coverList"
+                :action="uploadUrl"
+                list-type="picture-card"
+                :on-preview="handlePictureCardPreview"
+                :on-remove="handleCoverRemove"
+                :on-success="handleCoverSuccess"
+                :before-upload="beforeImageUpload"
+                :headers="uploadHeaders"
+                :limit="1"
+                :on-exceed="() => ElMessage.warning('封面只需上传1张，已自动覆盖上一张')"
+              >
+                <el-icon><Plus /></el-icon>
+              </el-upload>
+              <div class="upload-tip">上传1张封面图，建议 800x600，<=5MB</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -258,6 +272,7 @@ const loading = ref(false)
 const isEdit = ref(false)
 const serviceId = ref<number | null>(null)
 const imageList = ref<UploadFiles>([])
+const coverList = ref<UploadFiles>([])
 const dialogVisible = ref(false)
 const dialogImageUrl = ref('')
 
@@ -287,6 +302,7 @@ const formData = reactive<Homestay>({
   description: '',
   highlights: '',
   images: [],
+  cover: '',
   features: [],
   highlightTags: [],
   amenities: [],
@@ -326,6 +342,34 @@ const uploadHeaders = computed(() => {
   return token ? { Authorization: `Bearer ${token}` } : {}
 })
 
+// 将字符串 / JSON 字符串 / 数组统一转为数组
+const normalizeArray = (val: any) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  try {
+    const parsed = JSON.parse(val)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+// 统一图片为字符串数组
+const normalizeImages = (images: any): string[] => {
+  if (!images) return []
+  if (Array.isArray(images)) return images
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images)
+      if (Array.isArray(parsed)) return parsed
+      return [images]
+    } catch {
+      return [images]
+    }
+  }
+  return []
+}
+
 // 加载民宿数据（编辑模式）
 const loadServiceData = async (id: number) => {
   try {
@@ -333,6 +377,10 @@ const loadServiceData = async (id: number) => {
     const result = await getHomestayById(id)
     if (result.code === 200 && result.data) {
       const homestay = result.data
+      const parsedImages = normalizeImages(homestay.images)
+      const parsedFeatures = normalizeArray(homestay.features)
+      const parsedHighlightTags = normalizeArray(homestay.highlightTags)
+      const parsedAmenities = normalizeArray(homestay.amenities)
       Object.assign(formData, {
         title: homestay.title || '',
         location: homestay.location || '',
@@ -343,21 +391,32 @@ const loadServiceData = async (id: number) => {
         capacity: homestay.capacity || 2,
         description: homestay.description || '',
         highlights: homestay.highlights || '',
-        features: homestay.features || [],
-        highlightTags: homestay.highlightTags || [],
-        amenities: homestay.amenities || [],
+        features: parsedFeatures,
+        highlightTags: parsedHighlightTags,
+        amenities: parsedAmenities,
         cover: homestay.cover || '',
         status: homestay.status !== undefined ? homestay.status : 1
       })
       
       // 处理图片列表
-      if (homestay.images && homestay.images.length > 0) {
-        imageList.value = homestay.images.map((url: string, index: number) => ({
+      if (parsedImages && parsedImages.length > 0) {
+        imageList.value = parsedImages.map((url: string, index: number) => ({
           uid: index,
           name: `image-${index}`,
           url: url,
           status: 'success'
         }))
+      }
+
+      // 处理封面
+      if (homestay.cover) {
+        coverList.value = [{
+          uid: 'cover-0',
+          name: 'cover',
+          url: homestay.cover,
+          status: 'success'
+        }]
+        formData.cover = homestay.cover
       }
     } else {
       ElMessage.error('加载民宿数据失败')
@@ -418,6 +477,42 @@ const handleImageSuccess = (response: any, file: UploadFile) => {
       imageList.value.splice(index, 1)
     }
   }
+}
+
+// 封面上传成功
+const handleCoverSuccess = (response: any, file: UploadFile) => {
+  let imageUrl = ''
+  if (response && response.code === 200) {
+    if (response.data) {
+      imageUrl = response.data.fileUrl || response.data.url || response.data.avatar || response.data
+    }
+  } else if (response && typeof response === 'string') {
+    imageUrl = response
+  } else if (response && response.url) {
+    imageUrl = response.url
+  }
+
+  if (imageUrl) {
+    coverList.value = [{
+      uid: file.uid || 'cover-0',
+      name: file.name || 'cover',
+      url: imageUrl,
+      status: 'success',
+      response
+    }]
+    formData.cover = imageUrl
+    ElMessage.success('封面上传成功')
+  } else {
+    ElMessage.error(response?.message || '封面上传失败，无法获取图片地址')
+    coverList.value = []
+    formData.cover = ''
+  }
+}
+
+// 移除封面
+const handleCoverRemove = () => {
+  coverList.value = []
+  formData.cover = ''
 }
 
 // 移除图片
@@ -484,6 +579,7 @@ const resetForm = () => {
     status: 1
   })
   imageList.value = []
+  coverList.value = []
   formRef.value?.clearValidate()
 }
 
@@ -504,8 +600,8 @@ const handleSubmit = async () => {
         // 确保图片数据正确
         updateImagesArray()
         
-        // 构建提交数据
-        const submitData: Homestay = { 
+        // 构建提交数据（部分字段后端期望 String，这里将数组转为 JSON 字符串以兼容）
+        const submitData: any = { 
           title: formData.title,
           location: formData.location,
           contactPhone: formData.contactPhone,
@@ -515,10 +611,10 @@ const handleSubmit = async () => {
           capacity: formData.capacity || 2,
           description: formData.description || '',
           highlights: formData.highlights || '',
-          images: formData.images || [],
-          features: formData.features || [],
-          highlightTags: formData.highlightTags || [],
-          amenities: formData.amenities || [],
+          images: formData.images ? JSON.stringify(formData.images) : '[]',
+          features: formData.features ? JSON.stringify(formData.features) : '[]',
+          highlightTags: formData.highlightTags ? JSON.stringify(formData.highlightTags) : '[]',
+          amenities: formData.amenities ? JSON.stringify(formData.amenities) : '[]',
           cover: formData.cover || '',
           status: formData.status || 1
         }

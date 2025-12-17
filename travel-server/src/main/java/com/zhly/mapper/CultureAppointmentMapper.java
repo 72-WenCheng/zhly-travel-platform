@@ -12,3 +12,17 @@ public interface CultureAppointmentMapper extends BaseMapper<CultureAppointment>
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

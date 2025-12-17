@@ -115,6 +115,16 @@
 
             <el-form :model="bookingForm" label-position="top" :disabled="!selectedPackage">
 
+              <el-form-item label="预订日期">
+                <el-date-picker
+                  v-model="bookingForm.date"
+                  type="date"
+                  placeholder="请选择预订日期"
+                  style="width: 100%"
+                  :disabled-date="disabledDate"
+                />
+              </el-form-item>
+            
               <el-form-item label="人数">
                 <el-input-number
                   v-model="bookingForm.quantity"
@@ -223,6 +233,7 @@ const selectedPackage = ref(null)
 
 // 预订表单
 const bookingForm = ref({
+  date: null,
   quantity: 1,
   contactName: '',
   contactPhone: '',
@@ -272,6 +283,10 @@ const handleBooking = async () => {
     ElMessage.warning('请先选择套餐')
     return
   }
+  if (!bookingForm.value.date) {
+    ElMessage.warning('请选择预订日期')
+    return
+  }
   if (!bookingForm.value.contactName) {
     ElMessage.warning('请输入联系人姓名')
     return
@@ -294,6 +309,7 @@ const handleBooking = async () => {
 
     const payload = {
       bookingType: 2,
+      serviceType: 'farmstay',
       serviceId: service.value.id,
       serviceName: service.value.title,
       packageId: selectedPackage.value.id,
@@ -302,6 +318,16 @@ const handleBooking = async () => {
       contactName: bookingForm.value.contactName,
       contactPhone: bookingForm.value.contactPhone,
       notes: bookingForm.value.notes,
+      // 转成后端 LocalDate.parse 能识别的 yyyy-MM-dd 格式（使用本地日期，避免被 toISOString 减一天）
+      date: bookingForm.value.date
+        ? (() => {
+            const d = new Date(bookingForm.value.date)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            return `${y}-${m}-${day}`
+          })()
+        : null,
       totalAmount: finalPrice.value,
       unitPrice: selectedPackage.value.price,
       couponId: selectedCoupon.value?.id || null,
@@ -333,6 +359,14 @@ const loadDetail = async (id) => {
     const res = await request.get(`/culture/services/${id}`)
     if (res.code === 200 && res.data) {
       const data = res.data
+      const rawPackages = Array.isArray(data.packages) ? data.packages : []
+
+      // 确保套餐里的 includes 一定是数组（有些老数据可能是 JSON 字符串）
+      const normalizedPackages = rawPackages.map((pkg: any) => ({
+        ...pkg,
+        includes: normalizeArray(pkg.includes)
+      }))
+
       service.value = {
         id: data.id,
         title: data.title,
@@ -345,7 +379,7 @@ const loadDetail = async (id) => {
         images: normalizeArray(data.images),
         features: normalizeArray(data.features),
         facilities: normalizeArray(data.facilities),
-        packages: Array.isArray(data.packages) ? data.packages : []
+        packages: normalizedPackages
       }
       if (service.value.packages.length > 0) {
         selectedPackage.value = service.value.packages[0]

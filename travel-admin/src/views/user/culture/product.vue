@@ -151,12 +151,22 @@
               </el-form-item>
 
               <el-form-item label="收货地址">
-                <el-input
-                  v-model="purchaseForm.address"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请输入详细地址"
-                />
+                <div class="address-field">
+                  <el-input
+                    v-model="purchaseForm.address"
+                    type="textarea"
+                    :rows="2"
+                    placeholder="请输入详细收货地址"
+                  />
+                  <el-button
+                    class="address-select-btn"
+                    type="primary"
+                    text
+                    @click="openAddressDialog"
+                  >
+                    从我的地址选择
+                  </el-button>
+                </div>
               </el-form-item>
 
               <el-form-item label="备注">
@@ -224,6 +234,48 @@
         </div>
       </el-col>
     </el-row>
+
+    <!-- 地址选择弹窗 -->
+    <el-dialog
+      v-model="addressDialogVisible"
+      title="选择收货地址"
+      width="600px"
+    >
+      <div v-if="addresses.length === 0" class="empty-address">
+        <el-empty description="暂无收货地址">
+          <el-button type="primary" @click="goToAddressPage">前往"我的地址"添加</el-button>
+        </el-empty>
+      </div>
+      <div v-else class="address-dialog-content">
+        <el-radio-group v-model="selectedAddressId" class="address-list">
+          <div
+            v-for="address in addresses"
+            :key="address.id"
+            class="address-item"
+            :class="{ active: selectedAddressId === address.id }"
+            @click="selectedAddressId = address.id"
+          >
+            <div class="address-radio-wrapper">
+              <el-radio :label="address.id" />
+            </div>
+            <div class="address-info">
+              <div class="info-row">
+                <span class="name">{{ address.name }}</span>
+                <span class="phone">{{ address.phone }}</span>
+                <el-tag v-if="address.isDefault" type="danger" size="small">默认</el-tag>
+              </div>
+              <div class="address-row">
+                {{ address.province }} {{ address.city }} {{ address.district }} {{ address.detail }}
+              </div>
+            </div>
+          </div>
+        </el-radio-group>
+      </div>
+      <template #footer>
+        <el-button @click="addressDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmSelectAddress">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -233,6 +285,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import CouponSelector from '@/components/CouponSelector.vue'
+import request from '@/utils/request'
 import {
   ArrowLeft,
   Location,
@@ -248,79 +301,31 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-// 产品详情数据
-const product = ref({
-  id: 1,
-  name: '巴南银针茶',
-  badge: '地理标志',
-  certified: true,
-  price: 128,
-  unit: '/盒',
-  sales: 2356,
-  rating: 4.9,
-  origin: '重庆市巴南区',
-  mainImage: 'https://picsum.photos/600/600?random=20',
-  images: [
-    'https://picsum.photos/600/600?random=20',
-    'https://picsum.photos/600/600?random=21',
-    'https://picsum.photos/600/600?random=22',
-    'https://picsum.photos/600/600?random=23'
-  ],
-  description: '巴南银针茶产自重庆市巴南区海拔800-1200米的高山茶园，常年云雾缭绕，气候温和，土壤肥沃，是茶树生长的理想环境。采用传统手工采摘，只选取清明前的嫩芽，经过杀青、揉捻、干燥等十几道工序精心制作而成。茶叶外形挺直如针，色泽翠绿，香气清雅，滋味鲜爽，回甘持久，富含茶多酚、氨基酸等营养成分，具有提神醒脑、降脂减肥等功效。',
-  features: [
-    '国家地理标志产品',
-    '有机种植，无农药残留',
-    '手工采摘，品质保证',
-    '传统工艺，匠心制作',
-    '清香持久，回甘明显',
-    '富含营养，健康养生'
-  ],
-  specifications: [
-    { label: '产品名称', value: '巴南银针茶' },
-    { label: '产地', value: '重庆巴南' },
-    { label: '等级', value: '特级' },
-    { label: '净含量', value: '250g' },
-    { label: '保质期', value: '18个月' },
-    { label: '存储方式', value: '密封、阴凉、干燥' },
-    { label: '采摘时间', value: '清明前' },
-    { label: '包装', value: '礼盒装' }
-  ],
-  availableSpecs: [
-    { label: '250g 礼盒装', value: '250g' },
-    { label: '500g 礼盒装', value: '500g' },
-    { label: '1000g 礼盒装', value: '1000g' }
-  ],
-  reviews: [
-    {
-      id: 1,
-      userName: '茶叶爱好者',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=31',
-      rating: 5,
-      date: '2024-10-22',
-      content: '茶叶品质非常好，香气浓郁，口感清爽。包装精美，送礼自用都很合适。会回购！'
-    },
-    {
-      id: 2,
-      userName: '健康生活',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=32',
-      rating: 5,
-      date: '2024-10-20',
-      content: '朋友推荐的，确实不错。茶叶很新鲜，泡出来颜色翠绿，喝了几天感觉很舒服。'
-    },
-    {
-      id: 3,
-      userName: '重庆本地人',
-      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=33',
-      rating: 5,
-      date: '2024-10-18',
-      content: '支持家乡特产！巴南银针茶确实好，以前只能在当地买到，现在网上也能买了，方便！'
-    }
-  ]
+// 产品详情数据（从特色周边接口加载）
+const product = ref<any>({
+  id: undefined,
+  name: '',
+  badge: '',
+  certified: false,
+  price: 0,
+  unit: '/件',
+  sales: 0,
+  rating: 4.8,
+  origin: '',
+  mainImage: '',
+  images: [] as string[],
+  description: '',
+  features: [] as string[],
+  specifications: [] as { label: string; value: string }[],
+  availableSpecs: [] as { label: string; value: string }[],
+  reviews: [] as any[],
+  // 购买规格配置：[{ label, value, price }]
+  sellSpecs: [] as any[]
 })
 
 // 购买表单
 const purchaseForm = ref({
-  specification: '250g',
+  specification: '',
   quantity: 1,
   receiverName: '',
   receiverPhone: '',
@@ -328,21 +333,49 @@ const purchaseForm = ref({
   notes: ''
 })
 
+// 地址相关
+interface Address {
+  id: number
+  name: string
+  phone: string
+  province: string
+  city: string
+  district: string
+  detail: string
+  isDefault: boolean
+}
+
+const ADDRESS_STORAGE_KEY = 'travel_user_addresses'
+
+const addresses = ref<Address[]>([])
+const selectedAddressId = ref<number | null>(null)
+const addressDialogVisible = ref(false)
+
 // 选中的优惠券
 const selectedCoupon = ref(null)
 
 // 计算商品总价
 const goodsTotal = computed(() => {
   let price = product.value.price
-  const spec = purchaseForm.value.specification
-  
-  // 根据规格调整价格
-  if (spec === '500g') {
-    price = product.value.price * 1.9  // 优惠价
-  } else if (spec === '1000g') {
-    price = product.value.price * 3.6  // 更优惠
+  const specValue = purchaseForm.value.specification
+
+  // 如果配置了购买规格，则优先使用每个规格自己的 price
+  if (product.value.availableSpecs && product.value.availableSpecs.length > 0) {
+    const matched = product.value.availableSpecs.find(
+      (item: any) => item.value === specValue || item.label === specValue
+    )
+    if (matched && matched.price != null) {
+      price = Number(matched.price)
+    }
+  } else {
+    // 兼容旧逻辑：根据规格字符串简单调整倍数
+    if (specValue === '500g') {
+      price = product.value.price * 1.9  // 优惠价
+    } else if (specValue === '1000g') {
+      price = product.value.price * 3.6  // 更优惠
+    }
   }
-  
+
   return Math.round(price * purchaseForm.value.quantity)
 })
 
@@ -414,27 +447,65 @@ const addToCart = () => {
 }
 
 // 立即购买
-const buyNow = () => {
-  // 跳转到订单确认页面
-  const orderItem = {
-    productId: product.value.id,
-    name: product.value.name,
-    image: product.value.mainImage,
-    price: product.value.price,
-    specification: purchaseForm.value.specification,
-    quantity: purchaseForm.value.quantity
-  }
-  
-  router.push({
-    path: '/home/user/culture/order',
-    query: {
-      items: JSON.stringify([orderItem])
+const buyNow = async () => {
+  if (!validateForm()) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确认下单「${product.value.name}」？\n规格：${purchaseForm.value.specification}\n数量：${purchaseForm.value.quantity}\n${selectedCoupon.value ? `优惠券：${selectedCoupon.value.name || selectedCoupon.value.couponName}\n优惠：-¥${couponDiscount.value}\n` : ''}总计：¥${finalPrice.value}`,
+      '确认下单',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+    )
+
+    // 根据选择的规格获取对应价格
+    let unitPrice = product.value.price || 0
+    if (product.value.availableSpecs && product.value.availableSpecs.length > 0) {
+      const selectedSpec = product.value.availableSpecs.find(
+        (s: any) => s.value === purchaseForm.value.specification
+      )
+      if (selectedSpec && selectedSpec.price != null) {
+        unitPrice = Number(selectedSpec.price)
+      }
     }
-  })
+
+    const payload = {
+      productId: product.value.id,
+      productType: 8, // 8=特色周边
+      productName: product.value.name,
+      productImage: product.value.mainImage,
+      productPrice: unitPrice,
+      quantity: purchaseForm.value.quantity,
+      specification: purchaseForm.value.specification,
+      contactName: purchaseForm.value.receiverName,
+      contactPhone: purchaseForm.value.receiverPhone,
+      address: purchaseForm.value.address,
+      buyerMessage: purchaseForm.value.notes,
+      couponId: selectedCoupon.value?.id || null,
+      couponDiscount: couponDiscount.value,
+      totalAmount: goodsTotal.value,
+      finalAmount: finalPrice.value,
+      shippingFee: shippingFee.value
+    }
+
+    const res = await request.post('/culture/order', payload)
+    if (res.code === 200) {
+      ElMessage.success('下单成功，即将跳转到我的订单')
+      // 跳转到用户端"我的订单"页面
+      router.push('/home/user/culture/orders')
+    } else {
+      ElMessage.error(res.message || '下单失败')
+    }
+  } catch {
+    // 用户取消
+  }
 }
 
 // 表单验证
 const validateForm = () => {
+  if (!purchaseForm.value.specification) {
+    ElMessage.warning('请选择规格')
+    return false
+  }
   if (!purchaseForm.value.receiverName) {
     ElMessage.warning('请输入收货人姓名')
     return false
@@ -450,11 +521,190 @@ const validateForm = () => {
   return true
 }
 
+// 从本地存储加载地址，并自动应用默认地址
+const loadAddressesFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(ADDRESS_STORAGE_KEY)
+    if (!raw) return
+    const list = JSON.parse(raw) as Address[]
+    if (!Array.isArray(list)) return
+    addresses.value = list
+
+    // 找到默认地址或第一个地址
+    const defaultAddress = list.find(a => a.isDefault) || list[0]
+    if (defaultAddress) {
+      selectedAddressId.value = defaultAddress.id
+      applyAddressToForm(defaultAddress)
+    }
+  } catch (error) {
+    console.error('加载本地地址失败:', error)
+  }
+}
+
+const applyAddressToForm = (addr: Address) => {
+  purchaseForm.value.receiverName = addr.name
+  purchaseForm.value.receiverPhone = addr.phone
+  purchaseForm.value.address = `${addr.province} ${addr.city} ${addr.district} ${addr.detail}`
+}
+
+const openAddressDialog = () => {
+  if (addresses.value.length === 0) {
+    ElMessage.info('暂未添加收货地址，请先前往"我的地址"页面添加')
+  }
+  addressDialogVisible.value = true
+}
+
+const confirmSelectAddress = () => {
+  if (!selectedAddressId.value) {
+    ElMessage.warning('请选择一个地址')
+    return
+  }
+  const addr = addresses.value.find(a => a.id === selectedAddressId.value)
+  if (!addr) {
+    ElMessage.warning('未找到选中的地址')
+    return
+  }
+  applyAddressToForm(addr)
+  addressDialogVisible.value = false
+}
+
+const goToAddressPage = () => {
+  addressDialogVisible.value = false
+  router.push('/home/user/addresses')
+}
+
+// 解析 images/规格/特点等字段
+const parseImages = (val: any): string[] => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  try {
+    const parsed = JSON.parse(val)
+    if (Array.isArray(parsed)) return parsed
+    return []
+  } catch {
+    return typeof val === 'string' ? [val] : []
+  }
+}
+
+const parseLines = (val?: string): string[] => {
+  if (!val) return []
+  return val
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(Boolean)
+}
+
+const parseSpecs = (val?: string): { label: string; value: string }[] => {
+  if (!val) return []
+  try {
+    const parsed = JSON.parse(val)
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((it: any) => ({
+          label: it.label || it.name || '',
+          value: it.value || it.content || ''
+        }))
+        .filter(it => it.label && it.value)
+    }
+  } catch {
+    // fall through
+  }
+  // 兼容“名称：值”按行存储
+  return val
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const [label, value] = line.split(/[:：]/)
+      return { label: label?.trim() || '', value: (value || '').trim() }
+    })
+    .filter(it => it.label && it.value)
+}
+
+// 从后端加载特色周边详情
+const loadProductDetail = async () => {
+  const id = route.params.id
+  if (!id) return
+  try {
+    const res = await request.get(`/culture/attractions/${id}`)
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error('获取特色周边详情失败')
+      return
+    }
+    const data = res.data
+    const images = parseImages(data.images || data.image || data.coverImage)
+    const features = parseLines(data.features)
+    const specs = parseSpecs(data.specifications)
+
+    // 解析购买规格配置
+    let sellSpecs: any[] = []
+    if (data.sellSpecs) {
+      try {
+        const parsed = JSON.parse(data.sellSpecs)
+        if (Array.isArray(parsed)) {
+          sellSpecs = parsed
+        }
+      } catch {
+        sellSpecs = []
+      }
+    }
+
+    const province = data.province || ''
+    const city = data.city || ''
+    const origin = [province, city].filter(Boolean).join(' · ') || data.address || '待定'
+
+    const tags = Array.isArray(data.tags)
+      ? data.tags
+      : (typeof data.tags === 'string' ? data.tags.split(/[,，、\s]+/).filter(Boolean) : [])
+
+    const certified = data.certified === 1 || data.certified === true
+
+    product.value = {
+      id: data.id,
+      name: data.name,
+      // 标签优先使用后台 badge，其次 tags
+      badge: data.badge || tags[0] || '特色周边',
+      certified,
+      price: data.ticketPrice != null ? Number(data.ticketPrice) : 0,
+      unit: '/件',
+      sales: data.viewCount || 0,
+      rating: data.rating != null ? Number(data.rating) : 4.8,
+      origin,
+      mainImage: images[0] || '',
+      images: images.length ? images : ['https://picsum.photos/600/600?random=20'],
+      description: data.description || '',
+      features,
+      specifications: specs,
+      // 如果配置了购买规格，则用它作为右侧规格+价格来源；否则从规格参数中智能生成
+      availableSpecs: sellSpecs.length
+        ? sellSpecs.map((s, idx) => ({
+            label: s.label || s.value || `规格${idx + 1}`,
+            value: s.value || s.label || `spec_${idx + 1}`,
+            price: s.price != null ? Number(s.price) : (data.ticketPrice != null ? Number(data.ticketPrice) : 0)
+          }))
+        : (specs.length
+            ? specs
+                .filter(s => /规格|净含量|容量|重量/.test(s.label))
+                .map(s => ({ label: s.value, value: s.value, price: data.ticketPrice != null ? Number(data.ticketPrice) : 0 }))
+            : []),
+      reviews: [],
+      sellSpecs
+    }
+
+    // 默认选第一条规格
+    if (product.value.availableSpecs.length) {
+      purchaseForm.value.specification = product.value.availableSpecs[0].value
+    }
+  } catch (error) {
+    console.error('加载特色周边详情异常', error)
+    ElMessage.error('加载特色周边详情出错')
+  }
+}
+
 // 页面加载
 onMounted(() => {
-  const id = route.params.id
-  console.log('加载产品详情，ID:', id)
-  // TODO: 根据ID从后端加载实际数据
+  loadAddressesFromStorage() // 自动加载默认地址
+  loadProductDetail()
 })
 </script>
 
@@ -744,6 +994,83 @@ onMounted(() => {
     font-size: 24px;
     color: #67c23a;
   }
+}
+
+.address-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .address-select-btn {
+    align-self: flex-end;
+    padding: 0;
+  }
+}
+
+.address-dialog-content {
+  .address-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .address-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 2px solid #dcdfe6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #c0c4cc;
+    }
+
+    &.active {
+      border-color: #409eff;
+      background: #ecf5ff;
+    }
+
+    .address-radio-wrapper {
+      flex-shrink: 0;
+
+      :deep(.el-radio__label) {
+        display: none;
+      }
+    }
+
+    .address-info {
+      flex: 1;
+
+      .info-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+
+        .name {
+          font-weight: 600;
+        }
+
+        .phone {
+          color: #909399;
+          font-size: 13px;
+        }
+      }
+
+      .address-row {
+        color: #606266;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    }
+  }
+}
+
+.empty-address {
+  padding: 40px 0;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

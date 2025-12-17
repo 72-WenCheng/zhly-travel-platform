@@ -33,6 +33,7 @@ public class CultureProduct implements Serializable {
      */
     private Integer productType;
 
+    /** 分类，如：茶叶、粮油等 */
     private String category;
     private String origin;
     private String unit;
@@ -40,13 +41,19 @@ public class CultureProduct implements Serializable {
     private BigDecimal originalPrice;
     private Integer stock;  // -1表示无限
     private String description;
+    /** 简要介绍 / 卖点摘要 */
     private String summary;
+    /** 保质期，如：12个月 */
+    private String shelfLife;
+    /** 规格参数（JSON 数组或文本） */
     private String specifications;
-    /** JSON 数组 */
+    /** 商品图片，JSON 数组 */
     private String images;
     private String coverImage;
     private String features;
     private String highlights;
+    /** 规格选择，JSON 数组，如 [{\"label\":\"250g 礼盒装\",\"value\":\"250g\"}] */
+    private String availableSpecs;
     private String badge;
     private BigDecimal rating;
     private Integer reviewCount;

@@ -188,7 +188,7 @@ public class AdminCultureBookingController {
     
     private String getBookingTypeText(Integer type) {
         if (type == null) return "";
-        Map<Integer, String> types = Map.of(1, "体验", 2, "服务");
+        Map<Integer, String> types = Map.of(1, "文化体验", 2, "农家乐", 3, "民宿");
         return types.getOrDefault(type, "");
     }
     

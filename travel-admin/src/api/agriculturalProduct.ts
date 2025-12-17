@@ -5,15 +5,21 @@ import request from '@/utils/request'
 export interface AgriculturalProduct {
   id?: number
   name: string
+  // 分类，如：茶叶、粮油等
+  category?: string
   origin: string
   price: number
   originalPrice?: number
   unit?: string
   stock?: number // -1表示无限
   description?: string
+  // 保质期
+  shelfLife?: string
   images?: string[]
   features?: string[]
   highlights?: string[]
+  // 规格选择，数组形式，元素可为 { label, value }
+  availableSpecs?: any[]
   summary?: string
   badge?: string
   rating?: number

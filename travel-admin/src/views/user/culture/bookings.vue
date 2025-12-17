@@ -6,7 +6,7 @@
     <el-card class="page-header">
       <h1>
         <el-icon><Calendar /></el-icon>
-        我的预订
+        {{ pageTitle }}
       </h1>
     </el-card>
 
@@ -38,7 +38,11 @@
         <!-- 预订头部 -->
         <div class="booking-header">
           <div class="header-left">
-            <span class="booking-time">{{ formatDateTime(booking.createTime) }}</span>
+            <!-- 以预定时间为准：预定日期 + 时间段（晚数） -->
+            <span class="booking-time">
+              {{ booking.date }}
+              <span v-if="booking.timeSlot" class="booking-time-slot">{{ booking.timeSlot }}</span>
+            </span>
             <span class="booking-no">预订编号：{{ booking.bookingNo }}</span>
           </div>
           <el-tag :type="getStatusType(booking.status)" size="large">
@@ -68,9 +72,14 @@
               </div>
             </div>
           </div>
-          <div class="booking-price">
+        <div class="booking-price">
             <div class="price-label">总计</div>
             <div class="price-value">¥{{ booking.totalAmount.toFixed(2) }}</div>
+            <div class="price-status" v-if="booking.paymentStatusText">
+              <el-tag :type="booking.paymentStatusTagType" size="small">
+                {{ booking.paymentStatusText }}
+              </el-tag>
+            </div>
           </div>
         </div>
 
@@ -82,18 +91,33 @@
             <span class="label">联系人：</span>
             <span>{{ booking.contactName }} {{ booking.contactPhone }}</span>
           </div>
-          <div v-if="booking.notes" class="info-row">
-            <span class="label">备注：</span>
-            <span>{{ booking.notes }}</span>
+          <div class="info-row">
+            <span class="label">特殊需求：</span>
+            <span>{{ booking.specialRequirements || '无' }}</span>
+          </div>
+          <div v-if="booking.status === 'cancelled' && booking.cancelReason" class="info-row cancel-row">
+            <span class="label">取消原因：</span>
+            <span class="cancel-text">{{ booking.cancelReason }}</span>
           </div>
         </div>
 
         <!-- 预订操作 -->
         <div class="booking-actions">
+          <el-button
+            v-if="booking.paymentStatus === 1 && booking.status === 'confirmed'"
+            type="danger"
+            @click="handlePay(booking)"
+          >
+            去支付
+          </el-button>
           <el-button v-if="booking.status === 'pending'" @click="handleCancel(booking)">
             取消预订
           </el-button>
-          <el-button v-if="booking.status === 'confirmed'" type="primary" @click="handleComment(booking)">
+          <el-button
+            v-if="booking.status === 'completed' && booking.paymentStatus === 2"
+            type="primary"
+            @click="handleComment(booking)"
+          >
             评价
           </el-button>
           <el-button @click="handleContact(booking)">
@@ -122,72 +146,144 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
 import { Calendar, Clock, User } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const router = useRouter()
+const route = useRoute()
+
+// 页面模式：experience（文化体验预约）/ stay（农家乐&民宿预定）/ all（全部）
+const mode = computed(() => {
+  const m = route.query.mode
+  if (m === 'experience' || m === 'stay') return m
+  return 'all'
+})
+
+const pageTitle = computed(() => {
+  if (mode.value === 'experience') return '我的预约'
+  if (mode.value === 'stay') return '我的预定'
+  return '我的预订'
+})
 
 // 当前标签页
 const activeTab = ref('all')
 
-// 预订列表（模拟数据）
-const bookings = ref([
-  {
-    id: 1,
-    bookingNo: 'BK202410290001',
-    createTime: '2024-10-29 14:30:25',
-    status: 'pending',
-    type: 'experience',
-    projectId: 3,
-    projectName: '蜀绣体验工坊',
-    image: 'https://picsum.photos/120/120?random=30',
-    date: '2024-11-05',
-    timeSlot: '上午场 (9:00-12:00)',
-    participants: 4,
-    contactName: '张三',
-    contactPhone: '138****8888',
-    totalAmount: 800,
-    notes: '希望能有专业老师指导'
-  },
-  {
-    id: 2,
-    bookingNo: 'BK202410280002',
-    createTime: '2024-10-28 10:15:30',
-    status: 'confirmed',
-    type: 'service',
-    projectId: 1,
-    projectName: '云雾山庄农家乐',
-    image: 'https://picsum.photos/120/120?random=31',
-    date: '2024-11-10',
-    timeSlot: null,
-    participants: 6,
-    contactName: '李四',
-    contactPhone: '139****9999',
-    totalAmount: 1200,
-    notes: ''
-  },
-  {
-    id: 3,
-    bookingNo: 'BK202410270003',
-    createTime: '2024-10-27 16:45:12',
-    status: 'completed',
-    type: 'experience',
-    projectId: 3,
-    projectName: '传统竹编工艺',
-    image: 'https://picsum.photos/120/120?random=32',
-    date: '2024-10-28',
-    timeSlot: '全天 (9:00-17:00)',
-    participants: 2,
-    contactName: '张三',
-    contactPhone: '138****8888',
-    totalAmount: 400,
-    notes: ''
+// 预订列表（接口数据）
+const bookings = ref([])
+
+// 将后端 status 数字映射为前端状态字符串
+const mapStatus = (status) => {
+  switch (status) {
+    case 1:
+      return 'pending'
+    case 2:
+      return 'confirmed'
+    case 3:
+      return 'completed'
+    case 4:
+      return 'cancelled'
+    default:
+      return 'pending'
   }
-])
+}
+
+// 将 bookingType 映射为前端类型
+const mapType = (bookingType) => {
+  switch (bookingType) {
+    case 1:
+      return 'experience'
+    case 2:
+      return 'service' // 农家乐
+    case 3:
+      return 'homestay' // 民宿
+    default:
+      return 'service'
+  }
+}
+
+// 解析图片字段（可能是 JSON 数组 / 字符串）
+const safeParseImages = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      if (Array.isArray(parsed)) return parsed
+      return [val]
+    } catch {
+      return [val]
+    }
+  }
+  return []
+}
+
+// 读取本地模拟“已支付”的预订 ID 列表（仅开发联调阶段使用）
+const MOCK_PAID_KEY = 'mock_paid_bookings'
+const getMockPaidIds = () => {
+  try {
+    const raw = localStorage.getItem(MOCK_PAID_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+// 加载预订列表
+const loadBookings = async () => {
+  try {
+    const res = await request.get('/culture/booking/my')
+    if (res.code === 200 && Array.isArray(res.data)) {
+      const mockPaidIds = getMockPaidIds()
+      bookings.value = res.data.map((b) => {
+        const images = safeParseImages(b.itemImage)
+
+        // 处理后端返回字符串 'null' 的情况，避免在页面展示出来
+        const normalizedTimeSlot =
+          b.bookingTime && b.bookingTime !== 'null' ? b.bookingTime : ''
+        const normalizedSpecialRequirements =
+          b.specialRequirements && b.specialRequirements !== 'null'
+            ? b.specialRequirements
+            : ''
+
+        const isMockPaid = mockPaidIds.includes(b.id)
+
+        return {
+          id: b.id,
+          bookingNo: b.bookingNo,
+          createTime: b.createTime,
+          status: mapStatus(b.status),
+          type: mapType(b.bookingType),
+          projectId: b.itemId,
+          projectName: b.itemName,
+          image: images[0] || 'https://picsum.photos/120/120?random=20',
+          date: b.bookingDate,
+          timeSlot: normalizedTimeSlot,
+          participants: b.peopleCount,
+          contactName: b.contactName,
+          contactPhone: b.contactPhone,
+          totalAmount: Number(b.totalAmount || 0),
+          paymentStatus: isMockPaid ? 2 : (b.paymentStatus ?? 1),
+          paymentStatusText: isMockPaid || b.paymentStatus === 2 ? '已支付' : '未支付',
+          paymentStatusTagType: isMockPaid || b.paymentStatus === 2 ? 'success' : 'warning',
+          cancelReason: b.cancelReason,
+          notes: normalizedSpecialRequirements,
+          specialRequirements: normalizedSpecialRequirements
+        }
+      })
+    } else {
+      bookings.value = []
+    }
+  } catch (error) {
+    console.error('加载预订列表失败:', error)
+    ElMessage.error('加载预订列表失败')
+    bookings.value = []
+  }
+}
 
 // 分页
 const currentPage = ref(1)
@@ -199,10 +295,20 @@ const pendingCount = computed(() => bookings.value.filter(b => b.status === 'pen
 
 // 过滤后的预订
 const filteredBookings = computed(() => {
-  if (activeTab.value === 'all') {
-    return bookings.value
+  // 先按模块类型过滤
+  let list = bookings.value
+  if (mode.value === 'experience') {
+    list = list.filter(b => b.type === 'experience')
+  } else if (mode.value === 'stay') {
+    // 农家乐(service) + 民宿(homestay)
+    list = list.filter(b => b.type === 'service' || b.type === 'homestay')
   }
-  return bookings.value.filter(booking => booking.status === activeTab.value)
+
+  // 再按状态过滤
+  if (activeTab.value === 'all') {
+    return list
+  }
+  return list.filter(booking => booking.status === activeTab.value)
 })
 
 // 获取状态文本
@@ -229,7 +335,6 @@ const getStatusType = (status) => {
 
 // 标签页切换
 const handleTabChange = (tab) => {
-  console.log('切换到标签:', tab)
   currentPage.value = 1
 }
 
@@ -239,7 +344,14 @@ const goToDetail = (projectId, type) => {
     router.push(`/home/user/culture/detail/${projectId}`)
   } else if (type === 'service') {
     router.push(`/home/user/culture/service/${projectId}`)
+  } else if (type === 'homestay') {
+    router.push(`/home/user/culture/homestay/${projectId}`)
   }
+}
+
+// 去支付
+const handlePay = (booking) => {
+  router.push(`/home/user/culture/booking-pay/${booking.id}`)
 }
 
 // 取消预订
@@ -251,9 +363,11 @@ const handleCancel = async (booking) => {
       type: 'warning'
     })
 
-    // TODO: 调用取消预订接口
-    console.log('取消预订:', booking.id)
-    
+    // 调用取消预订接口
+    await request.put(`/culture/booking/${booking.id}/cancel`, {
+      reason: '用户主动取消'
+    })
+
     ElMessage.success('预订已取消')
     booking.status = 'cancelled'
   } catch {
@@ -294,6 +408,10 @@ const handleDelete = async (booking) => {
 const goBrowse = () => {
   router.push('/home/user/culture')
 }
+
+onMounted(() => {
+  loadBookings()
+})
 
 // 分页大小变化
 const handleSizeChange = (size) => {
@@ -374,6 +492,10 @@ const handleCurrentChange = (page) => {
         color: #606266;
       }
 
+          .booking-time-slot {
+            margin-left: 12px; // 日期与“1晚”之间留出明显间隔
+          }
+
       .booking-no {
         font-size: 14px;
         color: #909399;
@@ -413,7 +535,7 @@ const handleCurrentChange = (page) => {
       .booking-details {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 4px; // 日期和「1晚」之间间距稍微紧凑一点
 
         .detail-item {
           display: flex;
@@ -457,8 +579,23 @@ const handleCurrentChange = (page) => {
       color: #606266;
 
       .label {
-        min-width: 70px;
+        min-width: 56px; // 标签和内容靠近一些
         color: #909399;
+      }
+
+      &.cancel-row {
+        border-left: 3px solid #f56c6c;
+        padding-left: 8px;
+        color: #f56c6c;
+
+        .label {
+          color: #f56c6c;
+          font-weight: 600;
+        }
+
+        .cancel-text {
+          font-weight: 500;
+        }
       }
     }
   }

@@ -20,6 +20,12 @@
             <span>等级 {{ userForm.level || 3 }}</span>
           </div>
         </div>
+        <div class="quick-links">
+          <el-button type="default" text @click="goToAddresses">
+            <el-icon><Location /></el-icon>
+            我的地址
+          </el-button>
+        </div>
       </div>
       <div class="user-actions">
         <el-button type="primary" round @click="activeTab = 'basic'">
@@ -797,6 +803,11 @@ const tagInputValue = ref('')
 const tagInputRef = ref()
 const selectedTags = ref<string[]>([])
 const showRecommendationTip = ref(false)
+
+// 跳转到我的地址
+const goToAddresses = () => {
+  router.push('/home/user/addresses')
+}
 
 // 表单引用
 const userFormRef = ref()

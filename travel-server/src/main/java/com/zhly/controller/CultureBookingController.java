@@ -112,6 +112,10 @@ public class CultureBookingController {
             booking.setTotalAmount(toDecimal(bookingData.get("totalAmount")));
             booking.setStatus(1); // 待确认
             booking.setPaymentStatus(1); // 未支付
+            // 若前端未传预订日期（例如农家乐/民宿即时预订），则默认使用当前日期，避免数据库非空约束错误
+            if (booking.getBookingDate() == null) {
+                booking.setBookingDate(LocalDate.now());
+            }
             booking.setCreateTime(LocalDateTime.now());
             booking.setUpdateTime(LocalDateTime.now());
 

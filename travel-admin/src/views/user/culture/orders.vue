@@ -121,94 +121,22 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
 import { List } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const router = useRouter()
 
 // 当前标签页
 const activeTab = ref('all')
 
-// 订单列表（模拟数据）
-const orders = ref([
-  {
-    id: 1,
-    orderNo: '202410290001',
-    createTime: '2024-10-29 14:30:25',
-    status: 'pending',
-    items: [
-      {
-        id: 1,
-        productId: 1,
-        name: '巴南银针茶',
-        image: 'https://picsum.photos/80/80?random=20',
-        specification: '250g/盒',
-        price: 128,
-        quantity: 2
-      }
-    ],
-    receiver: '张三',
-    phone: '138****8888',
-    address: '重庆市渝中区解放碑步行街100号',
-    totalAmount: 256
-  },
-  {
-    id: 2,
-    orderNo: '202410280002',
-    createTime: '2024-10-28 10:15:30',
-    status: 'shipped',
-    items: [
-      {
-        id: 2,
-        productId: 2,
-        name: '江津花椒',
-        image: 'https://picsum.photos/80/80?random=21',
-        specification: '500g/袋',
-        price: 68,
-        quantity: 3
-      },
-      {
-        id: 3,
-        productId: 3,
-        name: '手工竹编',
-        image: 'https://picsum.photos/80/80?random=22',
-        specification: '中号',
-        price: 158,
-        quantity: 1
-      }
-    ],
-    receiver: '李四',
-    phone: '139****9999',
-    address: '重庆市江北区观音桥步行街200号',
-    totalAmount: 362
-  },
-  {
-    id: 3,
-    orderNo: '202410270003',
-    createTime: '2024-10-27 16:45:12',
-    status: 'completed',
-    items: [
-      {
-        id: 4,
-        productId: 4,
-        name: '涪陵榨菜',
-        image: 'https://picsum.photos/80/80?random=23',
-        specification: '300g/袋',
-        price: 45,
-        quantity: 5
-      }
-    ],
-    receiver: '张三',
-    phone: '138****8888',
-    address: '重庆市渝中区解放碑步行街100号',
-    totalAmount: 225
-  }
-])
+// 订单列表（真实数据）
+const orders = ref<any[]>([])
 
 // 分页
 const currentPage = ref(1)
@@ -225,6 +153,61 @@ const filteredOrders = computed(() => {
   }
   return orders.value.filter(order => order.status === activeTab.value)
 })
+
+// 从后端加载当前用户订单列表
+const loadOrders = async () => {
+  try {
+    const res = await request.get('/culture/order/my', { params: { page: 1, size: 100 } })
+    if (res.code === 200 && res.data) {
+      const list = res.data.records || res.data.list || res.data || []
+      orders.value = list.map((o: any) => ({
+        id: o.id,
+        orderNo: o.orderNo,
+        createTime: o.createTime,
+        status: mapStatus(o.orderStatus),
+        items: [
+          {
+            id: o.productId,
+            productId: o.productId,
+            name: o.productName,
+            image: o.productImage,
+            specification: o.specification || '',
+            price: Number(o.productPrice || 0),
+            quantity: o.quantity || 1
+          }
+        ],
+        receiver: o.contactName || '',
+        phone: o.contactPhone || '',
+        address: o.detailedAddress || '',
+        totalAmount: Number(o.finalAmount || o.totalAmount || 0)
+      }))
+    } else {
+      orders.value = []
+    }
+  } catch (error) {
+    console.error('加载订单失败', error)
+    ElMessage.error('加载订单失败')
+    orders.value = []
+  }
+}
+
+// 将后端订单状态数字映射为前端字符串
+const mapStatus = (status?: number) => {
+  switch (status) {
+    case 1:
+      return 'pending'
+    case 2:
+      return 'paid'
+    case 3:
+      return 'shipped'
+    case 4:
+      return 'completed'
+    case 5:
+      return 'cancelled'
+    default:
+      return 'pending'
+  }
+}
 
 // 获取状态文本
 const getStatusText = (status) => {
@@ -256,6 +239,10 @@ const handleTabChange = (tab) => {
   currentPage.value = 1
 }
 
+onMounted(() => {
+  loadOrders()
+})
+
 // 支付订单
 const handlePay = (order) => {
   console.log('点击立即支付，订单ID:', order.id)
@@ -278,11 +265,13 @@ const handleCancel = async (order) => {
       type: 'warning'
     })
 
-    // TODO: 调用取消订单接口
-    console.log('取消订单:', order.id)
-    
-    ElMessage.success('订单已取消')
-    order.status = 'cancelled'
+    const res = await request.put(`/culture/order/${order.id}/cancel`)
+    if (res.code === 200) {
+      ElMessage.success('订单已取消')
+      await loadOrders()
+    } else {
+      ElMessage.error(res.message || '取消订单失败')
+    }
   } catch {
     // 用户取消
   }
@@ -297,11 +286,13 @@ const handleConfirm = async (order) => {
       type: 'info'
     })
 
-    // TODO: 调用确认收货接口
-    console.log('确认收货:', order.id)
-    
-    ElMessage.success('确认收货成功')
-    order.status = 'completed'
+    const res = await request.put(`/culture/order/${order.id}/confirm`)
+    if (res.code === 200) {
+      ElMessage.success('确认收货成功')
+      await loadOrders()
+    } else {
+      ElMessage.error(res.message || '确认收货失败')
+    }
   } catch {
     // 用户取消
   }

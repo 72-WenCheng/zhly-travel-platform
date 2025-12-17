@@ -59,7 +59,7 @@
               <div class="price">
                 <span class="currency">¥</span>
                 <span class="number">{{ product.price }}</span>
-                <span class="unit">{{ product.unit }}</span>
+                <span class="unit">/{{ product.unit }}</span>
               </div>
               <div class="sub-meta">月销 {{ product.sales }} · 库存 {{ product.stock }}</div>
             </div>
@@ -81,20 +81,24 @@
 
           <el-divider />
 
-          <div class="base-info">
-            <div class="info-item">
-              <el-icon><Location /></el-icon>
-              <span>产地：{{ product.origin }}</span>
+          <!-- 规格参数（基础信息） -->
+          <section class="section">
+            <h3>规格参数</h3>
+            <div class="base-info">
+              <div class="info-item">
+                <el-icon><Location /></el-icon>
+                <span>产地：{{ product.origin }}</span>
+              </div>
+              <div class="info-item">
+                <el-icon><Discount /></el-icon>
+                <span>分类：{{ product.category }}</span>
+              </div>
+              <div class="info-item">
+                <el-icon><Timer /></el-icon>
+                <span>保质期：{{ product.shelfLife }}</span>
+              </div>
             </div>
-            <div class="info-item">
-              <el-icon><Discount /></el-icon>
-              <span>分类：{{ product.category }}</span>
-            </div>
-            <div class="info-item">
-              <el-icon><Timer /></el-icon>
-              <span>保质期：{{ product.shelfLife }}</span>
-            </div>
-          </div>
+          </section>
 
           <el-divider />
 
@@ -131,7 +135,6 @@
           <el-divider />
 
           <section class="section">
-            <h3>规格参数</h3>
             <el-descriptions :column="2" border>
               <el-descriptions-item
                 v-for="spec in product.specifications"
@@ -201,13 +204,37 @@
                 />
               </el-form-item>
 
-              <el-form-item label="收货地址">
+              <el-form-item label="收货人姓名">
                 <el-input
-                  v-model="purchaseForm.address"
-                  type="textarea"
-                  :rows="2"
-                  placeholder="请输入详细收货地址"
+                  v-model="purchaseForm.receiverName"
+                  placeholder="请输入收货人姓名"
                 />
+              </el-form-item>
+
+              <el-form-item label="联系电话">
+                <el-input
+                  v-model="purchaseForm.receiverPhone"
+                  placeholder="请输入联系电话"
+                />
+              </el-form-item>
+
+              <el-form-item label="收货地址">
+                <div class="address-field">
+                  <el-input
+                    v-model="purchaseForm.address"
+                    type="textarea"
+                    :rows="2"
+                    placeholder="请输入详细收货地址"
+                  />
+                  <el-button
+                    class="address-select-btn"
+                    type="primary"
+                    text
+                    @click="openAddressDialog"
+                  >
+                    从我的地址选择
+                  </el-button>
+                </div>
               </el-form-item>
 
               <el-form-item label="买家备注">
@@ -274,6 +301,48 @@
               </div>
             </div>
           </el-card>
+
+          <!-- 地址选择弹窗 -->
+          <el-dialog
+            v-model="addressDialogVisible"
+            title="选择收货地址"
+            width="600px"
+          >
+            <div v-if="addresses.length === 0" class="empty-address">
+              <el-empty description="暂无收货地址">
+                <el-button type="primary" @click="goToAddressPage">前往“我的地址”添加</el-button>
+              </el-empty>
+            </div>
+            <div v-else class="address-dialog-content">
+              <el-radio-group v-model="selectedAddressId" class="address-list">
+                <div
+                  v-for="address in addresses"
+                  :key="address.id"
+                  class="address-item"
+                  :class="{ active: selectedAddressId === address.id }"
+                  @click="selectedAddressId = address.id"
+                >
+                  <div class="address-radio-wrapper">
+                    <el-radio :label="address.id" />
+                  </div>
+                  <div class="address-info">
+                    <div class="info-row">
+                      <span class="name">{{ address.name }}</span>
+                      <span class="phone">{{ address.phone }}</span>
+                      <el-tag v-if="address.isDefault" type="danger" size="small">默认</el-tag>
+                    </div>
+                    <div class="address-row">
+                      {{ address.province }} {{ address.city }} {{ address.district }} {{ address.detail }}
+                    </div>
+                  </div>
+                </div>
+              </el-radio-group>
+            </div>
+            <template #footer>
+              <el-button @click="addressDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="confirmSelectAddress">确定</el-button>
+            </template>
+          </el-dialog>
         </div>
       </el-col>
     </el-row>
@@ -335,16 +404,47 @@ const product = ref({
 const purchaseForm = ref({
   specification: '',
   quantity: 1,
+  receiverName: '',
+  receiverPhone: '',
   address: '',
   notes: ''
 })
 
+// 地址相关
+interface Address {
+  id: number
+  name: string
+  phone: string
+  province: string
+  city: string
+  district: string
+  detail: string
+  isDefault: boolean
+}
+
+const ADDRESS_STORAGE_KEY = 'travel_user_addresses'
+
+const addresses = ref<Address[]>([])
+const selectedAddressId = ref<number | null>(null)
+const addressDialogVisible = ref(false)
+
 // 选中的优惠券
 const selectedCoupon = ref(null)
 
-// 计算商品总价
+// 计算商品总价（根据选择的规格动态计算）
 const goodsTotal = computed(() => {
-  return (product.value.price || 0) * (purchaseForm.value.quantity || 1)
+  let price = product.value.price || 0
+  const spec = purchaseForm.value.specification || ''
+
+  // 根据克数/规格调整单价：
+  // 约定：基础价格为最小规格（如 250g），更大规格按优惠系数计算
+  if (spec.includes('500')) {
+    price = price * 1.9 // 500g 礼盒，稍微优惠
+  } else if (spec.includes('1000') || spec.includes('1kg') || spec.includes('1KG')) {
+    price = price * 3.6 // 1000g / 1kg 礼盒，更优惠
+  }
+
+  return Math.round(price * (purchaseForm.value.quantity || 1))
 })
 
 // 计算总价（兼容旧代码）
@@ -392,6 +492,8 @@ const buyNow = async () => {
       productPrice: product.value.price,
       quantity: purchaseForm.value.quantity,
       specification: purchaseForm.value.specification,
+      contactName: purchaseForm.value.receiverName,
+      contactPhone: purchaseForm.value.receiverPhone,
       address: purchaseForm.value.address,
       buyerMessage: purchaseForm.value.notes,
       couponId: selectedCoupon.value?.id || null,
@@ -403,8 +505,9 @@ const buyNow = async () => {
 
     const res = await request.post('/culture/order', payload)
     if (res.code === 200) {
-      ElMessage.success('下单成功！')
-      // TODO: 跳转订单列表/详情
+      ElMessage.success('下单成功，即将跳转到我的订单')
+      // 跳转到用户端“我的订单”页面
+      router.push('/home/user/culture/orders')
     } else {
       ElMessage.error(res.message || '下单失败')
     }
@@ -414,6 +517,14 @@ const buyNow = async () => {
 }
 
 const validateForm = () => {
+  if (!purchaseForm.value.receiverName) {
+    ElMessage.warning('请输入收货人姓名')
+    return false
+  }
+  if (!purchaseForm.value.receiverPhone) {
+    ElMessage.warning('请输入联系电话')
+    return false
+  }
   if (!purchaseForm.value.address) {
     ElMessage.warning('请填写收货地址')
     return false
@@ -425,6 +536,58 @@ const validateForm = () => {
   return true
 }
 
+// 从本地存储加载地址，并自动应用默认地址
+const loadAddressesFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(ADDRESS_STORAGE_KEY)
+    if (!raw) return
+    const list = JSON.parse(raw) as Address[]
+    if (!Array.isArray(list)) return
+    addresses.value = list
+
+    // 找到默认地址或第一个地址
+    const defaultAddress = list.find(a => a.isDefault) || list[0]
+    if (defaultAddress) {
+      selectedAddressId.value = defaultAddress.id
+      applyAddressToForm(defaultAddress)
+    }
+  } catch (error) {
+    console.error('加载本地地址失败:', error)
+  }
+}
+
+const applyAddressToForm = (addr: Address) => {
+  purchaseForm.value.receiverName = addr.name
+  purchaseForm.value.receiverPhone = addr.phone
+  purchaseForm.value.address = `${addr.province} ${addr.city} ${addr.district} ${addr.detail}`
+}
+
+const openAddressDialog = () => {
+  if (addresses.value.length === 0) {
+    ElMessage.info('暂未添加收货地址，请先前往“我的地址”页面添加')
+  }
+  addressDialogVisible.value = true
+}
+
+const confirmSelectAddress = () => {
+  if (!selectedAddressId.value) {
+    ElMessage.warning('请选择一个地址')
+    return
+  }
+  const addr = addresses.value.find(a => a.id === selectedAddressId.value)
+  if (!addr) {
+    ElMessage.warning('未找到选中的地址')
+    return
+  }
+  applyAddressToForm(addr)
+  addressDialogVisible.value = false
+}
+
+const goToAddressPage = () => {
+  addressDialogVisible.value = false
+  router.push('/home/user/addresses')
+}
+
 const loadDetail = async () => {
   const id = route.params.id
   if (!id) return
@@ -433,6 +596,7 @@ const loadDetail = async () => {
     if (res.code === 200 && res.data) {
       const data = res.data as any
       const imgs = normalizeArray(data.images)
+      const highlightList = normalizeArray(data.highlights || data.features || [])
       product.value = {
         id: data.id,
         name: data.productName || data.name || '',
@@ -453,7 +617,12 @@ const loadDetail = async () => {
         mainImage: imgs[0] || '',
         images: imgs,
         description: data.description || data.summary || '',
-        features: [],
+        // 产品亮点：使用高亮/亮点字段映射到「产品亮点」卡片
+        features: highlightList.map((text: any) => ({
+          title: typeof text === 'string' ? text : String(text),
+          description: '',
+          icon: Brush
+        })),
         specifications: normalizeArray(data.specifications).map((s: any) => {
           if (typeof s === 'string') return { label: s, value: '' }
           return s
@@ -490,6 +659,7 @@ const normalizeArray = (val: any) => {
 
 onMounted(() => {
   loadDetail()
+  loadAddressesFromStorage()
 })
 </script>
 
@@ -865,6 +1035,81 @@ onMounted(() => {
   .benefit-box {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.address-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .address-select-btn {
+    align-self: flex-end;
+    padding: 0;
+  }
+}
+
+.address-dialog-content {
+  .address-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .address-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 2px solid #dcdfe6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #c0c4cc;
+    }
+
+    &.active {
+      border-color: #409eff;
+      background: #ecf5ff;
+    }
+
+    .address-radio-wrapper {
+      flex-shrink: 0;
+
+      :deep(.el-radio__label) {
+        display: none;
+      }
+    }
+
+    .address-info {
+      flex: 1;
+
+      .info-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+
+        .name {
+          font-weight: 600;
+        }
+
+        .phone {
+          color: #909399;
+          font-size: 13px;
+        }
+      }
+
+      .address-row {
+        font-size: 13px;
+        color: #606266;
+      }
+    }
+  }
+}
+
+.empty-address {
+  padding: 30px 0;
 }
 </style>
 

@@ -10,33 +10,31 @@
       </h1>
     </el-card>
 
-    <!-- 订单状态 -->
-    <el-card class="status-card">
-      <div class="status-content">
-        <div class="status-icon">
-          <el-icon v-if="order.status === 'pending'" class="pending-icon"><Clock /></el-icon>
-          <el-icon v-else-if="order.status === 'paid'" class="paid-icon"><Ticket /></el-icon>
-          <el-icon v-else-if="order.status === 'shipped'" class="shipped-icon"><Van /></el-icon>
-          <el-icon v-else-if="order.status === 'completed'" class="completed-icon"><CircleCheck /></el-icon>
-          <el-icon v-else class="cancelled-icon"><CircleClose /></el-icon>
-        </div>
-        <div class="status-text">
-          <h2>{{ getStatusText(order.status) }}</h2>
-          <p v-if="order.status === 'pending'" class="status-desc">请尽快完成支付，订单将在30分钟后自动取消</p>
-          <p v-else-if="order.status === 'shipped'" class="status-desc">您的订单正在配送中，请耐心等待</p>
-          <p v-else-if="order.status === 'completed'" class="status-desc">交易成功，感谢您的支持</p>
-        </div>
-      </div>
+    <!-- 加载中 -->
+    <el-empty v-if="loading && !order" description="加载中..." />
 
-      <!-- 待付款订单显示倒计时 -->
-      <div v-if="order.status === 'pending'" class="countdown">
-        <span>剩余支付时间：</span>
-        <span class="time">{{ countdown }}</span>
-      </div>
-    </el-card>
+    <!-- 主体内容 -->
+    <template v-if="order">
+      <!-- 订单状态（仅非待付款时展示） -->
+      <el-card v-if="order.status !== 'pending'" class="status-card">
+        <div class="status-content">
+          <div class="status-icon">
+            <el-icon v-if="order.status === 'pending'" class="pending-icon"><Clock /></el-icon>
+            <el-icon v-else-if="order.status === 'paid'" class="paid-icon"><Ticket /></el-icon>
+            <el-icon v-else-if="order.status === 'shipped'" class="shipped-icon"><Van /></el-icon>
+            <el-icon v-else-if="order.status === 'completed'" class="completed-icon"><CircleCheck /></el-icon>
+            <el-icon v-else class="cancelled-icon"><CircleClose /></el-icon>
+          </div>
+          <div class="status-text">
+            <h2>{{ getStatusText(order.status) }}</h2>
+            <p v-if="order.status === 'shipped'" class="status-desc">您的订单正在配送中，请耐心等待</p>
+            <p v-else-if="order.status === 'completed'" class="status-desc">交易成功，感谢您的支持</p>
+          </div>
+        </div>
+      </el-card>
 
-    <!-- 物流信息 -->
-    <el-card v-if="order.status === 'shipped' || order.status === 'completed'" class="logistics-card">
+      <!-- 物流信息 -->
+      <el-card v-if="order.status === 'shipped' || order.status === 'completed'" class="logistics-card">
       <h3>
         <el-icon><Van /></el-icon>
         物流信息
@@ -64,10 +62,10 @@
           {{ track.desc }}
         </el-timeline-item>
       </el-timeline>
-    </el-card>
+      </el-card>
 
-    <!-- 收货信息 -->
-    <el-card class="address-card">
+      <!-- 收货信息 -->
+      <el-card class="address-card">
       <h3>
         <el-icon><Location /></el-icon>
         收货信息
@@ -87,10 +85,10 @@
           <span>{{ order.address }}</span>
         </div>
       </div>
-    </el-card>
+      </el-card>
 
-    <!-- 商品信息 -->
-    <el-card class="goods-card">
+      <!-- 商品信息 -->
+      <el-card class="goods-card">
       <h3>
         <el-icon><ShoppingBag /></el-icon>
         商品信息
@@ -117,10 +115,10 @@
           </div>
         </div>
       </div>
-    </el-card>
+      </el-card>
 
-    <!-- 订单信息 -->
-    <el-card class="order-info-card">
+      <!-- 订单信息 -->
+      <el-card class="order-info-card">
       <h3>
         <el-icon><Tickets /></el-icon>
         订单信息
@@ -153,10 +151,10 @@
           <span>{{ order.remark }}</span>
         </div>
       </div>
-    </el-card>
+      </el-card>
 
-    <!-- 费用明细 -->
-    <el-card class="price-card">
+      <!-- 费用明细 -->
+      <el-card class="price-card">
       <h3>
         <el-icon><Wallet /></el-icon>
         费用明细
@@ -181,35 +179,39 @@
           <span class="amount">¥{{ order.totalAmount.toFixed(2) }}</span>
         </div>
       </div>
-    </el-card>
+      </el-card>
 
-    <!-- 底部操作栏 -->
-    <div class="bottom-actions">
-      <el-button v-if="order.status === 'pending'" size="large" @click="handleCancel">
-        取消订单
-      </el-button>
-      <el-button v-if="order.status === 'pending'" type="danger" size="large" @click="handlePay">
-        立即支付
-      </el-button>
-      <el-button v-if="order.status === 'shipped'" type="primary" size="large" @click="handleConfirm">
-        确认收货
-      </el-button>
-      <el-button v-if="order.status === 'completed'" type="primary" size="large" @click="handleComment">
-        评价晒单
-      </el-button>
-      <el-button v-if="order.status === 'completed'" size="large" @click="handleRefund">
-        申请退款
-      </el-button>
-    </div>
+      <!-- 底部操作栏：待付款展示支付/取消，其他状态展示对应操作 -->
+      <div v-if="order.status === 'pending'" class="bottom-actions">
+        <el-button type="primary" size="large" @click="handlePay">
+          立即支付
+        </el-button>
+        <el-button size="large" @click="handleCancel">
+          取消订单
+        </el-button>
+      </div>
+      <div v-else class="bottom-actions">
+        <el-button v-if="order.status === 'shipped'" type="primary" size="large" @click="handleConfirm">
+          确认收货
+        </el-button>
+        <el-button v-if="order.status === 'completed'" type="primary" size="large" @click="handleComment">
+          评价晒单
+        </el-button>
+        <el-button v-if="order.status === 'completed'" size="large" @click="handleRefund">
+          申请退款
+        </el-button>
+      </div>
+    </template>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
+import request from '@/utils/request'
 import {
   Document,
   Clock,
@@ -226,39 +228,47 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-// 订单ID
-const orderId = route.params.id
+// 订单ID（路由参数中存的是数据库主键ID）
+const orderId = route.params.id as string
 
-// 订单详情（模拟数据）
-const order = ref({
-  id: 1,
-  orderNo: '202410290001',
-  createTime: '2024-10-29 14:30:25',
-  payTime: null,
-  status: 'pending',
-  payMethod: '在线支付',
-  items: [
-    {
-      id: 1,
-      productId: 1,
-      name: '巴南银针茶',
-      image: 'https://picsum.photos/80/80?random=20',
-      specification: '250g/盒',
-      price: 128,
-      quantity: 2
-    }
-  ],
-  receiver: '张三',
-  phone: '138****8888',
-  address: '重庆市渝中区解放碑步行街100号',
-  goodsAmount: 256,
-  shippingFee: 0,
-  couponAmount: 0,
-  totalAmount: 256,
-  remark: '',
-  invoice: null,
-  logistics: null
-})
+type OrderStatus = 'pending' | 'paid' | 'shipped' | 'completed' | 'cancelled'
+
+interface OrderItem {
+  id: number
+  productId: number
+  name: string
+  image: string
+  specification: string
+  price: number
+  quantity: number
+}
+
+interface OrderDetailView {
+  id: number
+  orderNo: string
+  createTime: string | null
+  payTime: string | null
+  status: OrderStatus
+  payMethod: string
+  items: OrderItem[]
+  receiver: string
+  phone: string
+  address: string
+  goodsAmount: number
+  shippingFee: number
+  couponAmount: number
+  totalAmount: number
+  remark: string
+  invoice: string | null
+  logistics: {
+    company: string | null
+    trackingNo: string | null
+  } | null
+}
+
+// 订单详情（从后端加载）
+const order = ref<OrderDetailView | null>(null)
+const loading = ref(false)
 
 // 倒计时
 const countdown = ref('29:59')
@@ -285,7 +295,7 @@ const logisticsTrack = ref([
 ])
 
 // 获取状态文本
-const getStatusText = (status) => {
+const getStatusText = (status: OrderStatus) => {
   const statusMap = {
     pending: '等待买家付款',
     paid: '等待卖家发货',
@@ -319,7 +329,7 @@ const startCountdown = () => {
 
 // 复制运单号
 const copyTrackingNo = () => {
-  const trackingNo = order.value.logistics?.trackingNo || 'SF1234567890'
+  const trackingNo = order.value?.logistics?.trackingNo || 'SF1234567890'
   navigator.clipboard.writeText(trackingNo).then(() => {
     ElMessage.success('运单号已复制')
   })
@@ -327,6 +337,7 @@ const copyTrackingNo = () => {
 
 // 复制订单号
 const copyOrderNo = () => {
+  if (!order.value) return
   navigator.clipboard.writeText(order.value.orderNo).then(() => {
     ElMessage.success('订单号已复制')
   })
@@ -350,14 +361,17 @@ const handlePay = async () => {
       }
     )
 
-    // TODO: 调用支付接口
-    console.log('支付订单:', order.value.id)
-    
-    // 模拟支付成功
-    ElMessage.success('支付成功')
-    order.value.status = 'paid'
-    order.value.payTime = new Date().toLocaleString('zh-CN')
-    clearInterval(timer)
+    // 调用支付成功接口（模拟）
+    const res = await request.put(`/culture/order/${order.value.orderNo}/pay`)
+    if (res.code === 200) {
+      ElMessage.success('支付成功')
+      await loadOrderDetail()
+      if (timer) {
+        clearInterval(timer)
+      }
+    } else {
+      ElMessage.error(res.message || '支付失败')
+    }
   } catch {
     // 用户取消
   }
@@ -372,17 +386,16 @@ const handleCancel = async () => {
       type: 'warning'
     })
 
-    // TODO: 调用取消订单接口
-    console.log('取消订单:', order.value.id)
-    
-    ElMessage.success('订单已取消')
-    order.value.status = 'cancelled'
-    clearInterval(timer)
-    
-    // 3秒后返回订单列表
-    setTimeout(() => {
-      router.push('/home/user/culture/orders')
-    }, 1500)
+    const res = await request.put(`/culture/order/${order.value.id}/cancel`)
+    if (res.code === 200) {
+      ElMessage.success('订单已取消')
+      if (timer) {
+        clearInterval(timer)
+      }
+      await loadOrderDetail()
+    } else {
+      ElMessage.error(res.message || '取消订单失败')
+    }
   } catch {
     // 用户取消
   }
@@ -397,11 +410,13 @@ const handleConfirm = async () => {
       type: 'info'
     })
 
-    // TODO: 调用确认收货接口
-    console.log('确认收货:', order.value.id)
-    
-    ElMessage.success('确认收货成功')
-    order.value.status = 'completed'
+    const res = await request.put(`/culture/order/${order.value.id}/confirm`)
+    if (res.code === 200) {
+      ElMessage.success('确认收货成功')
+      await loadOrderDetail()
+    } else {
+      ElMessage.error(res.message || '确认收货失败')
+    }
   } catch {
     // 用户取消
   }
@@ -417,14 +432,99 @@ const handleRefund = () => {
   ElMessage.info('退款功能开发中...')
 }
 
-onMounted(() => {
-  // TODO: 根据orderId从API获取订单详情
-  console.log('订单ID:', orderId)
-  
-  // 启动倒计时
-  if (order.value.status === 'pending') {
-    startCountdown()
+// 映射后端订单状态为前端状态字符串
+const mapStatus = (status?: number | null): OrderStatus => {
+  switch (status) {
+    case 1:
+      return 'pending'
+    case 2:
+      return 'paid'
+    case 3:
+      return 'shipped'
+    case 4:
+      return 'completed'
+    case 5:
+      return 'cancelled'
+    default:
+      return 'pending'
   }
+}
+
+// 从后端加载订单详情
+const loadOrderDetail = async () => {
+  if (!orderId) {
+    ElMessage.error('缺少订单ID')
+    router.back()
+    return
+  }
+  try {
+    loading.value = true
+    const res = await request.get(`/culture/order/${orderId}`)
+    if (res.code !== 200 || !res.data) {
+      ElMessage.error(res.message || '加载订单详情失败')
+      router.back()
+      return
+    }
+    const data = res.data
+    const goodsAmount = Number(data.totalAmount || 0)
+    const couponAmount = Number(data.couponDiscount || 0)
+    const finalAmount = Number(data.finalAmount || goodsAmount - couponAmount)
+    // 根据总价和优惠反推运费（final = goods + shipping - coupon）
+    const shippingFee = Math.max(0, finalAmount - goodsAmount + couponAmount)
+
+    order.value = {
+      id: data.id,
+      orderNo: data.orderNo,
+      createTime: data.createTime,
+      payTime: data.paymentTime,
+      status: mapStatus(data.orderStatus),
+      payMethod: data.paymentMethod || '在线支付',
+      items: [
+        {
+          id: data.productId,
+          productId: data.productId,
+          name: data.productName,
+          image: data.productImage,
+          specification: data.specification || data.productSpec || '',
+          price: Number(data.productPrice || 0),
+          quantity: data.quantity || 1
+        }
+      ],
+      receiver: data.contactName || '',
+      phone: data.contactPhone || '',
+      address:
+        (data.province || '') +
+        (data.city ? ` ${data.city}` : '') +
+        (data.district ? ` ${data.district}` : '') +
+        (data.detailedAddress ? ` ${data.detailedAddress}` : ''),
+      goodsAmount,
+      shippingFee,
+      couponAmount,
+      totalAmount: finalAmount,
+      remark: data.remark || data.buyerMessage || '',
+      invoice: data.invoiceTitle || null,
+      logistics: data.shipCompany || data.shipNo
+        ? {
+            company: data.shipCompany,
+            trackingNo: data.shipNo
+          }
+        : null
+    }
+
+    // 待支付订单启动倒计时
+    if (order.value.status === 'pending') {
+      startCountdown()
+    }
+  } catch (error) {
+    console.error('加载订单详情失败:', error)
+    ElMessage.error('加载订单详情失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadOrderDetail()
 })
 
 onUnmounted(() => {

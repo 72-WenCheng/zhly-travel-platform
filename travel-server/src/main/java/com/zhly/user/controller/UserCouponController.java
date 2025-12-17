@@ -88,11 +88,8 @@ public class UserCouponController {
                    .eq("status", 1) // 1-未使用
                    .ge("valid_end_time", LocalDateTime.now()); // 未过期
             
-            if (orderAmount != null) {
-                // 如果提供了订单金额，只返回满足最低使用金额的优惠券
-                wrapper.le("min_amount", orderAmount);
-            }
-            
+            // 此处不再按订单金额过滤，让前端根据 orderAmount 标记可用/不可用
+            // 这样在“选择优惠券”弹窗里可以看到所有未使用且未过期的券
             wrapper.orderByAsc("valid_end_time"); // 按有效期升序，优先显示快过期的
             java.util.List<UserCoupon> coupons = userCouponMapper.selectList(wrapper);
             

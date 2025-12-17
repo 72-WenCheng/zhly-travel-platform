@@ -134,41 +134,34 @@
         </el-divider>
         
         <el-form-item label="设施列表">
-          <div class="facilities-list">
-            <div
-              v-for="(facility, index) in formData.facilities"
-              :key="index"
-              class="facility-item"
+          <el-select
+            v-model="selectedFacilityValues"
+            multiple
+            filterable
+            placeholder="选择配套设施（自动附带图标）"
+            style="width: 100%"
+            @change="syncFacilitiesFromSelection"
+          >
+            <el-option
+              v-for="opt in facilityOptions"
+              :key="opt.value"
+              :label="opt.name"
+              :value="opt.value"
             >
-              <el-input
-                v-model="facility.name"
-                placeholder="设施名称"
-                style="width: 200px; margin-right: 10px;"
-              />
-              <el-input
-                v-model="facility.icon"
-                placeholder="图标URL（可选）"
-                style="width: 300px; margin-right: 10px;"
-              />
-              <el-button
-                type="danger"
-                size="small"
-                text
-                @click="removeFacility(index)"
-              >
-                <el-icon><Delete /></el-icon>
-                删除
-              </el-button>
+              <div class="facility-option">
+                <img class="facility-icon" :src="opt.icon" :alt="opt.name" />
+                <span>{{ opt.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="selected-facilities" v-if="formData.facilities && formData.facilities.length">
+            <div class="facility-chip" v-for="(fac, idx) in formData.facilities" :key="idx">
+              <img v-if="fac.icon" class="facility-chip-icon" :src="fac.icon" :alt="fac.name" />
+              <span>{{ fac.name }}</span>
             </div>
-            <el-button
-              type="primary"
-              size="small"
-              text
-              @click="addFacility"
-            >
-              <el-icon><Plus /></el-icon>
-              添加设施
-            </el-button>
+          </div>
+          <div class="form-tip">
+            直接选择即可，系统自动附带图标；如需自定义图标，可后续补充到预置列表。
           </div>
         </el-form-item>
 
@@ -312,6 +305,37 @@ const commonIncludes = [
   '烧烤食材', '住宿', '茶水饮料', '导游服务'
 ]
 
+// 预置的配套设施选项（带图标），用户直接选择即可
+// 配套设施预置（本地图标，便于离线）
+const facilityOptions = [
+  { value: 'parking', name: '停车场', icon: '/icons/facility/parking.svg' },
+  { value: 'wifi', name: '免费WiFi', icon: '/icons/facility/wifi.svg' },
+  { value: 'children', name: '儿童游乐区', icon: '/icons/facility/children.svg' },
+  { value: 'restaurant', name: '农家餐饮', icon: '/icons/facility/restaurant.svg' },
+  { value: 'accommodation', name: '住宿/客房', icon: '/icons/facility/accommodation.svg' },
+  { value: 'hotspring', name: '温泉', icon: '/icons/facility/hotspring.svg' },
+  { value: 'bbq', name: '烧烤区', icon: '/icons/facility/bbq.svg' },
+  { value: 'pet', name: '宠物友好', icon: '/icons/facility/pet.svg' }
+]
+
+const selectedFacilityValues = ref<string[]>([])
+
+// 后端有些字段在数据库里是 JSON 字符串，这里统一做一次安全转换
+const parseJsonArray = <T = any>(value: any, fallback: T[] = []): T[] => {
+  if (!value) return fallback
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed : fallback
+    } catch (e) {
+      console.warn('解析 JSON 字段失败:', value, e)
+      return fallback
+    }
+  }
+  return fallback
+}
+
 const formData = reactive<CultureService>({
   title: '',
   location: '',
@@ -364,21 +388,35 @@ const loadServiceData = async (id: number) => {
     const result = await getServiceById(id)
     if (result.code === 200 && result.data) {
       const service = result.data
+
+      // 把可能是 JSON 字符串的字段转成前端需要的数组结构
+      const imagesArray = parseJsonArray<string>(service.images)
+      const featuresArray = parseJsonArray<string>(service.features)
+      const facilitiesArray = parseJsonArray<any>(service.facilities)
+      const packagesArray = Array.isArray(service.packages) ? service.packages : []
+
       Object.assign(formData, {
         title: service.title || '',
         location: service.location || '',
         contactPhone: service.contactPhone || '',
         rating: service.rating || 0,
         description: service.description || '',
-        features: service.features || [],
-        facilities: service.facilities || [],
-        packages: service.packages || [],
+        images: imagesArray,
+        features: featuresArray,
+        facilities: facilitiesArray,
+        packages: packagesArray,
         status: service.status !== undefined ? service.status : 1
       })
       
+      // 同步设施选择值，用于下拉多选展示
+      selectedFacilityValues.value = (facilitiesArray || []).map(fac => {
+        const matched = facilityOptions.find(opt => opt.name === fac.name)
+        return matched ? matched.value : fac.name
+      })
+      
       // 处理图片列表
-      if (service.images && service.images.length > 0) {
-        imageList.value = service.images.map((url: string, index: number) => ({
+      if (imagesArray && imagesArray.length > 0) {
+        imageList.value = imagesArray.map((url: string, index: number) => ({
           uid: index,
           name: `image-${index}`,
           url: url,
@@ -489,15 +527,32 @@ const beforeImageUpload = (file: File) => {
   return true
 }
 
-// 添加设施
-const addFacility = () => {
-  formData.facilities = formData.facilities || []
-  formData.facilities.push({ name: '', icon: '' })
+// 根据设施名称自动生成一个简单的图标 URL（可以按需调整为自己服务器上的图标）
+const getFacilityIconByName = (name: string): string => {
+  if (!name) return ''
+  const key = name.trim()
+  // 这里用非常简单的关键词匹配，你后面如果有专门的图标地址，可以直接改成固定 URL
+  if (key.includes('停车')) return 'https://img.icons8.com/fluency/48/parking.png'
+  if (key.includes('WiFi') || key.includes('wifi') || key.includes('网络')) return 'https://img.icons8.com/fluency/48/wifi.png'
+  if (key.includes('儿童') || key.includes('小孩')) return 'https://img.icons8.com/fluency/48/children.png'
+  if (key.includes('餐') || key.includes('餐饮') || key.includes('饭')) return 'https://img.icons8.com/fluency/48/restaurant.png'
+  if (key.includes('住宿') || key.includes('客房') || key.includes('民宿')) return 'https://img.icons8.com/fluency/48/bed.png'
+  if (key.includes('温泉')) return 'https://img.icons8.com/fluency/48/hot-springs.png'
+  if (key.includes('烧烤')) return 'https://img.icons8.com/fluency/48/barbecue.png'
+  if (key.includes('宠物')) return 'https://img.icons8.com/fluency/48/dog.png'
+  return ''
 }
 
-// 删除设施
-const removeFacility = (index: number) => {
-  formData.facilities.splice(index, 1)
+// 根据选择的 value 列表，同步生成带图标的设施数组
+const syncFacilitiesFromSelection = () => {
+  formData.facilities = selectedFacilityValues.value.map(val => {
+    const found = facilityOptions.find(opt => opt.value === val)
+    if (found) {
+      return { name: found.name, icon: found.icon }
+    }
+    // 兜底：如果某项不在预置列表，用名称=值，图标按名称匹配（基本不会走到）
+    return { name: val, icon: getFacilityIconByName(val) }
+  })
 }
 
 // 添加套餐
@@ -532,6 +587,7 @@ const resetForm = () => {
     status: 1
   })
   imageList.value = []
+  selectedFacilityValues.value = []
   formRef.value?.clearValidate()
 }
 
@@ -802,6 +858,42 @@ const handleSubmit = async () => {
   font-size: 12px;
   color: #909399;
   margin-left: 8px;
+}
+
+.facility-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.facility-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.selected-facilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.facility-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #f0f4ff;
+  color: #3a6ff7;
+  font-size: 13px;
+}
+
+.facility-chip-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 /* 去除图片卡片上"按 Delete 键可删除"的文字提示 */

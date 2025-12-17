@@ -23,6 +23,7 @@ public class CultureOrder {
     private Long productId;
     private String productName;
     private String productImage;
+    private String specification; // 规格信息，例如 250g 礼盒
     private BigDecimal productPrice;
     private Integer quantity;
     private BigDecimal totalAmount;

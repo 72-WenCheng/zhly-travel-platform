@@ -569,8 +569,7 @@ const loadOrders = async () => {
   try {
     const params: any = {
       page: pagination.page,
-      size: pagination.size,
-      productType: 1 // 只查询农特产品和特色周边的订单
+      size: pagination.size
     }
     if (filters.orderNo) params.orderNo = filters.orderNo
     if (filters.productName) params.productName = filters.productName
@@ -682,9 +681,7 @@ const handleCancel = async (row: any) => {
 // 导出数据
 const handleExport = async () => {
   try {
-    const params: any = {
-      productType: 1 // 只导出农特产品和特色周边的订单
-    }
+    const params: any = {}
     if (filters.orderNo) params.orderNo = filters.orderNo
     if (filters.productName) params.productName = filters.productName
     if (filters.orderStatus) params.orderStatus = filters.orderStatus

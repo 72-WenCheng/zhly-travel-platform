@@ -38,6 +38,40 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="分类" prop="category">
+              <el-select
+                v-model="formData.category"
+                placeholder="请选择分类"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in categoryOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="保质期" prop="shelfLife">
+              <el-select
+                v-model="formData.shelfLife"
+                placeholder="请选择保质期"
+                style="width: 100%"
+              >
+                <el-option label="6个月" value="6个月" />
+                <el-option label="12个月" value="12个月" />
+                <el-option label="18个月" value="18个月" />
+                <el-option label="24个月" value="24个月" />
+                <el-option label="36个月" value="36个月" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         
         <el-row :gutter="20">
           <el-col :span="8">
@@ -175,6 +209,49 @@
           </el-select>
         </el-form-item>
 
+        <!-- 规格选择（用于用户端购买时的规格切换） -->
+        <el-divider content-position="left">
+          <el-icon><Setting /></el-icon>
+          规格选择
+        </el-divider>
+
+        <el-form-item label="规格选项" prop="availableSpecs">
+          <div v-for="(spec, index) in formData.availableSpecs" :key="index" class="spec-item">
+            <el-row :gutter="10">
+              <el-col :span="10">
+                <el-select
+                  v-model="formData.availableSpecs[index].value"
+                  placeholder="请选择规格"
+                  style="width: 100%"
+                  @change="(val) => handleSpecPresetChange(index, val)"
+                >
+                  <el-option
+                    v-for="item in specPresetOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-col>
+              <el-col :span="10">
+                <el-input
+                  v-model="formData.availableSpecs[index].label"
+                  placeholder="规格名称"
+                  disabled
+                />
+              </el-col>
+              <el-col :span="4">
+                <el-button @click="removeSpecOption(index)" :icon="Delete" />
+              </el-col>
+            </el-row>
+          </div>
+          <el-button type="primary" text @click="addSpecOption" style="width: 100%; margin-top: 8px;">
+            <el-icon><Plus /></el-icon>
+            添加规格选项
+          </el-button>
+          <div class="form-tip">用于用户端“规格选择”单选按钮，已预置常见规格，如：250g、500g 等</div>
+        </el-form-item>
+
         <el-form-item label="产品摘要" prop="summary">
           <el-input
             v-model="formData.summary"
@@ -236,8 +313,31 @@ const commonHighlights = [
   '亲子插秧', '新鲜采摘', '产地直供', '品质保证'
 ]
 
+// 预置分类选项
+const categoryOptions = [
+  '茶叶',
+  '粮油',
+  '干货',
+  '水果',
+  '蔬菜',
+  '禽畜产品',
+  '休闲零食',
+  '腊味/腌制',
+  '蜂蜜/特产',
+  '其他'
+]
+
+// 预置规格选项
+const specPresetOptions = [
+  { label: '250g 礼盒装', value: '250g' },
+  { label: '500g 礼盒装', value: '500g' },
+  { label: '750g 礼盒装', value: '750g' },
+  { label: '1000g 礼盒装', value: '1000g' }
+]
+
 const formData = reactive<AgriculturalProduct>({
   name: '',
+  category: '',
   origin: '',
   price: 0,
   originalPrice: 0,
@@ -245,13 +345,15 @@ const formData = reactive<AgriculturalProduct>({
   stock: -1,
   description: '',
   summary: '',
+  shelfLife: '',
   images: [],
   features: [],
   highlights: [],
   badge: '',
   rating: 0,
   contactPhone: '',
-  status: 1
+  status: 1,
+  availableSpecs: []
 })
 
 const rules = reactive<FormRules>({
@@ -286,36 +388,127 @@ const uploadHeaders = computed(() => {
   return token ? { Authorization: `Bearer ${token}` } : {}
 })
 
+// 添加规格选项
+const addSpecOption = () => {
+  if (!Array.isArray(formData.availableSpecs)) {
+    formData.availableSpecs = []
+  }
+  formData.availableSpecs.push({ label: '', value: '' })
+}
+
+// 删除规格选项
+const removeSpecOption = (index: number) => {
+  if (!Array.isArray(formData.availableSpecs)) return
+  formData.availableSpecs.splice(index, 1)
+}
+
+// 选择预置规格后，同步名称
+const handleSpecPresetChange = (index: number, value: string) => {
+  const preset = specPresetOptions.find(item => item.value === value)
+  if (!formData.availableSpecs[index]) {
+    formData.availableSpecs[index] = { label: '', value: '' }
+  }
+  formData.availableSpecs[index].value = value
+  formData.availableSpecs[index].label = preset?.label || value
+}
+
 // 加载产品数据（编辑模式）
 const loadServiceData = async (id: number) => {
   try {
     loading.value = true
     const result = await getProductById(id)
     if (result.code === 200 && result.data) {
-      const product = result.data
+      const product: any = result.data
+
+      // 解析图片（后端存的是字符串，通常是 JSON 数组）
+      let images: string[] = []
+      if (product.images) {
+        if (Array.isArray(product.images)) {
+          images = product.images
+        } else if (typeof product.images === 'string') {
+          try {
+            const parsed = JSON.parse(product.images)
+            if (Array.isArray(parsed)) {
+              images = parsed
+            } else {
+              images = product.images
+                .split(',')
+                .map((i: string) => i.trim())
+                .filter((i: string) => i)
+            }
+          } catch {
+            images = product.images
+              .split(',')
+              .map((i: string) => i.trim())
+              .filter((i: string) => i)
+          }
+        }
+      }
+
+      // 解析特色标签 / 亮点（后端是 JSON 字符串或逗号分隔字符串，前端用数组）
+      const parseTagString = (val: any): string[] => {
+        if (!val) return []
+        if (Array.isArray(val)) return val
+        if (typeof val === 'string') {
+          // 优先尝试按 JSON 解析
+          const trimmed = val.trim()
+          if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+            try {
+              const parsed = JSON.parse(trimmed)
+              if (Array.isArray(parsed)) {
+                return parsed
+                  .map((s: any) => String(s).trim())
+                  .filter((s: string) => s)
+              }
+            } catch {
+              // ignore and fallback to split
+            }
+          }
+          // 兼容逗号 / 换行分隔的旧数据
+          return trimmed
+            .split(/[,\n]/)
+            .map((s: string) => s.trim())
+            .filter((s: string) => s)
+        }
+        return []
+      }
+
       Object.assign(formData, {
-        name: product.name || '',
+        name: product.productName || product.name || '',
+        category: product.category || '',
         origin: product.origin || '',
-        price: product.price || 0,
-        originalPrice: product.originalPrice || 0,
+        price: Number(product.price || 0),
+        originalPrice: Number(product.originalPrice || 0),
         unit: product.unit || '斤',
         stock: product.stock !== undefined ? product.stock : -1,
         description: product.description || '',
         summary: product.summary || '',
-        features: product.features || [],
-        highlights: product.highlights || [],
+        shelfLife: product.shelfLife || '',
+        images,
+        features: parseTagString(product.features),
+        highlights: parseTagString(product.highlights),
         badge: product.badge || '',
-        rating: product.rating || 0,
+        rating: Number(product.rating || 0),
         contactPhone: product.contactPhone || '',
-        status: product.status !== undefined ? product.status : 1
+        status: product.status !== undefined ? product.status : 1,
+        availableSpecs: (() => {
+          if (!product.availableSpecs) return []
+          if (Array.isArray(product.availableSpecs)) return product.availableSpecs
+          try {
+            const parsed = JSON.parse(product.availableSpecs)
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return []
+          }
+        })()
       })
       
-      // 处理图片列表
-      if (product.images && product.images.length > 0) {
-        imageList.value = product.images.map((url: string, index: number) => ({
+      // 处理图片列表（用于上传组件展示）
+      if (images.length > 0) {
+        imageList.value = images.map((url: string, index: number) => ({
           uid: index,
           name: `image-${index}`,
-          url: url,
+          url,
           status: 'success'
         }))
       }
@@ -428,6 +621,7 @@ const beforeImageUpload = (file: File) => {
 const resetForm = () => {
   Object.assign(formData, {
     name: '',
+    category: '',
     origin: '',
     price: 0,
     originalPrice: 0,
@@ -435,13 +629,15 @@ const resetForm = () => {
     stock: -1,
     description: '',
     summary: '',
+    shelfLife: '',
     images: [],
     features: [],
     highlights: [],
     badge: '',
     rating: 0,
     contactPhone: '',
-    status: 1
+    status: 1,
+    availableSpecs: []
   })
   imageList.value = []
   formRef.value?.clearValidate()
@@ -463,10 +659,20 @@ const handleSubmit = async () => {
       try {
         // 确保图片数据正确
         updateImagesArray()
-        
-        // 构建提交数据
-        const submitData: AgriculturalProduct = { 
-          name: formData.name,
+
+        const imageArray = (formData.images || []) as string[]
+        const featuresArray = (formData.features || []) as string[]
+        const highlightsArray = (formData.highlights || []) as string[]
+        const specOptions = Array.isArray(formData.availableSpecs)
+          ? formData.availableSpecs.filter(opt => opt && (opt.label || opt.value))
+          : []
+
+        // 后端实体字段是 CultureProduct，部分字段为字符串，这里做适配转换
+        const submitData: any = {
+          // 基本信息
+          productName: formData.name,
+          productType: 4, // 4-特产/农特产品
+          category: formData.category || '',
           origin: formData.origin,
           price: formData.price || 0,
           originalPrice: formData.originalPrice || 0,
@@ -474,15 +680,26 @@ const handleSubmit = async () => {
           stock: formData.stock !== undefined ? formData.stock : -1,
           description: formData.description || '',
           summary: formData.summary || '',
-          images: formData.images || [],
-          features: formData.features || [],
-          highlights: formData.highlights || [],
+          shelfLife: formData.shelfLife || '',
+
+          // 图片相关：后端字段是 String，存 JSON 数组
+          images: imageArray.length ? JSON.stringify(imageArray) : '[]',
+          coverImage: imageArray[0] || undefined,
+
+          // 标签/亮点：后端字段是 JSON 字符串
+          features: featuresArray.length ? JSON.stringify(featuresArray) : '[]',
+          highlights: highlightsArray.length ? JSON.stringify(highlightsArray) : '[]',
+
+          // 规格选择：JSON 字符串
+          availableSpecs: specOptions.length ? JSON.stringify(specOptions) : '[]',
+
+          // 其他
           badge: formData.badge || '',
           rating: formData.rating || 0,
           contactPhone: formData.contactPhone || '',
           status: formData.status || 1
         }
-        
+
         let result
         if (isEdit.value && serviceId.value) {
           // 编辑模式

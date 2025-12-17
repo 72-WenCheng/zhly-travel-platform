@@ -40,6 +40,7 @@ public class CultureOrderController {
             order.setProductId(longVal(payload.get("productId")));
             order.setProductName(str(payload.get("productName")));
             order.setProductImage(str(payload.get("productImage")));
+            order.setSpecification(str(payload.get("specification")));
             order.setProductPrice(dec(payload.get("productPrice")));
             order.setQuantity(intVal(payload.get("quantity"), 1));
             order.setTotalAmount(dec(payload.get("totalAmount")));
@@ -148,6 +149,83 @@ public class CultureOrderController {
             return Result.success(result);
         } catch (Exception e) {
             return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 用户取消订单
+     */
+    @PutMapping("/{id}/cancel")
+    public Result<String> cancelOrder(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            Long userId = securityUtils.getLoginUserId(request);
+            if (userId == null) {
+                return Result.unauthorized("未登录或Token无效");
+            }
+            CultureOrder order = cultureOrderMapper.selectById(id);
+            if (order == null || !userId.equals(order.getUserId())) {
+                return Result.error("订单不存在");
+            }
+            // 只有待支付、已支付的订单允许取消
+            if (order.getOrderStatus() != null &&
+                order.getOrderStatus() != 1 &&
+                order.getOrderStatus() != 2) {
+                return Result.error("当前状态不允许取消订单");
+            }
+            order.setOrderStatus(5); // 已取消
+            order.setCancelTime(LocalDateTime.now());
+            order.setUpdateTime(LocalDateTime.now());
+            cultureOrderMapper.updateById(order);
+            return Result.success("订单已取消");
+        } catch (Exception e) {
+            return Result.error("取消订单失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 用户确认收货
+     */
+    @PutMapping("/{id}/confirm")
+    public Result<String> confirmOrder(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            Long userId = securityUtils.getLoginUserId(request);
+            if (userId == null) {
+                return Result.unauthorized("未登录或Token无效");
+            }
+            CultureOrder order = cultureOrderMapper.selectById(id);
+            if (order == null || !userId.equals(order.getUserId())) {
+                return Result.error("订单不存在");
+            }
+            if (order.getOrderStatus() == null || order.getOrderStatus() != 3) {
+                return Result.error("当前状态不允许确认收货");
+            }
+            order.setOrderStatus(4); // 已完成
+            order.setFinishTime(LocalDateTime.now());
+            order.setUpdateTime(LocalDateTime.now());
+            cultureOrderMapper.updateById(order);
+            return Result.success("确认收货成功");
+        } catch (Exception e) {
+            return Result.error("确认收货失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前用户的单个订单详情
+     */
+    @GetMapping("/{id}")
+    public Result<CultureOrder> getOrderDetail(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            Long userId = securityUtils.getLoginUserId(request);
+            if (userId == null) {
+                return Result.unauthorized("未登录或Token无效");
+            }
+            CultureOrder order = cultureOrderMapper.selectById(id);
+            if (order == null || !userId.equals(order.getUserId())) {
+                return Result.error("订单不存在");
+            }
+            return Result.success(order);
+        } catch (Exception e) {
+            return Result.error("查询订单详情失败: " + e.getMessage());
         }
     }
 

@@ -191,10 +191,14 @@
                   <el-icon><User /></el-icon>
                   <span>个人资料</span>
                 </el-dropdown-item>
-              <el-dropdown-item divided command="culture-center" v-if="!isAdmin && !isAdminRoute">
-                <el-icon><Shop /></el-icon>
-                <span>我的文旅</span>
-              </el-dropdown-item>
+                <el-dropdown-item divided command="culture-center" v-if="!isAdmin && !isAdminRoute">
+                  <el-icon><Shop /></el-icon>
+                  <span>我的文旅</span>
+                </el-dropdown-item>
+                <el-dropdown-item divided command="user-addresses" v-if="!isAdmin && !isAdminRoute">
+                  <el-icon><Location /></el-icon>
+                  <span>我的地址</span>
+                </el-dropdown-item>
                 <el-dropdown-item divided command="change-password">
                   <el-icon><Lock /></el-icon>
                   <span>修改密码</span>
@@ -749,6 +753,8 @@ const handleCommand = async (command: string) => {
     openDeactivateDialog()
   } else if (command === 'culture-center') {
     router.push('/home/user/culture/center')
+  } else if (command === 'user-addresses') {
+    router.push('/home/user/addresses')
   }
 }
 
