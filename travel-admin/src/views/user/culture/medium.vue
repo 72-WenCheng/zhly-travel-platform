@@ -831,32 +831,77 @@ const loadProducts = async () => {
   }
 }
 
-// 加载政策对接
+// 加载政策对接（只获取政府项目 type=3）
 const loadGovProjects = async () => {
   try {
-    const res = await request.get('/api/culture-project/list', { params: { page: 1, size: 3 } })
-    const list = res?.data?.list || res?.data?.records || res?.data || []
+    console.log('🔍 开始加载政策对接项目...')
+    const res = await request.get('/culture-project/list', { 
+      params: { 
+        page: 1, 
+        size: 6,
+        type: 3  // 只获取政府项目
+        // 不限制status，显示所有状态的政府项目
+      } 
+    })
+    console.log('📦 API响应:', res)
+    console.log('📦 res.data:', res?.data)
+    
+    // 后端返回格式：Result.success("获取文旅项目列表成功", result)
+    // result 是 Map<String, Object>，包含 list, total, page, size
+    const list = res?.data?.list || res?.data?.records || (Array.isArray(res?.data) ? res.data : [])
+    console.log('📋 解析后的列表:', list, '长度:', list?.length)
+    
     if (Array.isArray(list) && list.length) {
-      govProjects.value = list.slice(0, 3).map((item, idx) => ({
-        id: item.id || idx,
-        title: item.title || item.name || `项目 ${idx + 1}`,
-        location: item.location || item.region || '待定',
-        description: item.description || item.summary || '',
-        tags: item.tags || item.features || [],
-        startDate: item.startDate || item.createTime?.slice(0, 10) || '',
-        investment: item.investment || item.budget || 0,
-        beneficiaries: item.beneficiaries || item.people || 0,
-        statusText: item.statusText || item.statusName || '进行中',
-        statusClass: item.statusClass || 'status-active',
-        contactName: item.contactName || '',
-        contactPhone: item.contactPhone || '',
-        goalBrief: item.goalBrief || ''
-      }))
+      console.log('✅ 找到', list.length, '个政府项目')
+      govProjects.value = list.slice(0, 6).map((item, idx) => {
+        // 处理状态文本和样式
+        let statusText = '进行中'
+        let statusClass = 'status-active'
+        if (item.status === 1) {
+          statusText = '正常'
+          statusClass = 'status-active'
+        } else if (item.status === 2) {
+          statusText = '维护中'
+          statusClass = 'status-recruiting'
+        } else if (item.status === 0) {
+          statusText = '已关闭'
+          statusClass = ''
+        }
+        
+        // 处理创建时间
+        let startDate = ''
+        if (item.createTime) {
+          if (typeof item.createTime === 'string') {
+            startDate = item.createTime.slice(0, 10)
+          } else {
+            startDate = new Date(item.createTime).toISOString().slice(0, 10)
+          }
+        }
+        
+        return {
+          id: item.id || idx,
+          title: item.name || `项目 ${idx + 1}`,  // 使用 name 字段
+          location: item.location || item.region || item.address || '待定',
+          description: item.description || '',
+          tags: normalizeArray(item.features) || [],
+          startDate: startDate,
+          investment: item.price ? Number(item.price) : 0,  // 使用 price 字段作为投资规模
+          beneficiaries: 0,  // 如果没有这个字段，默认为0
+          statusText: statusText,
+          statusClass: statusClass,
+          contactName: item.contactPerson || '',
+          contactPhone: item.contactPhone || '',
+          goalBrief: item.description ? (item.description.length > 50 ? item.description.slice(0, 50) + '...' : item.description) : ''
+        }
+      })
+      console.log('✅ 处理后的项目列表:', govProjects.value)
     } else {
+      console.warn('⚠️ 没有找到政府项目数据，列表为空或不是数组')
       govProjects.value = []
     }
   } catch (error) {
-    console.warn('加载政策对接失败，保持空数据', error)
+    console.error('❌ 加载政策对接失败:', error)
+    console.error('错误详情:', error?.response || error?.message || error)
     govProjects.value = []
   }
 }

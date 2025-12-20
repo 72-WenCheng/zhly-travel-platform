@@ -54,7 +54,18 @@
 
         <!-- 预订内容 -->
         <div class="booking-content" @click="goToDetail(booking.projectId, booking.type)">
-          <el-image :src="booking.image" fit="cover" class="booking-image" />
+          <el-image 
+            :src="booking.image" 
+            fit="cover" 
+            class="booking-image"
+            :preview-src-list="booking.image ? [booking.image] : []"
+          >
+            <template #error>
+              <div class="image-slot">
+                <el-icon><Picture /></el-icon>
+              </div>
+            </template>
+          </el-image>
           <div class="booking-info">
             <h3 class="project-name">{{ booking.projectName }}</h3>
             <div class="booking-details">
@@ -103,6 +114,10 @@
 
         <!-- 预订操作 -->
         <div class="booking-actions">
+          <el-button type="primary" @click="handleViewDetail(booking)">
+            <el-icon><View /></el-icon>
+            查看详情
+          </el-button>
           <el-button
             v-if="booking.paymentStatus === 1 && booking.status === 'confirmed'"
             type="danger"
@@ -151,7 +166,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
-import { Calendar, Clock, User } from '@element-plus/icons-vue'
+import { Calendar, Clock, User, Picture, View } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -243,14 +258,38 @@ const loadBookings = async () => {
         const images = safeParseImages(b.itemImage)
 
         // 处理后端返回字符串 'null' 的情况，避免在页面展示出来
-        const normalizedTimeSlot =
-          b.bookingTime && b.bookingTime !== 'null' ? b.bookingTime : ''
+        let normalizedTimeSlot = ''
+        if (b.bookingTime && b.bookingTime !== 'null') {
+          // 转换时间场次格式：morning -> 上午场 (9:00-12:00)
+          const timeSlotMap = {
+            morning: '上午场 (9:00-12:00)',
+            afternoon: '下午场 (14:00-17:00)',
+            night: '夜场 (18:00-21:00)'
+          }
+          normalizedTimeSlot = timeSlotMap[b.bookingTime] || b.bookingTime
+        }
+        
         const normalizedSpecialRequirements =
           b.specialRequirements && b.specialRequirements !== 'null'
             ? b.specialRequirements
             : ''
 
         const isMockPaid = mockPaidIds.includes(b.id)
+
+        // 格式化日期显示
+        let formattedDate = ''
+        if (b.bookingDate) {
+          if (typeof b.bookingDate === 'string') {
+            formattedDate = b.bookingDate
+          } else {
+            // 如果是日期对象，格式化为 yyyy-MM-dd
+            const d = new Date(b.bookingDate)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            formattedDate = `${y}-${m}-${day}`
+          }
+        }
 
         return {
           id: b.id,
@@ -261,11 +300,11 @@ const loadBookings = async () => {
           projectId: b.itemId,
           projectName: b.itemName,
           image: images[0] || 'https://picsum.photos/120/120?random=20',
-          date: b.bookingDate,
+          date: formattedDate,
           timeSlot: normalizedTimeSlot,
-          participants: b.peopleCount,
-          contactName: b.contactName,
-          contactPhone: b.contactPhone,
+          participants: b.peopleCount || 1,
+          contactName: b.contactName || '',
+          contactPhone: b.contactPhone || '',
           totalAmount: Number(b.totalAmount || 0),
           paymentStatus: isMockPaid ? 2 : (b.paymentStatus ?? 1),
           paymentStatusText: isMockPaid || b.paymentStatus === 2 ? '已支付' : '未支付',
@@ -290,12 +329,8 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = computed(() => filteredBookings.value.length)
 
-// 待确认数量
-const pendingCount = computed(() => bookings.value.filter(b => b.status === 'pending').length)
-
-// 过滤后的预订
-const filteredBookings = computed(() => {
-  // 先按模块类型过滤
+// 过滤后的预订（先按模块类型过滤）
+const filteredByMode = computed(() => {
   let list = bookings.value
   if (mode.value === 'experience') {
     list = list.filter(b => b.type === 'experience')
@@ -303,6 +338,18 @@ const filteredBookings = computed(() => {
     // 农家乐(service) + 民宿(homestay)
     list = list.filter(b => b.type === 'service' || b.type === 'homestay')
   }
+  return list
+})
+
+// 待确认数量（基于当前模式过滤后的数据）
+const pendingCount = computed(() => {
+  return filteredByMode.value.filter(b => b.status === 'pending').length
+})
+
+// 过滤后的预订（再按状态过滤）
+const filteredBookings = computed(() => {
+  // 先按模块类型过滤
+  let list = filteredByMode.value
 
   // 再按状态过滤
   if (activeTab.value === 'all') {
@@ -341,7 +388,7 @@ const handleTabChange = (tab) => {
 // 跳转到详情
 const goToDetail = (projectId, type) => {
   if (type === 'experience') {
-    router.push(`/home/user/culture/detail/${projectId}`)
+    router.push(`/home/user/culture/experience/${projectId}`)
   } else if (type === 'service') {
     router.push(`/home/user/culture/service/${projectId}`)
   } else if (type === 'homestay') {
@@ -407,6 +454,11 @@ const handleDelete = async (booking) => {
 // 去浏览
 const goBrowse = () => {
   router.push('/home/user/culture')
+}
+
+// 查看详情
+const handleViewDetail = (booking) => {
+  router.push(`/home/user/culture/booking-detail/${booking.id}`)
 }
 
 onMounted(() => {
@@ -477,28 +529,44 @@ const handleCurrentChange = (page) => {
 }
 
 .booking-card {
+  margin-bottom: 0;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
   .booking-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 16px 0;
 
     .header-left {
       display: flex;
       gap: 24px;
       align-items: center;
+      flex: 1;
+      min-width: 0;
 
       .booking-time {
         font-size: 14px;
         color: #606266;
-      }
+        font-weight: 500;
+        white-space: nowrap;
 
-          .booking-time-slot {
-            margin-left: 12px; // 日期与“1晚”之间留出明显间隔
-          }
+        .booking-time-slot {
+          margin-left: 12px;
+          color: #409eff;
+        }
+      }
 
       .booking-no {
         font-size: 14px;
         color: #909399;
+        white-space: nowrap;
       }
     }
   }
@@ -506,6 +574,7 @@ const handleCurrentChange = (page) => {
   .booking-content {
     display: flex;
     gap: 20px;
+    align-items: flex-start;
     cursor: pointer;
     padding: 16px;
     border-radius: 8px;
@@ -520,22 +589,41 @@ const handleCurrentChange = (page) => {
       height: 120px;
       border-radius: 8px;
       flex-shrink: 0;
+      object-fit: cover;
+
+      :deep(.image-slot) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        background: #f5f7fa;
+        color: #909399;
+        font-size: 32px;
+      }
     }
 
     .booking-info {
       flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
 
       .project-name {
         font-size: 18px;
         font-weight: 700;
         color: #303133;
         margin: 0 0 16px 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .booking-details {
         display: flex;
         flex-direction: column;
-        gap: 4px; // 日期和「1晚」之间间距稍微紧凑一点
+        gap: 8px;
 
         .detail-item {
           display: flex;
@@ -546,6 +634,7 @@ const handleCurrentChange = (page) => {
 
           .el-icon {
             color: #909399;
+            flex-shrink: 0;
           }
         }
       }
@@ -553,6 +642,12 @@ const handleCurrentChange = (page) => {
 
     .booking-price {
       text-align: right;
+      flex-shrink: 0;
+      min-width: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-start;
 
       .price-label {
         font-size: 14px;
@@ -564,6 +659,12 @@ const handleCurrentChange = (page) => {
         font-size: 24px;
         font-weight: 700;
         color: #f56c6c;
+        margin-bottom: 8px;
+        line-height: 1;
+      }
+
+      .price-status {
+        margin-top: 4px;
       }
     }
   }
@@ -571,21 +672,31 @@ const handleCurrentChange = (page) => {
   .contact-info {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    padding: 16px 0;
 
     .info-row {
       display: flex;
+      align-items: flex-start;
       font-size: 14px;
       color: #606266;
+      line-height: 1.6;
 
       .label {
-        min-width: 56px; // 标签和内容靠近一些
+        min-width: 80px;
         color: #909399;
+        flex-shrink: 0;
+      }
+
+      span:not(.label) {
+        flex: 1;
+        word-break: break-word;
       }
 
       &.cancel-row {
         border-left: 3px solid #f56c6c;
-        padding-left: 8px;
+        padding-left: 12px;
+        margin-left: 0;
         color: #f56c6c;
 
         .label {
@@ -604,9 +715,15 @@ const handleCurrentChange = (page) => {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+    align-items: center;
     margin-top: 16px;
     padding-top: 16px;
     border-top: 1px solid #ebeef5;
+    flex-wrap: wrap;
+
+    .el-button {
+      min-width: 100px;
+    }
   }
 }
 

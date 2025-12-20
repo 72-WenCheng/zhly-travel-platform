@@ -51,14 +51,6 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="详细位置" prop="location">
-              <el-input v-model="formData.location" placeholder="请输入详细位置" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
             <el-form-item label="投资规模（万元）" prop="price" required>
               <el-input-number
                 v-model="formData.price"
@@ -69,14 +61,28 @@
               />
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="评分" prop="rating">
+            <el-form-item label="开始时间" prop="startDate">
+              <el-date-picker
+                v-model="formData.startDate"
+                type="month"
+                placeholder="选择开始时间（年月）"
+                format="YYYY-MM"
+                value-format="YYYY-MM"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="惠及农户（户）" prop="beneficiaries">
               <el-input-number
-                v-model="formData.rating"
+                v-model="formData.beneficiaries"
                 :min="0"
-                :max="5"
-                :precision="1"
-                placeholder="评分0-5"
+                :precision="0"
+                placeholder="惠及农户数量"
                 style="width: 100%"
               />
             </el-form-item>
@@ -96,17 +102,194 @@
           </el-col>
         </el-row>
 
-        <el-form-item label="详细地址" prop="address">
-          <el-input v-model="formData.address" placeholder="请输入详细地址" />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="formData.email" placeholder="请输入邮箱地址" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="详细地址" prop="address">
+              <el-input v-model="formData.address" placeholder="请输入详细地址" />
+            </el-form-item>
+          </el-col>
+        </el-row>
 
         <el-form-item label="项目描述" prop="description" required>
           <el-input
             v-model="formData.description"
             type="textarea"
             :rows="4"
-            placeholder="请输入服务描述"
+            placeholder="请输入项目描述"
           />
+        </el-form-item>
+
+        <!-- 项目标签 -->
+        <el-divider content-position="left">
+          <el-icon><Collection /></el-icon>
+          项目标签
+        </el-divider>
+        
+        <el-form-item label="标签" prop="tags">
+          <el-select
+            v-model="formData.tags"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            placeholder="选择或输入项目标签"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="tag in commonTags"
+              :key="tag"
+              :label="tag"
+              :value="tag"
+            />
+          </el-select>
+          <div class="form-tip">可输入多个标签，如：乡村振兴、产业融合、就业扶持等</div>
+        </el-form-item>
+
+        <!-- 项目目标 -->
+        <el-divider content-position="left">
+          <el-icon><Aim /></el-icon>
+          项目目标
+        </el-divider>
+        
+        <el-form-item label="目标列表">
+          <div class="goals-list">
+            <div
+              v-for="(goal, index) in formData.goals"
+              :key="index"
+              class="goal-item"
+            >
+              <el-card shadow="never" style="margin-bottom: 16px;">
+                <div class="goal-header">
+                  <h4>目标 {{ index + 1 }}</h4>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    text
+                    @click="removeGoal(index)"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    删除
+                  </el-button>
+                </div>
+                <el-form-item :label="`目标${index + 1}标题`" :prop="`goals.${index}.title`">
+                  <el-input v-model="goal.title" placeholder="如：产业发展、就业创收等" />
+                </el-form-item>
+                <el-form-item :label="`目标${index + 1}描述`" :prop="`goals.${index}.description`">
+                  <el-input
+                    v-model="goal.description"
+                    type="textarea"
+                    :rows="2"
+                    placeholder="请输入目标描述"
+                  />
+                </el-form-item>
+              </el-card>
+            </div>
+            <el-button
+              type="primary"
+              size="small"
+              text
+              @click="addGoal"
+            >
+              <el-icon><Plus /></el-icon>
+              添加目标
+            </el-button>
+          </div>
+        </el-form-item>
+
+        <!-- 合作方式 -->
+        <el-divider content-position="left">
+          <el-icon><Connection /></el-icon>
+          合作方式
+        </el-divider>
+        
+        <el-form-item label="合作方式列表">
+          <div class="cooperation-list">
+            <div
+              v-for="(item, index) in formData.cooperation"
+              :key="index"
+              class="cooperation-item"
+            >
+              <el-input
+                v-model="formData.cooperation[index]"
+                placeholder="请输入合作方式"
+                style="width: calc(100% - 80px); margin-right: 10px;"
+              />
+              <el-button
+                type="danger"
+                size="small"
+                text
+                @click="removeCooperation(index)"
+              >
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
+            <el-button
+              type="primary"
+              size="small"
+              text
+              @click="addCooperation"
+            >
+              <el-icon><Plus /></el-icon>
+              添加合作方式
+            </el-button>
+          </div>
+        </el-form-item>
+
+        <!-- 政策支持 -->
+        <el-divider content-position="left">
+          <el-icon><Document /></el-icon>
+          政策支持
+        </el-divider>
+        
+        <el-form-item label="政策列表">
+          <div class="policies-list">
+            <div
+              v-for="(policy, index) in formData.policies"
+              :key="index"
+              class="policy-item"
+            >
+              <el-card shadow="never" style="margin-bottom: 16px;">
+                <div class="policy-header">
+                  <h4>政策 {{ index + 1 }}</h4>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    text
+                    @click="removePolicy(index)"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    删除
+                  </el-button>
+                </div>
+                <el-form-item :label="`政策${index + 1}标题`" :prop="`policies.${index}.title`">
+                  <el-input v-model="policy.title" placeholder="如：资金支持、土地政策等" />
+                </el-form-item>
+                <el-form-item :label="`政策${index + 1}内容`" :prop="`policies.${index}.content`">
+                  <el-input
+                    v-model="policy.content"
+                    type="textarea"
+                    :rows="3"
+                    placeholder="请输入政策内容"
+                  />
+                </el-form-item>
+              </el-card>
+            </div>
+            <el-button
+              type="primary"
+              size="small"
+              text
+              @click="addPolicy"
+            >
+              <el-icon><Plus /></el-icon>
+              添加政策
+            </el-button>
+          </div>
         </el-form-item>
 
         <!-- 图片上传 -->
@@ -142,165 +325,6 @@
           <div class="upload-tip">支持jpg/png格式，最多9张，建议尺寸800x600，第一张将作为封面图</div>
         </el-form-item>
 
-        <!-- 服务特色 -->
-        <el-divider content-position="left">
-          <el-icon><Star /></el-icon>
-          服务特色
-        </el-divider>
-        
-        <el-form-item label="特色标签" prop="features">
-          <el-select
-            v-model="formData.features"
-            multiple
-            filterable
-            allow-create
-            default-first-option
-            placeholder="选择或输入特色标签"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="feature in commonFeatures"
-              :key="feature"
-              :label="feature"
-              :value="feature"
-            />
-          </el-select>
-          <div class="form-tip">可输入多个特色标签，如：采摘体验、农家餐饮、垂钓等</div>
-        </el-form-item>
-
-        <!-- 配套设施 -->
-        <el-divider content-position="left">
-          <el-icon><Grid /></el-icon>
-          配套设施
-        </el-divider>
-        
-        <el-form-item label="设施列表">
-          <div class="facilities-list">
-            <div
-              v-for="(facility, index) in formData.facilities"
-              :key="index"
-              class="facility-item"
-            >
-              <el-input
-                v-model="facility.name"
-                placeholder="设施名称"
-                style="width: 200px; margin-right: 10px;"
-              />
-              <el-input
-                v-model="facility.icon"
-                placeholder="图标URL（可选）"
-                style="width: 300px; margin-right: 10px;"
-              />
-              <el-button
-                type="danger"
-                size="small"
-                text
-                @click="removeFacility(index)"
-              >
-                <el-icon><Delete /></el-icon>
-                删除
-              </el-button>
-            </div>
-            <el-button
-              type="primary"
-              size="small"
-              text
-              @click="addFacility"
-            >
-              <el-icon><Plus /></el-icon>
-              添加设施
-            </el-button>
-          </div>
-        </el-form-item>
-
-        <!-- 套餐信息 -->
-        <el-divider content-position="left">
-          <el-icon><Wallet /></el-icon>
-          套餐信息
-        </el-divider>
-        
-        <el-form-item label="套餐列表">
-          <div class="packages-list">
-            <div
-              v-for="(pkg, index) in formData.packages"
-              :key="index"
-              class="package-item"
-            >
-              <el-card shadow="never" style="margin-bottom: 16px;">
-                <div class="package-header">
-                  <h4>套餐 {{ index + 1 }}</h4>
-                  <el-button
-                    type="danger"
-                    size="small"
-                    text
-                    @click="removePackage(index)"
-                  >
-                    <el-icon><Delete /></el-icon>
-                    删除套餐
-                  </el-button>
-                </div>
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="套餐名称" :prop="`packages.${index}.name`">
-                      <el-input v-model="pkg.name" placeholder="请输入套餐名称" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="价格" :prop="`packages.${index}.price`">
-                      <el-input-number
-                        v-model="pkg.price"
-                        :min="0"
-                        :precision="2"
-                        placeholder="价格"
-                        style="width: 100%"
-                      />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="单位" :prop="`packages.${index}.unit`">
-                      <el-input v-model="pkg.unit" placeholder="如：人、天、次" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="描述" :prop="`packages.${index}.description`">
-                      <el-input v-model="pkg.description" placeholder="套餐描述" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                <el-form-item label="包含内容">
-                  <el-select
-                    v-model="pkg.includes"
-                    multiple
-                    filterable
-                    allow-create
-                    default-first-option
-                    placeholder="选择或输入包含内容"
-                    style="width: 100%"
-                  >
-                    <el-option
-                      v-for="item in commonIncludes"
-                      :key="item"
-                      :label="item"
-                      :value="item"
-                    />
-                  </el-select>
-                </el-form-item>
-              </el-card>
-            </div>
-            <el-button
-              type="primary"
-              size="small"
-              text
-              @click="addPackage"
-            >
-              <el-icon><Plus /></el-icon>
-              添加套餐
-            </el-button>
-          </div>
-        </el-form-item>
-
         <!-- 状态设置 -->
         <el-divider content-position="left">
           <el-icon><Setting /></el-icon>
@@ -324,12 +348,12 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  Plus, InfoFilled, Picture, Star, Grid, Wallet, Setting, Delete
+  Plus, InfoFilled, Picture, Setting, Delete, Collection, Aim, Connection, Document
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import type { FormInstance, FormRules, UploadFile, UploadFiles } from 'element-plus'
 import request from '@/utils/request'
-import { createProject, updateProject, getProjectById } from '@/api/cultureProject'
+import { createAdminProject, updateAdminProject, getAdminProjectById } from '@/api/cultureProject'
 import type { CultureProject } from '@/api/cultureProject'
 
 const router = useRouter()
@@ -343,30 +367,32 @@ const imageList = ref<UploadFiles>([])
 const dialogVisible = ref(false)
 const dialogImageUrl = ref('')
 
-const commonFeatures = [
-  '采摘体验', '农家餐饮', '垂钓', '烧烤', '儿童游乐区', 
-  '停车场', '免费WiFi', '宠物友好', '住宿', '温泉'
-]
 
-const commonIncludes = [
-  '农家午餐', '农家晚餐', '早餐', '采摘体验', '垂钓体验', 
-  '烧烤食材', '住宿', '茶水饮料', '导游服务'
-]
-
-const formData = reactive<CultureProject>({
+const formData = reactive<any>({
   name: '',
   type: 3,
   region: '',
-  location: '',
   price: 0,
-  rating: 0,
   contactPerson: '',
   contactPhone: '',
+  email: '',
   address: '',
   description: '',
   image: '',
-  status: 1
+  status: 1,
+  startDate: '',
+  beneficiaries: 0,
+  tags: [],
+  goals: [],
+  cooperation: [],
+  policies: []
 })
+
+// 常用标签
+const commonTags = [
+  '乡村振兴', '产业融合', '就业扶持', '文化传承', '生态保护',
+  '农旅融合', '产业升级', '农民增收', '美丽乡村', '可持续发展'
+]
 
 const rules = reactive<FormRules>({
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -406,30 +432,166 @@ const uploadHeaders = computed(() => {
 const loadServiceData = async (id: number) => {
   try {
     loading.value = true
-    const result = await getProjectById(id)
+    const result = await getAdminProjectById(id)
+    console.log('加载项目数据，API返回:', result)
+    
     if (result.code === 200 && result.data) {
-      const service = result.data
+      const service: any = result.data
+      console.log('项目原始数据:', service)
+      
+      // 解析JSON字段 - 这些字段可能以字符串形式存储
+      let tags: any[] = []
+      let goals: any[] = []
+      let cooperation: string[] = []
+      let policies: any[] = []
+      
+      try {
+        // 尝试从各个可能的字段解析
+        if (service.tags) {
+          if (typeof service.tags === 'string') {
+            try {
+              tags = JSON.parse(service.tags)
+            } catch {
+              // 如果不是JSON，尝试按逗号分割
+              tags = service.tags.split(',').filter((t: string) => t.trim())
+            }
+          } else if (Array.isArray(service.tags)) {
+            tags = service.tags
+          }
+        }
+        
+        if (service.goals) {
+          if (typeof service.goals === 'string') {
+            try {
+              goals = JSON.parse(service.goals)
+            } catch {
+              goals = []
+            }
+          } else if (Array.isArray(service.goals)) {
+            goals = service.goals
+          }
+        }
+        
+        if (service.cooperation) {
+          if (typeof service.cooperation === 'string') {
+            try {
+              cooperation = JSON.parse(service.cooperation)
+            } catch {
+              // 如果不是JSON，尝试按换行或逗号分割
+              cooperation = service.cooperation.split(/[,\n]/).filter((c: string) => c.trim())
+            }
+          } else if (Array.isArray(service.cooperation)) {
+            cooperation = service.cooperation
+          }
+        }
+        
+        if (service.policies) {
+          if (typeof service.policies === 'string') {
+            try {
+              policies = JSON.parse(service.policies)
+            } catch {
+              policies = []
+            }
+          } else if (Array.isArray(service.policies)) {
+            policies = service.policies
+          }
+        }
+      } catch (e) {
+        console.warn('解析JSON字段失败:', e)
+      }
+      
+      // 格式化开始时间 - 从createTime或startDate字段获取
+      let startDate = ''
+      if (service.startDate) {
+        startDate = service.startDate
+      } else if (service.createTime) {
+        // 从createTime转换为YYYY-MM格式
+        try {
+          const date = new Date(service.createTime)
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          startDate = `${year}-${month}`
+        } catch {
+          startDate = ''
+        }
+      }
+      
+      // 处理图片 - 可能存储在image字段中
+      let images: string[] = []
+      if (service.image) {
+        if (typeof service.image === 'string') {
+          try {
+            // 尝试解析为JSON数组
+            const parsed = JSON.parse(service.image)
+            if (Array.isArray(parsed)) {
+              images = parsed
+            } else {
+              images = [service.image]
+            }
+          } catch {
+            // 如果不是JSON，就是单个图片URL
+            images = [service.image]
+          }
+        } else if (Array.isArray(service.image)) {
+          images = service.image
+        }
+      }
+      
+      // 如果images字段存在，优先使用
+      if (service.images && Array.isArray(service.images)) {
+        images = service.images
+      }
+      
+      // 更新表单数据
       Object.assign(formData, {
-        title: service.title || '',
-        location: service.location || '',
+        name: service.name || '',
+        type: service.type !== undefined && service.type !== null ? service.type : 3,
+        region: service.region || '',
+        price: service.price ? Number(service.price) : 0,
+        contactPerson: service.contactPerson || '',
         contactPhone: service.contactPhone || '',
-        rating: service.rating || 0,
+        email: service.email || '',
+        address: service.address || '',
         description: service.description || '',
-        features: service.features || [],
-        facilities: service.facilities || [],
-        packages: service.packages || [],
-        status: service.status !== undefined ? service.status : 1
+        status: service.status !== undefined && service.status !== null ? service.status : 1,
+        startDate: startDate,
+        beneficiaries: service.beneficiaries ? Number(service.beneficiaries) : 0,
+        tags: Array.isArray(tags) ? tags : [],
+        goals: Array.isArray(goals) ? goals : [],
+        cooperation: Array.isArray(cooperation) ? cooperation : [],
+        policies: Array.isArray(policies) ? policies : []
       })
       
       // 处理图片列表
-      if (service.images && service.images.length > 0) {
-        imageList.value = service.images.map((url: string, index: number) => ({
-          uid: index,
-          name: `image-${index}`,
+      if (images.length > 0) {
+        imageList.value = images.map((url: string, index: number) => ({
+          uid: index + 1,
+          name: `image-${index + 1}`,
           url: url,
-          status: 'success'
+          status: 'success' as const
         }))
+        formData.images = images
+      } else {
+        imageList.value = []
+        formData.images = []
       }
+      
+      // 确保数组字段不为null
+      if (!formData.goals || !Array.isArray(formData.goals)) {
+        formData.goals = []
+      }
+      if (!formData.cooperation || !Array.isArray(formData.cooperation)) {
+        formData.cooperation = []
+      }
+      if (!formData.policies || !Array.isArray(formData.policies)) {
+        formData.policies = []
+      }
+      if (!formData.tags || !Array.isArray(formData.tags)) {
+        formData.tags = []
+      }
+      
+      console.log('加载后的表单数据:', formData)
+      console.log('加载后的图片列表:', imageList.value)
     } else {
       ElMessage.error('加载服务数据失败')
       router.back()
@@ -534,47 +696,65 @@ const beforeImageUpload = (file: File) => {
   return true
 }
 
-// 添加设施
-const addFacility = () => {
-  formData.facilities = formData.facilities || []
-  formData.facilities.push({ name: '', icon: '' })
-}
-
-// 删除设施
-const removeFacility = (index: number) => {
-  formData.facilities.splice(index, 1)
-}
-
-// 添加套餐
-const addPackage = () => {
-  formData.packages = formData.packages || []
-  formData.packages.push({
-    name: '',
-    price: 0,
-    unit: '人',
-    description: '',
-    includes: []
+// 添加目标
+const addGoal = () => {
+  formData.goals = formData.goals || []
+  formData.goals.push({
+    title: '',
+    description: ''
   })
 }
 
-// 删除套餐
-const removePackage = (index: number) => {
-  formData.packages.splice(index, 1)
+// 删除目标
+const removeGoal = (index: number) => {
+  formData.goals.splice(index, 1)
+}
+
+// 添加合作方式
+const addCooperation = () => {
+  formData.cooperation = formData.cooperation || []
+  formData.cooperation.push('')
+}
+
+// 删除合作方式
+const removeCooperation = (index: number) => {
+  formData.cooperation.splice(index, 1)
+}
+
+// 添加政策
+const addPolicy = () => {
+  formData.policies = formData.policies || []
+  formData.policies.push({
+    title: '',
+    content: ''
+  })
+}
+
+// 删除政策
+const removePolicy = (index: number) => {
+  formData.policies.splice(index, 1)
 }
 
 // 重置表单
 const resetForm = () => {
   Object.assign(formData, {
-    title: '',
-    location: '',
+    name: '',
+    type: 3,
+    region: '',
+    price: 0,
+    contactPerson: '',
     contactPhone: '',
-    rating: 0,
+    email: '',
+    address: '',
     description: '',
-    images: [],
-    features: [],
-    facilities: [],
-    packages: [],
-    status: 1
+    image: '',
+    status: 1,
+    startDate: '',
+    beneficiaries: 0,
+    tags: [],
+    goals: [],
+    cooperation: [],
+    policies: []
   })
   imageList.value = []
   formRef.value?.clearValidate()
@@ -597,34 +777,36 @@ const handleSubmit = async () => {
         // 确保图片数据正确
         updateImagesArray()
         
-        // 确保至少有一个套餐
-        if (!formData.packages || formData.packages.length === 0) {
-          ElMessage.warning('请至少添加一个套餐')
-          loading.value = false
-          return
-        }
-        
         // 构建提交数据
-        const submitData: CultureService = { 
-          title: formData.title,
-          location: formData.location,
-          contactPhone: formData.contactPhone,
-          rating: formData.rating || 0,
+        const imageUrls = formData.images && Array.isArray(formData.images) ? formData.images : []
+        const submitData: any = { 
+          name: formData.name,
+          type: formData.type,
+          region: formData.region,
+          price: formData.price || 0,
+          contactPerson: formData.contactPerson || '',
+          contactPhone: formData.contactPhone || '',
+          email: formData.email || '',
+          address: formData.address || '',
           description: formData.description || '',
-          images: formData.images || [],
-          features: formData.features || [],
-          facilities: formData.facilities || [],
-          packages: formData.packages || [],
-          status: formData.status || 1
+          image: imageUrls.length > 0 ? imageUrls[0] : '', // 封面图（第一张）
+          images: imageUrls.length > 0 ? JSON.stringify(imageUrls) : '', // 图片列表（JSON数组）
+          status: formData.status || 1,
+          startDate: formData.startDate || '', // 格式：YYYY-MM
+          beneficiaries: formData.beneficiaries || 0,
+          tags: formData.tags && formData.tags.length > 0 ? JSON.stringify(formData.tags) : '',
+          goals: formData.goals && formData.goals.length > 0 ? JSON.stringify(formData.goals) : '',
+          cooperation: formData.cooperation && formData.cooperation.length > 0 ? JSON.stringify(formData.cooperation) : '',
+          policies: formData.policies && formData.policies.length > 0 ? JSON.stringify(formData.policies) : ''
         }
         
         let result
         if (isEdit.value && serviceId.value) {
           // 编辑模式
-          result = await updateProject(serviceId.value, submitData)
+          result = await updateAdminProject(serviceId.value, submitData)
         } else {
           // 新增模式
-          result = await createProject(submitData)
+          result = await createAdminProject(submitData)
         }
         
         if (result.code === 200) {
@@ -809,19 +991,28 @@ const handleSubmit = async () => {
   }
 }
 
-.facilities-list {
-  .facility-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-  }
+.upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 
-.packages-list {
-  .package-item {
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 8px;
+}
+
+.goals-list,
+.cooperation-list,
+.policies-list {
+  .goal-item,
+  .cooperation-item,
+  .policy-item {
     margin-bottom: 16px;
     
-    .package-header {
+    .goal-header,
+    .policy-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -835,18 +1026,6 @@ const handleSubmit = async () => {
       }
     }
   }
-}
-
-.upload-tip {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #909399;
-}
-
-.form-tip {
-  font-size: 12px;
-  color: #909399;
-  margin-left: 8px;
 }
 
 /* 去除图片卡片上"按 Delete 键可删除"的文字提示 */

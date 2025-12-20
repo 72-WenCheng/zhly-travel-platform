@@ -6,6 +6,7 @@ import com.zhly.service.CultureExperienceService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +73,21 @@ public class CultureExperienceServiceImpl extends ServiceImpl<CultureExperienceM
     @Override
     public boolean updateExperience(CultureExperience experience) {
         try {
+            // 检查体验是否存在
+            CultureExperience existing = cultureExperienceMapper.selectById(experience.getId());
+            if (existing == null) {
+                throw new RuntimeException("文化体验不存在");
+            }
+            
+            // 只更新允许修改的字段，保留统计字段（viewCount, orderCount）和创建时间
+            experience.setViewCount(existing.getViewCount());
+            experience.setOrderCount(existing.getOrderCount());
+            experience.setCreateTime(existing.getCreateTime());
+            experience.setUpdateTime(LocalDateTime.now());
+            
             return cultureExperienceMapper.updateById(experience) > 0;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("更新文化体验失败: " + e.getMessage());
         }

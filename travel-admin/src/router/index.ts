@@ -273,6 +273,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '预订支付', icon: 'Wallet' }
       },
       {
+        path: 'user/culture/booking-detail/:id',
+        name: 'CultureBookingDetail',
+        component: () => import('@/views/user/culture/bookingDetail.vue'),
+        meta: { title: '预约详情', icon: 'Document' }
+      },
+      {
         path: 'user/culture/applications',
         name: 'CultureApplications',
         component: () => import('@/views/user/culture/applications.vue'),

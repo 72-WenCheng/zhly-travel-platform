@@ -1,5 +1,5 @@
 <template>
-  <div class="project-detail">
+  <div class="project-detail" v-loading="loading">
     <!-- 返回按钮 -->
     <BackButton />
 
@@ -47,6 +47,29 @@
                 {{ project.beneficiaries }}户
               </span>
             </div>
+          </div>
+        </el-card>
+
+        <!-- 项目图片 -->
+        <el-card v-if="projectImages && projectImages.length > 0" class="images-card">
+          <h3>项目图片</h3>
+          <div class="project-images">
+            <el-image
+              v-for="(img, index) in projectImages"
+              :key="index"
+              :src="img"
+              :preview-src-list="projectImages"
+              :initial-index="index"
+              fit="cover"
+              class="project-image"
+              :preview-teleported="true"
+            >
+              <template #error>
+                <div class="image-slot">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
           </div>
         </el-card>
 
@@ -235,78 +258,284 @@ import {
   TrendCharts,
   Briefcase,
   Sunny,
-  Brush
+  Brush,
+  Picture
 } from '@element-plus/icons-vue'
+import { getProjectById } from '@/api/cultureProject'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
 
+// 加载状态
+const loading = ref(false)
+
 // 项目详情数据
 const project = ref({
-  id: 1,
-  title: '巴南区乡村振兴示范项目',
-  statusText: '进行中',
-  statusType: 'success',
-  location: '重庆市巴南区',
-  startDate: '2024-03',
-  investment: 5000,
-  beneficiaries: 320,
-  description: '以农旅融合为核心，打造集观光、体验、度假为一体的乡村旅游综合体，带动当地农民增收致富。通过整合当地特色农业资源、文化资源和旅游资源，建立完善的产业链条，实现经济效益和社会效益双赢。项目将采用"政府引导+企业运营+农户参与"的模式，确保项目可持续发展。',
-  tags: ['乡村振兴', '产业融合', '就业扶持', '文化传承', '生态保护'],
-  goals: [
-    {
-      icon: TrendCharts,
-      title: '产业发展',
-      description: '建立完善的农旅融合产业链，年产值达到8000万元以上'
-    },
-    {
-      icon: Briefcase,
-      title: '就业创收',
-      description: '创造就业岗位500个以上，带动农户年均增收2万元'
-    },
-    {
-      icon: Sunny,
-      title: '生态保护',
-      description: '保护和改善当地生态环境，打造美丽乡村示范点'
-    },
-    {
-      icon: Brush,
-      title: '文化传承',
-      description: '挖掘和传承当地特色文化，提升文化软实力'
-    }
-  ],
-  cooperation: [
-    '政府提供政策支持和土地资源',
-    '企业负责项目投资和运营管理',
-    '农户提供劳动力和农产品',
-    '共同分享项目收益',
-    '建立长期合作机制'
-  ],
-  policies: [
-    {
-      title: '资金支持',
-      content: '政府提供专项扶持资金，对符合条件的企业给予投资额30%的补贴，最高不超过500万元。'
-    },
-    {
-      title: '土地政策',
-      content: '优先保障项目用地，简化审批流程。对农业设施用地给予政策倾斜，租金优惠50%。'
-    },
-    {
-      title: '税收优惠',
-      content: '前三年免征企业所得税，后三年减半征收。农产品加工企业享受增值税即征即退政策。'
-    },
-    {
-      title: '人才引进',
-      content: '对引进的高层次人才提供住房补贴、子女入学等配套服务，简化落户手续。'
-    }
-  ],
+  id: null,
+  title: '',
+  statusText: '',
+  statusType: 'info',
+  location: '',
+  startDate: '',
+  investment: 0,
+  beneficiaries: 0,
+  description: '',
+  tags: [],
+  goals: [],
+  cooperation: [],
+  policies: [],
+  images: [],
   contact: {
-    name: '张经理',
-    phone: '023-6688-3344',
-    email: 'banan_gov@cq.gov.cn',
-    address: '重庆市巴南区政府大楼3楼'
+    name: '',
+    phone: '',
+    email: '',
+    address: ''
   }
 })
+
+// 项目图片列表（用于预览）
+const projectImages = ref([])
+
+// 状态映射
+const getStatusInfo = (status) => {
+  // status: 0-下架, 1-上架/进行中, 2-已完成, 3-招募中
+  const statusMap = {
+    0: { text: '已下架', type: 'info' },
+    1: { text: '进行中', type: 'success' },
+    2: { text: '已完成', type: 'success' },
+    3: { text: '招募中', type: 'warning' }
+  }
+  return statusMap[status] || { text: '未知', type: 'info' }
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    return `${year}-${month}`
+  } catch {
+    return dateStr
+  }
+}
+
+// 加载项目详情
+const loadProjectDetail = async (id) => {
+  if (!id) {
+    ElMessage.error('项目ID不能为空')
+    router.back()
+    return
+  }
+
+  loading.value = true
+  try {
+    const res = await getProjectById(Number(id))
+    const data = res.data
+
+    if (!data) {
+      ElMessage.error('项目不存在')
+      router.back()
+      return
+    }
+
+    // 状态信息
+    const statusInfo = getStatusInfo(data.status || 1)
+
+    // 解析tags
+    let tags = []
+    try {
+      if (data.tags) {
+        if (typeof data.tags === 'string') {
+          tags = JSON.parse(data.tags)
+        } else if (Array.isArray(data.tags)) {
+          tags = data.tags
+        }
+      }
+    } catch (e) {
+      console.warn('解析tags失败:', e)
+    }
+    // 如果没有tags，使用默认值
+    if (!tags || tags.length === 0) {
+      tags = ['乡村振兴', '产业融合', '就业扶持', '文化传承', '生态保护']
+    }
+
+    // 解析goals
+    let goals = []
+    try {
+      if (data.goals) {
+        if (typeof data.goals === 'string') {
+          goals = JSON.parse(data.goals)
+        } else if (Array.isArray(data.goals)) {
+          goals = data.goals
+        }
+      }
+    } catch (e) {
+      console.warn('解析goals失败:', e)
+    }
+    // 如果没有goals，使用默认值
+    if (!goals || goals.length === 0) {
+      goals = [
+        {
+          icon: TrendCharts,
+          title: '产业发展',
+          description: '建立完善的农旅融合产业链，推动当地经济发展'
+        },
+        {
+          icon: Briefcase,
+          title: '就业创收',
+          description: '创造就业岗位，带动农户增收致富'
+        },
+        {
+          icon: Sunny,
+          title: '生态保护',
+          description: '保护和改善当地生态环境，打造美丽乡村'
+        },
+        {
+          icon: Brush,
+          title: '文化传承',
+          description: '挖掘和传承当地特色文化，提升文化软实力'
+        }
+      ]
+    } else {
+      // 为goals添加图标映射
+      const iconMap = {
+        '产业发展': TrendCharts,
+        '就业创收': Briefcase,
+        '生态保护': Sunny,
+        '文化传承': Brush
+      }
+      goals = goals.map(goal => ({
+        ...goal,
+        icon: iconMap[goal.title] || TrendCharts
+      }))
+    }
+
+    // 解析cooperation
+    let cooperation = []
+    try {
+      if (data.cooperation) {
+        if (typeof data.cooperation === 'string') {
+          cooperation = JSON.parse(data.cooperation)
+        } else if (Array.isArray(data.cooperation)) {
+          cooperation = data.cooperation
+        }
+      }
+    } catch (e) {
+      console.warn('解析cooperation失败:', e)
+    }
+    // 如果没有cooperation，使用默认值
+    if (!cooperation || cooperation.length === 0) {
+      cooperation = [
+        '政府提供政策支持和土地资源',
+        '企业负责项目投资和运营管理',
+        '农户提供劳动力和农产品',
+        '共同分享项目收益',
+        '建立长期合作机制'
+      ]
+    }
+
+    // 解析policies
+    let policies = []
+    try {
+      if (data.policies) {
+        if (typeof data.policies === 'string') {
+          policies = JSON.parse(data.policies)
+        } else if (Array.isArray(data.policies)) {
+          policies = data.policies
+        }
+      }
+    } catch (e) {
+      console.warn('解析policies失败:', e)
+    }
+    // 如果没有policies，使用默认值
+    if (!policies || policies.length === 0) {
+      policies = [
+        {
+          title: '资金支持',
+          content: '政府提供专项扶持资金，对符合条件的企业给予投资补贴。'
+        },
+        {
+          title: '土地政策',
+          content: '优先保障项目用地，简化审批流程。'
+        },
+        {
+          title: '税收优惠',
+          content: '对符合条件的项目给予税收优惠政策支持。'
+        },
+        {
+          title: '人才引进',
+          content: '对引进的高层次人才提供住房补贴、子女入学等配套服务。'
+        }
+      ]
+    }
+
+    // 处理开始时间：优先使用startDate，如果没有则从createTime转换
+    let startDate = ''
+    if (data.startDate) {
+      startDate = data.startDate
+    } else if (data.createTime) {
+      startDate = formatDate(data.createTime)
+    } else {
+      startDate = '未知'
+    }
+
+    // 解析图片列表
+    let images = []
+    try {
+      if (data.images) {
+        if (typeof data.images === 'string') {
+          images = JSON.parse(data.images)
+        } else if (Array.isArray(data.images)) {
+          images = data.images
+        }
+      }
+      // 如果没有images字段，尝试使用image字段（单张图片）
+      if (images.length === 0 && data.image) {
+        images = [data.image]
+      }
+    } catch (e) {
+      console.warn('解析images失败:', e)
+      // 如果解析失败，尝试使用image字段
+      if (data.image) {
+        images = [data.image]
+      }
+    }
+    projectImages.value = images
+
+    // 映射数据
+    project.value = {
+      id: data.id,
+      title: data.name || '项目名称',
+      statusText: statusInfo.text,
+      statusType: statusInfo.type,
+      location: data.location || data.region || '未知地区',
+      startDate: startDate,
+      investment: data.price ? Number(data.price) : 0,
+      beneficiaries: data.beneficiaries ? Number(data.beneficiaries) : 0,
+      description: data.description || '暂无项目介绍',
+      tags: tags,
+      goals: goals,
+      cooperation: cooperation,
+      policies: policies,
+      images: images,
+      contact: {
+        name: data.contactPerson || '项目负责人',
+        phone: data.contactPhone || '暂无',
+        email: data.email || '',
+        address: data.address || '暂无'
+      }
+    }
+  } catch (error) {
+    console.error('加载项目详情失败:', error)
+    ElMessage.error(error.message || '加载项目详情失败')
+    router.back()
+  } finally {
+    loading.value = false
+  }
+}
 
 // 申请表单
 const applyForm = ref({
@@ -355,21 +584,49 @@ const handleApply = async () => {
       }
     )
 
-    // TODO: 调用后端API提交申请
-    console.log('申请信息:', {
+    // 调用后端API提交申请
+    const submitData = {
       projectId: project.value.id,
       projectTitle: project.value.title,
-      ...applyForm.value
-    })
+      organizationName: applyForm.value.organizationName,
+      applicantName: applyForm.value.applicantName,
+      position: applyForm.value.position || '',
+      phone: applyForm.value.phone,
+      email: applyForm.value.email || '',
+      cooperationType: applyForm.value.cooperationType,
+      investmentAmount: applyForm.value.investmentAmount || 0,
+      description: applyForm.value.description || ''
+    }
 
-    ElMessage.success('申请提交成功！我们会尽快与您联系')
+    const res = await request.post('/user/culture/application/submit', submitData)
     
-    // 2秒后跳转到申请列表
-    setTimeout(() => {
-      router.push('/home/user/culture/applications')
-    }, 2000)
-  } catch {
-    // 用户取消
+    if (res.code === 200) {
+      ElMessage.success('申请提交成功！我们会尽快与您联系')
+      
+      // 清空表单
+      applyForm.value = {
+        organizationName: '',
+        applicantName: '',
+        position: '',
+        phone: '',
+        email: '',
+        cooperationType: '',
+        investmentAmount: 0,
+        description: ''
+      }
+      
+      // 2秒后跳转到申请列表
+      setTimeout(() => {
+        router.push('/home/user/culture/applications')
+      }, 2000)
+    } else {
+      ElMessage.error(res.message || '申请提交失败')
+    }
+  } catch (error) {
+    if (error.message && !error.message.includes('取消')) {
+      console.error('提交申请失败:', error)
+      ElMessage.error('申请提交失败: ' + (error.message || '未知错误'))
+    }
   }
 }
 
@@ -377,7 +634,7 @@ const handleApply = async () => {
 onMounted(() => {
   const id = route.params.id
   console.log('加载政府项目详情，ID:', id)
-  // TODO: 根据ID从后端加载实际数据
+  loadProjectDetail(id)
 })
 </script>
 
@@ -394,6 +651,58 @@ onMounted(() => {
   :deep(.el-card__body) {
     padding: 32px;
   }
+}
+
+.images-card {
+  margin-bottom: 20px;
+
+  :deep(.el-card__body) {
+    padding: 32px;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #303133;
+    margin: 0 0 20px 0;
+  }
+}
+
+.project-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.project-image {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  :deep(.el-image__inner) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 24px;
 }
 
 .project-header {
@@ -632,6 +941,15 @@ onMounted(() => {
   .project-meta,
   .project-goals {
     grid-template-columns: 1fr;
+  }
+
+  .project-images {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .project-image {
+    height: 150px;
   }
 
   .apply-card-sticky {

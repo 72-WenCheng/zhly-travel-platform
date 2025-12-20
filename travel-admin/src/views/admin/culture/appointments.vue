@@ -166,10 +166,17 @@
           <template #default="{ row }">
             <div class="experience-info">
               <el-image
-                :src="row.experienceImage"
+                :src="row.experienceImage || 'https://picsum.photos/60/60?random=20'"
                 fit="cover"
                 class="experience-image"
-              />
+                :preview-src-list="row.experienceImage ? [row.experienceImage] : []"
+              >
+                <template #error>
+                  <div class="image-slot">
+                    <el-icon><Picture /></el-icon>
+                  </div>
+                </template>
+              </el-image>
               <div class="experience-details">
                 <div class="experience-name">{{ row.experienceName }}</div>
                 <el-tag type="primary" size="small">文化体验</el-tag>
@@ -358,7 +365,8 @@ import {
   Check,
   Close,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Picture
 } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import { formatDateTime } from '@/utils'
@@ -567,7 +575,38 @@ const loadAppointments = async () => {
     
     const res = await request.get('/admin/culture/booking/page', { params })
     if (res.code === 200) {
-      appointmentList.value = res.data.records || []
+      // 处理数据，解析图片字段
+      appointmentList.value = (res.data.records || []).map((item: any) => {
+        // 解析图片字段（可能是 JSON 字符串）
+        let experienceImage = ''
+        if (item.itemImage) {
+          try {
+            if (typeof item.itemImage === 'string') {
+              try {
+                const parsed = JSON.parse(item.itemImage)
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  experienceImage = parsed[0]
+                } else if (typeof parsed === 'string') {
+                  experienceImage = parsed
+                }
+              } catch {
+                // 如果不是 JSON，直接使用
+                experienceImage = item.itemImage
+              }
+            } else if (Array.isArray(item.itemImage)) {
+              experienceImage = item.itemImage[0] || ''
+            }
+          } catch (error) {
+            console.error('解析图片失败:', error)
+          }
+        }
+        
+        return {
+          ...item,
+          experienceName: item.itemName || '',
+          experienceImage: experienceImage
+        }
+      })
       pagination.total = res.data.total || 0
       
       // 更新统计数据
@@ -758,6 +797,17 @@ onUnmounted(() => {
     width: 60px;
     height: 60px;
     border-radius: 8px;
+    flex-shrink: 0;
+    
+    :deep(.image-slot) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: #f5f7fa;
+      color: #909399;
+    }
   }
 
   .experience-details {

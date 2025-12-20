@@ -83,10 +83,26 @@ public class AdminProjectApplicationController {
                 application.setReviewOpinion(approveInfo.get("reviewOpinion").toString());
             }
             if (approveInfo.containsKey("projectStartTime")) {
-                application.setProjectStartTime(LocalDate.parse(approveInfo.get("projectStartTime").toString()));
+                String startTimeStr = approveInfo.get("projectStartTime").toString();
+                // 处理 ISO 8601 格式（如 2025-12-18T16:00:00.000Z）或 yyyy-MM-dd 格式
+                if (startTimeStr.contains("T")) {
+                    // ISO 8601 格式，提取日期部分
+                    application.setProjectStartTime(LocalDate.parse(startTimeStr.substring(0, 10)));
+                } else {
+                    // yyyy-MM-dd 格式
+                    application.setProjectStartTime(LocalDate.parse(startTimeStr));
+                }
             }
             if (approveInfo.containsKey("projectEndTime")) {
-                application.setProjectEndTime(LocalDate.parse(approveInfo.get("projectEndTime").toString()));
+                String endTimeStr = approveInfo.get("projectEndTime").toString();
+                // 处理 ISO 8601 格式（如 2025-12-18T16:00:00.000Z）或 yyyy-MM-dd 格式
+                if (endTimeStr.contains("T")) {
+                    // ISO 8601 格式，提取日期部分
+                    application.setProjectEndTime(LocalDate.parse(endTimeStr.substring(0, 10)));
+                } else {
+                    // yyyy-MM-dd 格式
+                    application.setProjectEndTime(LocalDate.parse(endTimeStr));
+                }
             }
             if (approveInfo.containsKey("remark")) {
                 application.setRemark(approveInfo.get("remark").toString());
@@ -141,13 +157,45 @@ public class AdminProjectApplicationController {
                 application.setContractNo(contractInfo.get("contractNo").toString());
             }
             if (contractInfo.containsKey("contractSignTime")) {
-                application.setContractSignTime(LocalDateTime.parse(contractInfo.get("contractSignTime").toString()));
+                String signTimeStr = contractInfo.get("contractSignTime").toString();
+                // 处理 ISO 8601 格式（如 2025-12-17T16:00:00.000Z）
+                if (signTimeStr.contains("T")) {
+                    // ISO 8601 格式，提取日期时间部分（去掉时区和毫秒）
+                    // 格式：2025-12-17T16:00:00.000Z -> 2025-12-17T16:00:00
+                    int dotIndex = signTimeStr.indexOf('.');
+                    int zIndex = signTimeStr.indexOf('Z');
+                    if (dotIndex > 0) {
+                        signTimeStr = signTimeStr.substring(0, dotIndex);
+                    } else if (zIndex > 0) {
+                        signTimeStr = signTimeStr.substring(0, zIndex);
+                    }
+                    application.setContractSignTime(LocalDateTime.parse(signTimeStr));
+                } else {
+                    // 标准格式 yyyy-MM-dd HH:mm:ss
+                    application.setContractSignTime(LocalDateTime.parse(signTimeStr));
+                }
             }
             if (contractInfo.containsKey("projectStartTime")) {
-                application.setProjectStartTime(LocalDate.parse(contractInfo.get("projectStartTime").toString()));
+                String startTimeStr = contractInfo.get("projectStartTime").toString();
+                // 处理 ISO 8601 格式（如 2025-12-18T16:00:00.000Z）或 yyyy-MM-dd 格式
+                if (startTimeStr.contains("T")) {
+                    // ISO 8601 格式，提取日期部分
+                    application.setProjectStartTime(LocalDate.parse(startTimeStr.substring(0, 10)));
+                } else {
+                    // yyyy-MM-dd 格式
+                    application.setProjectStartTime(LocalDate.parse(startTimeStr));
+                }
             }
             if (contractInfo.containsKey("projectEndTime")) {
-                application.setProjectEndTime(LocalDate.parse(contractInfo.get("projectEndTime").toString()));
+                String endTimeStr = contractInfo.get("projectEndTime").toString();
+                // 处理 ISO 8601 格式（如 2025-12-18T16:00:00.000Z）或 yyyy-MM-dd 格式
+                if (endTimeStr.contains("T")) {
+                    // ISO 8601 格式，提取日期部分
+                    application.setProjectEndTime(LocalDate.parse(endTimeStr.substring(0, 10)));
+                } else {
+                    // yyyy-MM-dd 格式
+                    application.setProjectEndTime(LocalDate.parse(endTimeStr));
+                }
             }
             if (contractInfo.containsKey("remark")) {
                 application.setRemark(contractInfo.get("remark").toString());

@@ -415,6 +415,10 @@
           <el-input v-model="formData.name" placeholder="请输入项目名称" />
         </el-form-item>
         
+        <el-form-item v-if="currentType === 'experience'" label="分类" prop="categoryName">
+          <el-input v-model="formData.categoryName" placeholder="请输入分类，如：精选推荐" />
+        </el-form-item>
+        
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="所在地区" prop="region">
@@ -469,6 +473,17 @@
         
         <el-form-item label="详细地址" prop="address">
           <el-input v-model="formData.address" placeholder="请输入详细地址" />
+        </el-form-item>
+        
+        <el-form-item v-if="currentType === 'experience'" label="简介" prop="slogan">
+          <el-input
+            v-model="formData.slogan"
+            type="textarea"
+            :rows="2"
+            placeholder="请输入简介，如：跟着非遗老师亲手完成一件蜀绣作品，收藏一段东方美学"
+            maxlength="200"
+            show-word-limit
+          />
         </el-form-item>
         
         <el-form-item label="项目描述" prop="description">
@@ -584,9 +599,11 @@ const formRef = ref<FormInstance>()
 const formData = reactive({
   id: null as number | null,
   name: '',
+  categoryName: '',
   type: 0,
   region: '',
   location: '',
+  slogan: '',
   description: '',
   image: '',
   price: 0,
@@ -793,15 +810,38 @@ const handleEdit = async (type: string, row: any) => {
         const data = res.data
         formData.id = data.id
         formData.name = data.name || ''
+        formData.categoryName = data.categoryName || ''
         formData.location = data.location || ''
+        formData.slogan = data.slogan || ''
         formData.description = data.description || ''
-        formData.image = data.images ? (Array.isArray(JSON.parse(data.images)) ? JSON.parse(data.images)[0] : data.images) : ''
+        
+        // 安全地解析图片字段
+        try {
+          if (data.images) {
+            if (typeof data.images === 'string') {
+              try {
+                const parsed = JSON.parse(data.images)
+                formData.image = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : parsed
+              } catch {
+                // 如果不是有效的 JSON，直接使用原值
+                formData.image = data.images
+              }
+            } else {
+              formData.image = data.images
+            }
+          } else {
+            formData.image = ''
+          }
+        } catch {
+          formData.image = ''
+        }
+        
         formData.price = data.price ? Number(data.price) : 0
         formData.rating = data.rating ? Number(data.rating) : 0
         formData.status = data.status === 'active' ? 1 : 0
         dialogVisible.value = true
       } else {
-        ElMessage.error('获取体验详情失败')
+        ElMessage.error(res.message || '获取体验详情失败')
       }
     } else {
       res = await request.get(`/admin/culture/project/${row.id}`)
@@ -822,11 +862,12 @@ const handleEdit = async (type: string, row: any) => {
         formData.status = data.status !== undefined ? data.status : 1
         dialogVisible.value = true
       } else {
-        ElMessage.error('获取项目详情失败')
+        ElMessage.error(res.message || '获取项目详情失败')
       }
     }
-  } catch (error) {
-    ElMessage.error('获取详情失败')
+  } catch (error: any) {
+    console.error('获取详情失败:', error)
+    ElMessage.error(error?.message || '获取详情失败，请稍后重试')
   }
 }
 
@@ -839,71 +880,109 @@ const handleSubmit = async () => {
     
     if (currentType.value === 'experience') {
       // 文化体验的提交逻辑
+      // 处理图片字段：确保格式正确
+      let imagesValue: string | null = null
+      if (formData.image) {
+        try {
+          // 如果已经是 JSON 字符串，先解析再重新序列化
+          const parsed = JSON.parse(formData.image)
+          imagesValue = JSON.stringify(Array.isArray(parsed) ? parsed : [formData.image])
+        } catch {
+          // 如果不是 JSON，直接作为字符串数组的第一个元素
+          imagesValue = JSON.stringify([formData.image])
+        }
+      }
+      
       const submitData: any = {
         name: formData.name,
-        categoryName: '文化体验',
+        categoryName: formData.categoryName || '文化体验',
         location: formData.location,
-        price: formData.price,
+        price: formData.price || 0,
         duration: '约2小时',
         rating: formData.rating || 5.0,
         status: formData.status === 1 ? 'active' : 'inactive',
-        description: formData.description,
-        images: formData.image ? JSON.stringify([formData.image]) : null
+        slogan: formData.slogan || '',
+        description: formData.description || '',
+        images: imagesValue
       }
       
       if (formData.id) {
         // 编辑
-        const res = await cultureExperienceApi.updateExperience(formData.id, submitData)
-        if (res.code === 200) {
-          ElMessage.success('更新成功')
-          dialogVisible.value = false
-          loadData(currentType.value)
-          loadStats()
-        } else {
-          ElMessage.error(res.message || '更新失败')
+        try {
+          const res = await cultureExperienceApi.updateExperience(formData.id, submitData)
+          if (res.code === 200) {
+            ElMessage.success('更新成功')
+            dialogVisible.value = false
+            loadData(currentType.value)
+            loadStats()
+          } else {
+            ElMessage.error(res.message || '更新失败')
+          }
+        } catch (error: any) {
+          console.error('更新文化体验失败:', error)
+          ElMessage.error(error?.message || '更新失败，请稍后重试')
         }
       } else {
         // 新增
-        const res = await cultureExperienceApi.createExperience(submitData)
-        if (res.code === 200) {
-          ElMessage.success('添加成功')
-          dialogVisible.value = false
-          loadData(currentType.value)
-          loadStats()
-        } else {
-          ElMessage.error(res.message || '添加失败')
+        try {
+          const res = await cultureExperienceApi.createExperience(submitData)
+          if (res.code === 200) {
+            ElMessage.success('添加成功')
+            dialogVisible.value = false
+            loadData(currentType.value)
+            loadStats()
+          } else {
+            ElMessage.error(res.message || '添加失败')
+          }
+        } catch (error: any) {
+          console.error('创建文化体验失败:', error)
+          ElMessage.error(error?.message || '添加失败，请稍后重试')
         }
       }
     } else {
       // 其他类型的提交逻辑
       const submitData = { ...formData }
+      delete submitData.id // 移除 id，因为 id 在 URL 路径中
       
       if (formData.id) {
         // 编辑
-        const res = await request.put(`/admin/culture/project/${formData.id}`, submitData)
-        if (res.code === 200) {
-          ElMessage.success('更新成功')
-          dialogVisible.value = false
-          loadData(currentType.value)
-          loadStats()
-        } else {
-          ElMessage.error(res.message || '更新失败')
+        try {
+          const res = await request.put(`/admin/culture/project/${formData.id}`, submitData)
+          if (res.code === 200) {
+            ElMessage.success('更新成功')
+            dialogVisible.value = false
+            loadData(currentType.value)
+            loadStats()
+          } else {
+            ElMessage.error(res.message || '更新失败')
+          }
+        } catch (error: any) {
+          console.error('更新项目失败:', error)
+          ElMessage.error(error?.message || '更新失败，请稍后重试')
         }
       } else {
         // 新增
-        const res = await request.post('/admin/culture/project', submitData)
-        if (res.code === 200) {
-          ElMessage.success('添加成功')
-          dialogVisible.value = false
-          loadData(currentType.value)
-          loadStats()
-        } else {
-          ElMessage.error(res.message || '添加失败')
+        try {
+          const res = await request.post('/admin/culture/project', submitData)
+          if (res.code === 200) {
+            ElMessage.success('添加成功')
+            dialogVisible.value = false
+            loadData(currentType.value)
+            loadStats()
+          } else {
+            ElMessage.error(res.message || '添加失败')
+          }
+        } catch (error: any) {
+          console.error('创建项目失败:', error)
+          ElMessage.error(error?.message || '添加失败，请稍后重试')
         }
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('表单验证失败:', error)
+    if (error?.message) {
+      ElMessage.error(error.message)
+    }
   }
 }
 
@@ -914,9 +993,11 @@ const resetForm = () => {
   }
   formData.id = null
   formData.name = ''
+  formData.categoryName = ''
   formData.type = 0
   formData.region = ''
   formData.location = ''
+  formData.slogan = ''
   formData.description = ''
   formData.image = ''
   formData.price = 0

@@ -230,6 +230,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import BackButton from '@/components/BackButton.vue'
 import CouponSelector from '@/components/CouponSelector.vue'
 import * as cultureExperienceApi from '@/api/cultureExperience'
+import request from '@/utils/request'
 import {
   Calendar,
   CircleCheck,
@@ -355,22 +356,37 @@ const handleBooking = async () => {
       { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
     )
 
+    // 格式化日期为 yyyy-MM-dd
+    const formatDate = (dateStr) => {
+      if (!dateStr) return null
+      const d = new Date(dateStr)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+
     const payload = {
+      bookingType: 1, // 1-文化体验
       experienceId: experience.value.id,
-      experienceName: experience.value.name,
-      date: bookingForm.value.date,
+      date: formatDate(bookingForm.value.date),
       timeSlot: bookingForm.value.timeSlot,
       participants: bookingForm.value.participants,
       contactName: bookingForm.value.contactName,
       contactPhone: bookingForm.value.contactPhone,
       notes: bookingForm.value.notes,
-      totalAmount: totalPrice.value,
-      type: 'experience'
+      totalAmount: totalPrice.value
     }
 
-    console.log('提交文化体验预约', payload)
-    ElMessage.success('预约提交成功，我们将尽快与您确认')
-    setTimeout(() => router.push('/home/user/culture/bookings'), 1200)
+    const res = await request.post('/culture/booking', payload)
+    if (res.code === 200) {
+      ElMessage.success('预约提交成功，我们将尽快与您确认')
+      setTimeout(() => {
+        router.push('/home/user/culture/bookings?mode=experience')
+      }, 1200)
+    } else {
+      ElMessage.error(res.message || '预约失败，请稍后再试')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error(error?.message || '预约失败，请稍后再试')
@@ -419,7 +435,7 @@ const loadDetail = async () => {
         rating: Number(data.rating) || experience.value.rating,
         reviewCount: data.reviewCount || experience.value.reviewCount,
         status: data.status || 'featured',
-        statusText: data.status === 'hot' ? '热门抢订中' : '精选推荐',
+        statusText: data.status === 'hot' ? '热门抢订中' : (data.categoryName || '精选推荐'),
         suitableFor: data.suitableFor || experience.value.suitableFor,
         slogan: data.slogan || experience.value.slogan,
         tags: data.tags ? normalizeImages(data.tags) : experience.value.tags,
@@ -437,7 +453,37 @@ const loadDetail = async () => {
         gallery: images.length ? images : experience.value.gallery,
         reviews: data.reviews ? normalizeImages(data.reviews) : experience.value.reviews,
         contactPhone: data.contactPhone || experience.value.contactPhone,
-        host: experience.value.host
+        host: (() => {
+          // 解析教师介绍数据
+          if (data.host) {
+            try {
+              let hostData = null
+              if (typeof data.host === 'string') {
+                try {
+                  hostData = JSON.parse(data.host)
+                } catch {
+                  // 如果不是有效的 JSON，使用默认值
+                  return experience.value.host
+                }
+              } else if (typeof data.host === 'object' && data.host !== null) {
+                hostData = data.host
+              }
+              
+              if (hostData && (hostData.name || hostData.title || hostData.bio)) {
+                return {
+                  name: hostData.name || '老师',
+                  title: hostData.title || '',
+                  avatar: hostData.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=master',
+                  bio: hostData.bio || ''
+                }
+              }
+            } catch (error) {
+              console.error('解析教师信息失败:', error)
+            }
+          }
+          // 如果没有数据，使用默认值
+          return experience.value.host
+        })()
       }
     } else {
       ElMessage.error(res.message || '加载体验详情失败')

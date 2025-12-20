@@ -9,16 +9,24 @@ export interface CultureProject {
   region: string
   location?: string
   image?: string
+  images?: string | string[] // 图片列表（JSON字符串或数组）
   description?: string
   price: number
   rating?: number
   contactPhone?: string
   contactPerson?: string
+  email?: string // 联系邮箱
   address?: string
   status?: number
   viewCount?: number
   orderCount?: number
   revenue?: number
+  startDate?: string // 项目开始时间（年月，格式：YYYY-MM）
+  beneficiaries?: number // 惠及农户数（户）
+  tags?: string | string[] // 项目标签（JSON字符串或数组）
+  goals?: string | any[] // 项目目标（JSON字符串或数组）
+  cooperation?: string | string[] // 合作方式（JSON字符串或数组）
+  policies?: string | any[] // 政策支持（JSON字符串或数组）
   createTime?: string
   updateTime?: string
 }

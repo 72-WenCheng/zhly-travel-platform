@@ -27,6 +27,8 @@ public class ProjectApplication {
     private String contactName;
     private String contactPhone;
     private String contactEmail;
+    private String position; // 职务
+    private String cooperationType; // 合作意向
     private String idCard;
     private String businessLicense;
     private String region;

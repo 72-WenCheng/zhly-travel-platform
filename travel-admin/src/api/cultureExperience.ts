@@ -12,9 +12,15 @@ export interface CultureExperience {
   rating?: number
   status?: string
   images?: string
+  slogan?: string
+  features?: string
   description?: string
+  suitableFor?: string
   flow?: string
+  includes?: string
   notes?: string
+  contactPhone?: string
+  host?: string
   reviews?: string
   viewCount?: number
   orderCount?: number
