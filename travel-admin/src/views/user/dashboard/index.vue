@@ -386,31 +386,40 @@
           </div>
         </div>
         
-        <div class="culture-grid">
-          <div 
-            v-for="item in cultureProjects" 
-            :key="item.id" 
-            class="culture-card"
-            @click="viewCulture(item)"
-          >
-            <div class="culture-image">
-              <img :src="item.image" :alt="item.name" />
-              <div class="culture-type">{{ item.typeName }}</div>
-            </div>
-            <div class="culture-content">
-              <h3 class="culture-title">{{ item.name }}</h3>
-              <p class="culture-location">
-                <el-icon><Location /></el-icon>
-                {{ item.location }}
-              </p>
-              <div class="culture-features">
-                <span v-for="feature in item.features" :key="feature" class="feature-tag">
-                  {{ feature }}
-                </span>
+        <el-row :gutter="20" class="culture-grid">
+          <el-col :span="12" v-for="item in cultureProjects" :key="item.id">
+            <div 
+              class="culture-card"
+              :class="{ 'is-placeholder': item.isPlaceholder }"
+              @click="!item.isPlaceholder && viewCulture(item)"
+            >
+              <div class="culture-image">
+                <img 
+                  v-if="item.image" 
+                  :src="item.image" 
+                  :alt="item.name" 
+                />
+                <div v-else class="no-image">
+                  <el-icon><Picture /></el-icon>
+                  <span>暂无图片</span>
+                </div>
+                <div v-if="item.typeName" class="culture-type">{{ item.typeName }}</div>
+              </div>
+              <div class="culture-content">
+                <h3 class="culture-title">{{ item.name }}</h3>
+                <p v-if="item.location" class="culture-location">
+                  <el-icon><Location /></el-icon>
+                  {{ item.location }}
+                </p>
+                <div v-if="item.features && item.features.length > 0" class="culture-features">
+                  <span v-for="feature in item.features" :key="feature" class="feature-tag">
+                    {{ feature }}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </el-col>
+        </el-row>
       </div>
     </div>
 
@@ -612,6 +621,15 @@
       :close-on-click-modal="false"
       class="location-selector-dialog"
     >
+      <div class="location-warning">
+        <p class="location-warning-title">选择位置前请了解：</p>
+        <ul class="location-warning-list">
+          <li>请输入准确的城市名称，如：南宁、北京、上海等，系统将自动获取该城市的天气信息。</li>
+          <li>区/县为可选信息，填写后可以获取更精确的位置信息。</li>
+          <li>如果输入的城市名称无法识别，请尝试使用城市全称（如"南宁市"）或联系管理员。</li>
+        </ul>
+      </div>
+      <div class="location-divider"></div>
       <div class="location-selector-content">
         <el-form :model="locationForm" label-width="80px" label-position="top" :hide-required-asterisk="true">
           <el-form-item label="市">
@@ -670,6 +688,8 @@ import { getCurrentUserInfo, getCurrentUserId } from '@/utils/user'
 import AgreementDialog from '@/components/AgreementDialog.vue'
 import { useSystemStore } from '@/stores/system'
 import { storeToRefs } from 'pinia'
+import { getHotProjects, getProjectList } from '@/api/cultureProject'
+import { getHotExperiences } from '@/api/cultureExperience'
 
 const router = useRouter()
 const systemStore = useSystemStore()
@@ -1820,32 +1840,7 @@ const loadHotPlans = async () => {
 }
 
 // 文旅项目
-const cultureProjects = ref([
-  {
-    id: 1,
-    image: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=400',
-    name: '重庆民宿·山城美宿',
-    location: '重庆·南山',
-    typeName: '民宿',
-    features: ['江景房', '含早餐', '免费停车']
-  },
-  {
-    id: 2,
-    image: 'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=400',
-    name: '川渝火锅体验馆',
-    location: '重庆·解放碑',
-    typeName: '餐饮',
-    features: ['地道火锅', '特色服务', '网红打卡']
-  },
-  {
-    id: 3,
-    image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-    name: '蜀绣体验工坊',
-    location: '成都·锦里',
-    typeName: '文化体验',
-    features: ['非遗传承', 'DIY体验', '作品带走']
-  }
-])
+const cultureProjects = ref([])
 
 // Footer 链接相关
 const showUserAgreementDialog = ref(false)
@@ -2038,7 +2033,361 @@ const viewUserProfile = (userId) => {
 }
 
 const viewCulture = (item) => {
-  router.push(`/home/user/culture/detail/${item.id}`)
+  // 根据不同类型跳转到不同页面
+  if (item.itemType === 'homestay') {
+    router.push(`/home/user/culture/homestay/${item.id}`)
+  } else if (item.itemType === 'service') {
+    router.push(`/home/user/culture/service/${item.id}`)
+  } else if (item.itemType === 'experience') {
+    router.push(`/home/user/culture/experience/${item.id}`)
+  } else if (item.itemType === 'attraction') {
+    router.push(`/home/user/culture/attraction/${item.id}`)
+  } else if (item.itemType === 'product') {
+    router.push(`/home/user/culture/product/${item.id}`)
+  } else if (item.itemType === 'project') {
+    router.push(`/home/user/culture/project/${item.id}`)
+  } else {
+    router.push(`/home/user/culture/detail/${item.id}`)
+  }
+}
+
+// 解析图片字段
+const parseImage = (item: any) => {
+  if (item.image) return item.image
+  if (item.cover) return item.cover
+  if (item.coverImage) return item.coverImage
+  
+  if (item.images) {
+    if (Array.isArray(item.images) && item.images.length > 0) {
+      return item.images[0]
+    }
+    if (typeof item.images === 'string') {
+      try {
+        const parsed = JSON.parse(item.images)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed[0]
+        }
+      } catch (e) {
+        // 如果不是JSON，可能是逗号分隔的字符串
+        const images = item.images.split(',').filter((img: string) => img.trim())
+        if (images.length > 0) {
+          return images[0].trim()
+        }
+      }
+    }
+  }
+  
+  return ''
+}
+
+// 解析标签/特性字段
+const parseFeatures = (item: any, fieldNames: string[] = ['features', 'highlightTags', 'tags']) => {
+  for (const fieldName of fieldNames) {
+    if (!item[fieldName]) continue
+    
+    if (Array.isArray(item[fieldName])) {
+      // 如果是对象数组，提取title或直接使用字符串
+      return item[fieldName].slice(0, 3).map((f: any) => {
+        if (typeof f === 'string') return f
+        if (f && typeof f === 'object' && f.title) return f.title
+        return String(f)
+      })
+    }
+    
+    if (typeof item[fieldName] === 'string') {
+      try {
+        const parsed = JSON.parse(item[fieldName])
+        if (Array.isArray(parsed)) {
+          // 如果是对象数组，提取title或直接使用字符串
+          return parsed.slice(0, 3).map((f: any) => {
+            if (typeof f === 'string') return f
+            if (f && typeof f === 'object' && f.title) return f.title
+            return String(f)
+          })
+        }
+      } catch (e) {
+        // 如果不是JSON，可能是逗号分隔的字符串
+        const features = item[fieldName].split(',').filter((f: string) => f.trim())
+        return features.slice(0, 3)
+      }
+    }
+  }
+  
+  return []
+}
+
+// 解析文化体验的标签（特殊处理，features可能是包含emoji和title的对象数组）
+const parseExperienceFeatures = (item: any) => {
+  if (!item.features) return []
+  
+  try {
+    let features = item.features
+    if (typeof features === 'string') {
+      features = JSON.parse(features)
+    }
+    
+    if (Array.isArray(features)) {
+      // 提取title字段，如果没有title则使用整个对象转字符串
+      return features.slice(0, 3).map((f: any) => {
+        if (typeof f === 'string') return f
+        if (f && typeof f === 'object') {
+          // 优先使用title，其次使用description，最后使用整个对象
+          return f.title || f.description || (f.emoji ? `${f.emoji} ${f.title || ''}` : String(f))
+        }
+        return String(f)
+      }).filter((f: string) => f && f.trim())
+    }
+  } catch (e) {
+    // 如果解析失败，尝试作为逗号分隔的字符串处理
+    if (typeof item.features === 'string') {
+      const features = item.features.split(',').filter((f: string) => f.trim())
+      return features.slice(0, 3)
+    }
+  }
+  
+  return []
+}
+
+// 加载文旅体验数据
+const loadCultureProjects = async () => {
+  try {
+    const projects = []
+    
+    // 1. 农家乐（热度最高 - 按浏览量排序）
+    try {
+      const serviceRes = await request.get('/culture/services/page', {
+        params: { page: 1, size: 10 }
+      })
+      console.log('农家乐API响应:', serviceRes)
+      if (serviceRes.code === 200) {
+        // Page对象可能包含records或list字段
+        const list = serviceRes.data?.records || serviceRes.data?.list || []
+        if (list.length > 0) {
+          // 按热度排序（浏览量+订单量）
+          const sorted = [...list].sort((a: any, b: any) => {
+            const aHot = (a.views || a.viewCount || 0) + (a.orderCount || 0)
+            const bHot = (b.views || b.viewCount || 0) + (b.orderCount || 0)
+            return bHot - aHot
+          })
+          const item = sorted[0]
+          console.log('农家乐数据:', item)
+          projects.push({
+            id: item.id,
+            name: item.title || item.name || '农家乐服务',
+            location: item.location || '',
+            image: parseImage(item),
+            typeName: '农家乐',
+            features: parseFeatures(item, ['features', 'highlightTags']),
+            itemType: 'service'
+          })
+        }
+      }
+    } catch (e) {
+      console.error('加载农家乐失败:', e)
+    }
+    
+    // 2. 民宿（热度最高 - 按浏览量排序）
+    try {
+      const homestayRes = await request.get('/culture/homestays/page', {
+        params: { page: 1, size: 10 }
+      })
+      console.log('民宿API响应:', homestayRes)
+      if (homestayRes.code === 200) {
+        // Page对象可能包含records或list字段
+        const list = homestayRes.data?.records || homestayRes.data?.list || []
+        if (list.length > 0) {
+          // 按热度排序
+          const sorted = [...list].sort((a: any, b: any) => {
+            const aHot = (a.views || a.viewCount || 0) + (a.orderCount || 0)
+            const bHot = (b.views || b.viewCount || 0) + (b.orderCount || 0)
+            return bHot - aHot
+          })
+          const item = sorted[0]
+          console.log('民宿数据:', item)
+          projects.push({
+            id: item.id,
+            name: item.title || item.name || '特色民宿',
+            location: item.location || '',
+            image: parseImage(item),
+            typeName: '民宿',
+            features: parseFeatures(item, ['features', 'highlightTags']),
+            itemType: 'homestay'
+          })
+        }
+      }
+    } catch (e) {
+      console.error('加载民宿失败:', e)
+    }
+    
+    // 3. 农特产品（从culture/products获取，productType=4）
+    try {
+      const productRes = await request.get('/culture/products/page', {
+        params: { page: 1, size: 20, type: 4 }
+      })
+      console.log('农特产品API响应:', productRes)
+      
+      if (productRes.code === 200) {
+        // 接口返回的是 Page 对象，数据在 records 字段中
+        const list = productRes.data?.records || productRes.data?.list || []
+        console.log('农特产品列表:', list, '数量:', list.length)
+        if (list.length > 0) {
+          // 按销量和评分排序
+          const sorted = [...list].sort((a: any, b: any) => {
+            const aHot = (a.salesCount || 0) + (a.reviewCount || 0) * 10
+            const bHot = (b.salesCount || 0) + (b.reviewCount || 0) * 10
+            return bHot - aHot
+          })
+          const item = sorted[0]
+          console.log('农特产品数据:', item)
+          projects.push({
+            id: item.id,
+            name: item.productName || '农特产品',
+            location: item.origin || '',
+            image: parseImage(item),
+            typeName: '农特产品',
+            features: parseFeatures(item, ['features', 'highlights', 'badge']),
+            itemType: 'product'
+          })
+        } else {
+          console.warn('农特产品列表为空')
+        }
+      } else {
+        console.warn('农特产品API返回错误:', productRes)
+      }
+    } catch (e) {
+      console.error('加载农特产品失败:', e)
+      console.error('错误详情:', e.response || e.message)
+    }
+    
+    // 4. 政策对接（type=3，热度最高 - 按浏览量排序）
+    try {
+      // 先尝试获取status=1的数据，如果没有再获取所有状态的数据
+      let projectRes = await getProjectList({ page: 1, size: 20, type: 3, status: 1 })
+      console.log('政策对接API响应(status=1):', projectRes)
+      
+      // 如果status=1没有数据，尝试获取所有状态的数据
+      if (projectRes.code === 200 && (!projectRes.data?.list || projectRes.data.list.length === 0)) {
+        projectRes = await getProjectList({ page: 1, size: 20, type: 3 })
+        console.log('政策对接API响应(所有状态):', projectRes)
+      }
+      
+      if (projectRes.code === 200) {
+        const list = projectRes.data?.list || []
+        console.log('政策对接列表:', list, '数量:', list.length)
+        if (list.length > 0) {
+          // 按热度排序，优先显示status=1的
+          const sorted = [...list].sort((a: any, b: any) => {
+            // 优先显示status=1的
+            if (a.status === 1 && b.status !== 1) return -1
+            if (a.status !== 1 && b.status === 1) return 1
+            // 然后按热度排序
+            const aHot = (a.viewCount || 0) + (a.orderCount || 0)
+            const bHot = (b.viewCount || 0) + (b.orderCount || 0)
+            return bHot - aHot
+          })
+          const item = sorted[0]
+          console.log('政策对接数据:', item)
+          projects.push({
+            id: item.id,
+            name: item.name || '政策对接项目',
+            location: item.location || item.region || '',
+            image: parseImage(item),
+            typeName: '政策对接',
+            features: parseFeatures(item, ['tags']),
+            itemType: 'project'
+          })
+        } else {
+          console.warn('政策对接列表为空')
+        }
+      } else {
+        console.warn('政策对接API返回错误:', projectRes)
+      }
+    } catch (e) {
+      console.error('加载政策对接失败:', e)
+    }
+    
+    // 5. 文化体验（热度最高）
+    try {
+      const experienceRes = await getHotExperiences(10)
+      if (experienceRes.code === 200 && experienceRes.data?.length > 0) {
+        // 按热度排序（如果API没有排序）
+        const sorted = [...experienceRes.data].sort((a: any, b: any) => {
+          const aHot = (a.viewCount || 0) + (a.orderCount || 0)
+          const bHot = (b.viewCount || 0) + (b.orderCount || 0)
+          return bHot - aHot
+        })
+        const item = sorted[0]
+        // 解析文化体验的标签，features可能是对象数组，需要提取title
+        const experienceFeatures = parseExperienceFeatures(item)
+        projects.push({
+          id: item.id,
+          name: item.name || '文化体验',
+          location: item.location || '',
+          image: parseImage(item),
+          typeName: '文化体验',
+          features: experienceFeatures,
+          itemType: 'experience'
+        })
+      }
+    } catch (e) {
+      console.warn('加载文化体验失败:', e)
+    }
+    
+    // 6. 特色周边（热度最高 - 按浏览量排序）
+    try {
+      const attractionRes = await request.get('/culture/attractions/page', {
+        params: { page: 1, size: 10 }
+      })
+      console.log('特色周边API响应:', attractionRes)
+      if (attractionRes.code === 200) {
+        // Page对象可能包含records或list字段
+        const list = attractionRes.data?.records || attractionRes.data?.list || []
+        if (list.length > 0) {
+          // 按热度排序
+          const sorted = [...list].sort((a: any, b: any) => {
+            const aHot = (a.viewCount || 0) + (a.collectCount || 0)
+            const bHot = (b.viewCount || 0) + (b.collectCount || 0)
+            return bHot - aHot
+          })
+          const item = sorted[0]
+          console.log('特色周边数据:', item)
+          projects.push({
+            id: item.id,
+            name: item.name || '特色周边',
+            location: item.city || item.location || '',
+            image: parseImage(item),
+            typeName: '特色周边',
+            features: parseFeatures(item, ['tags']),
+            itemType: 'attraction'
+          })
+        }
+      }
+    } catch (e) {
+      console.error('加载特色周边失败:', e)
+    }
+    
+    console.log('✅ 文旅体验数据加载完成，共', projects.length, '条')
+    console.log('数据详情:', projects)
+    
+    // 如果数据不足6个，用空数据填充
+    while (projects.length < 6) {
+      projects.push({
+        id: `placeholder-${projects.length}`,
+        name: '暂无数据',
+        location: '',
+        image: '',
+        typeName: '',
+        features: [],
+        itemType: '',
+        isPlaceholder: true
+      })
+    }
+    
+    cultureProjects.value = projects.slice(0, 6)
+  } catch (error) {
+    console.error('加载文旅体验数据失败:', error)
+    ElMessage.error('加载文旅体验数据失败')
+  }
 }
 
 const formatNumber = (num) => {
@@ -3506,6 +3855,7 @@ onMounted(() => {
   loadMyCollectStats() // 加载我的收藏统计数据
   loadUserLevelInfo() // 加载用户积分和等级信息
   loadAnnouncements() // 加载公告数据
+  loadCultureProjects() // 加载文旅体验数据
 })
 </script>
 
@@ -5736,24 +6086,38 @@ onMounted(() => {
   padding: 40px 40px 20px;
   
   .culture-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
+    margin-bottom: 20px;
+    
+    .el-col {
+      margin-bottom: 20px;
+    }
     
     .culture-card {
       background: white;
       border-radius: 16px;
       overflow: hidden;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: box-shadow 0.3s ease;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      height: 100%;
       
       &:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        transform: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         
         img {
-          transform: scale(1.1);
+          transform: none;
+        }
+      }
+      
+      // 占位符样式
+      &.is-placeholder {
+        opacity: 0.5;
+        cursor: default;
+        
+        &:hover {
+          transform: none;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
         }
       }
       
@@ -5766,20 +6130,22 @@ onMounted(() => {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: transform 0.5s ease;
+          transition: none;
         }
         
         .culture-type {
           position: absolute;
           top: 12px;
           right: 12px;
-          padding: 6px 14px;
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(10px);
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #667eea;
+          padding: 8px 16px;
+          background: #ffffff;
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #333333;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          letter-spacing: 0.5px;
         }
       }
       
@@ -6135,6 +6501,40 @@ onMounted(() => {
     margin: 0 !important;
   }
   
+  // 位置选择提示框样式
+  .location-warning {
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    color: #c2410c;
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 20px;
+
+    .location-warning-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+
+    .location-warning-list {
+      margin: 0;
+      padding-left: 20px;
+
+      li {
+        margin: 4px 0;
+      }
+    }
+  }
+  
+  // 分隔线样式
+  .location-divider {
+    height: 1px;
+    background: #f0f0f0;
+    margin: 0 0 20px 0;
+  }
+  
   .location-selector-content {
     :deep(.el-form-item) {
       margin-bottom: 24px;
@@ -6231,26 +6631,26 @@ onMounted(() => {
       align-items: center;
       justify-content: center;
       border: 1px solid #dcdfe6;
-      background-color: #f5f7fa;
-      color: #909399;
+      background-color: white;
+      color: #606266;
       
       &:hover {
         border-color: #c0c4cc;
-        color: #909399;
-        background-color: #ebeef5;
+        color: #303133;
+        background-color: white;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       
       &:active {
         border-color: #c0c4cc;
-        color: #909399;
-        background-color: #e4e7ed;
+        color: #303133;
+        background-color: white;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       
       &:focus {
         border-color: #c0c4cc;
-        color: #909399;
+        color: #606266;
         background-color: #f5f7fa;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }

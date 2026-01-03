@@ -341,7 +341,6 @@
                 v-else 
                 description="暂无推荐景点"
                 :image-size="80">
-                <el-button size="small" @click="loadRecommendations">刷新</el-button>
               </el-empty>
             </div>
           </el-card>
@@ -388,7 +387,6 @@
                 v-else 
                 description="暂无相关攻略"
                 :image-size="80">
-                <el-button size="small" @click="loadRecommendations">刷新</el-button>
               </el-empty>
             </div>
           </el-card>

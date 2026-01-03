@@ -1311,13 +1311,17 @@ onUnmounted(() => {
       border: 1px solid #ebeef5;
       background: white;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: transform 0.3s, box-shadow 0.3s;
+      transition: box-shadow 0.3s;
       margin-bottom: 20px;
       overflow: hidden;
 
       &:hover {
-        transform: translateY(-4px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        
+        .plan-cover img {
+          transform: none;
+          scale: 1;
+        }
       }
 
       :deep(.el-card__body) {
@@ -1334,6 +1338,13 @@ onUnmounted(() => {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          transition: none;
+          transform: none;
+        }
+        
+        &:hover img {
+          transform: none;
+          scale: 1;
         }
 
         .plan-status-badge {

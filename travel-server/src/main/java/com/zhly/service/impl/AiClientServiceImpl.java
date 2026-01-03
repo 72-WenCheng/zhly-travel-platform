@@ -88,12 +88,33 @@ public class AiClientServiceImpl implements AiClientService {
             String accessToken = getWenxinAccessToken(apiKeyPart, secretKeyPart);
             System.out.println("access_token获取成功");
             
-            // 构建请求
+            // 构建请求（文心一言API格式）
+            // 根据文心一言API文档，chat/completions接口的参数格式：
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "ernie-bot-turbo");
-            requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-            requestBody.put("max_output_tokens", maxTokens);
-            requestBody.put("temperature", temperature);
+            
+            // 必需参数：messages数组
+            List<Map<String, String>> messages = new ArrayList<>();
+            Map<String, String> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+            messages.add(userMessage);
+            requestBody.put("messages", messages);
+            
+            // 可选参数：根据文心一言API文档调整
+            // temperature: 0-1之间，控制随机性
+            if (temperature != null && temperature >= 0 && temperature <= 1) {
+                requestBody.put("temperature", temperature);
+            }
+            
+            // max_output_tokens: 最大输出token数（注意：某些版本可能是max_tokens）
+            if (maxTokens != null && maxTokens > 0) {
+                // 文心一言API可能使用max_output_tokens或max_tokens
+                requestBody.put("max_output_tokens", maxTokens);
+                // 如果上面不行，可以尝试：requestBody.put("max_tokens", maxTokens);
+            }
+            
+            // 注意：文心一言的chat/completions接口通常不需要model字段
+            // 模型信息在URL路径中已经指定（/wenxinworkshop/chat/completions）
             
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
@@ -103,6 +124,7 @@ public class AiClientServiceImpl implements AiClientService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             
             System.out.println("正在调用文心一言API: " + aiConfig.getApiUrl());
+            System.out.println("请求参数: " + objectMapper.writeValueAsString(requestBody));
             
             // 发送请求
             ResponseEntity<String> response = aiRestTemplate.postForEntity(
@@ -116,16 +138,64 @@ public class AiClientServiceImpl implements AiClientService {
             
             if (response.getStatusCode() == HttpStatus.OK) {
                 // 解析响应
-                JsonNode jsonNode = objectMapper.readTree(response.getBody());
+                String responseBody = response.getBody();
+                System.out.println("完整响应内容: " + responseBody);
+                
+                JsonNode jsonNode = objectMapper.readTree(responseBody);
+                
+                // 检查是否有错误
+                JsonNode error = jsonNode.get("error");
+                JsonNode errorMsg = jsonNode.get("error_msg");
+                if (error != null || errorMsg != null) {
+                    String errorMessage = errorMsg != null ? errorMsg.asText() : (error != null ? error.asText() : "未知错误");
+                    throw new RuntimeException("文心一言API返回错误: " + errorMessage);
+                }
+                
+                // 尝试多种可能的响应格式
                 JsonNode result = jsonNode.get("result");
                 if (result != null) {
-                    System.out.println("成功获取AI生成内容");
-                    return result.asText();
+                    // 检查result是否是字符串
+                    if (result.isTextual()) {
+                        System.out.println("成功获取AI生成内容（文本格式）");
+                        return result.asText();
+                    }
+                    // 检查result是否是对象，尝试获取content字段
+                    JsonNode content = result.get("content");
+                    if (content != null && content.isTextual()) {
+                        System.out.println("成功获取AI生成内容（对象格式）");
+                        return content.asText();
+                    }
                 }
+                
+                // 尝试直接获取choices数组（OpenAI格式）
+                JsonNode choices = jsonNode.get("choices");
+                if (choices != null && choices.isArray() && choices.size() > 0) {
+                    JsonNode firstChoice = choices.get(0);
+                    JsonNode message = firstChoice.get("message");
+                    if (message != null) {
+                        JsonNode content = message.get("content");
+                        if (content != null && content.isTextual()) {
+                            System.out.println("成功获取AI生成内容（choices格式）");
+                            return content.asText();
+                        }
+                    }
+                }
+                
+                // 如果都没有，尝试直接获取content字段
+                JsonNode content = jsonNode.get("content");
+                if (content != null && content.isTextual()) {
+                    System.out.println("成功获取AI生成内容（content格式）");
+                    return content.asText();
+                }
+                
+                // 打印完整的JSON结构以便调试
+                System.out.println("无法解析响应，完整JSON: " + jsonNode.toPrettyString());
+                throw new RuntimeException("文心一言API响应格式不符合预期，请检查API配置。响应内容: " + responseBody.substring(0, Math.min(200, responseBody.length())));
             }
             
-            System.out.println("文心一言API未返回有效内容");
-            return "文心一言API未返回有效内容";
+            // HTTP状态码不是200
+            String errorBody = response.getBody();
+            throw new RuntimeException("文心一言API调用失败，HTTP状态码: " + response.getStatusCode() + "，响应: " + (errorBody != null ? errorBody.substring(0, Math.min(200, errorBody.length())) : "无响应体"));
             
         } catch (Exception e) {
             System.err.println("文心一言API调用失败详情: " + e.getMessage());
@@ -289,12 +359,14 @@ public class AiClientServiceImpl implements AiClientService {
                 }
             }
             
-            return "AI服务暂时不可用，请稍后重试";
+            throw new RuntimeException("AI API响应格式错误，请检查API配置");
             
         } catch (Exception e) {
             // 记录日志
             System.err.println("AI API调用失败: " + e.getMessage());
-            return "AI服务调用失败: " + e.getMessage();
+            e.printStackTrace();
+            // 抛出异常，让上层处理
+            throw new RuntimeException("AI服务调用失败: " + e.getMessage(), e);
         }
     }
     

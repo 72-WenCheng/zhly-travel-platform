@@ -960,16 +960,16 @@ onMounted(() => {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        transition: all 0.2s ease;
+        transition: none;
 
         .el-icon {
           font-size: 16px;
         }
 
         &:hover {
-          background: #f5f7fa;
-          border-color: #cdd4de;
-          color: #1f2d3d;
+          background: #fff;
+          border-color: #e0e0e0;
+          color: #4a4a4a;
         }
       }
   }
@@ -984,11 +984,11 @@ onMounted(() => {
       margin-bottom: 16px;
       background: #fafafa;
       border-radius: 8px;
-      transition: all 0.3s;
+      transition: none;
 
       &:hover {
-        background: #f5f5f5;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        background: #fafafa;
+        box-shadow: none;
       }
 
       .comment-header {
@@ -1110,7 +1110,7 @@ onMounted(() => {
             color: #333333 !important;
             
             &:hover {
-              color: #1a1a1a !important;
+              color: #333333 !important;
             }
           }
         }
@@ -1134,18 +1134,18 @@ onMounted(() => {
       padding: 10px 24px !important;
       height: 40px !important;
       font-size: 14px !important;
-      transition: all 0.2s ease !important;
+      transition: none !important;
       min-width: 140px; // 固定最小宽度，防止抖动
       
       &:hover {
-        background: #f5f5f5 !important;
-        border-color: #d0d0d0 !important;
-        color: #1a1a1a !important;
+        background: #ffffff !important;
+        border-color: #e0e0e0 !important;
+        color: #333333 !important;
       }
       
       &:active {
-        background: #eeeeee !important;
-        border-color: #c0c0c0 !important;
+        background: #ffffff !important;
+        border-color: #e0e0e0 !important;
       }
       
       .el-icon {

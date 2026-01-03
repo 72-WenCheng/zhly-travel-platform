@@ -72,9 +72,7 @@
 
     <!-- 优惠券列表 -->
     <div v-if="filteredCoupons.length === 0" class="empty-coupons">
-      <el-empty description="暂无优惠券">
-        <el-button type="primary" @click="goToLevelGuide">查看升级指南</el-button>
-      </el-empty>
+      <el-empty description="暂无优惠券" />
     </div>
 
     <div v-else class="coupons-list">
@@ -119,15 +117,23 @@
 
     <!-- 分页 -->
     <div v-if="pagination.total > 0" class="pagination">
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.size"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
+      <el-button 
+        :disabled="pagination.page <= 1"
+        @click="handlePrevPage"
+        class="page-btn">
+        <el-icon><ArrowLeft /></el-icon>
+        上一页
+      </el-button>
+      <span class="page-info">
+        第 {{ pagination.page }} / {{ Math.ceil(pagination.total / pagination.size) }} 页
+      </span>
+      <el-button 
+        :disabled="pagination.page >= Math.ceil(pagination.total / pagination.size)"
+        @click="handleNextPage"
+        class="page-btn">
+        下一页
+        <el-icon><ArrowRight /></el-icon>
+      </el-button>
     </div>
   </div>
 </template>
@@ -143,7 +149,9 @@ import {
   CircleCheck,
   DocumentChecked,
   Clock,
-  Medal
+  Medal,
+  ArrowLeft,
+  ArrowRight
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -247,17 +255,21 @@ const handleTabChange = () => {
   pagination.page = 1
 }
 
-// 分页大小改变
-const handleSizeChange = (size) => {
-  pagination.size = size
-  pagination.page = 1
-  loadCoupons()
+// 上一页
+const handlePrevPage = () => {
+  if (pagination.page > 1) {
+    pagination.page--
+    loadCoupons()
+  }
 }
 
-// 页码改变
-const handlePageChange = (page) => {
-  pagination.page = page
-  loadCoupons()
+// 下一页
+const handleNextPage = () => {
+  const totalPages = Math.ceil(pagination.total / pagination.size)
+  if (pagination.page < totalPages) {
+    pagination.page++
+    loadCoupons()
+  }
 }
 
 // 获取优惠券卡片样式类
@@ -324,11 +336,6 @@ const formatDate = (date) => {
   })
 }
 
-// 跳转到升级指南
-const goToLevelGuide = () => {
-  router.push('/home/user/level-guide')
-}
-
 onMounted(() => {
   loadCoupons()
   loadCouponStats()
@@ -351,7 +358,7 @@ onMounted(() => {
     gap: 20px;
     
     .header-icon {
-      color: #409eff;
+      color: #666666;
     }
     
     .header-text {
@@ -389,20 +396,26 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: center;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        color: #666666;
         
         &.available {
-          background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-          color: white;
+          background: #ffffff;
+          border-color: #e0e0e0;
+          color: #666666;
         }
         
         &.used {
-          background: linear-gradient(135deg, #909399 0%, #b1b3b8 100%);
-          color: white;
+          background: #ffffff;
+          border-color: #e0e0e0;
+          color: #666666;
         }
         
         &.expired {
-          background: linear-gradient(135deg, #e6a23c 0%, #f0a020 100%);
-          color: white;
+          background: #ffffff;
+          border-color: #e0e0e0;
+          color: #666666;
         }
       }
       
@@ -429,6 +442,33 @@ onMounted(() => {
   
   .tab-badge {
     margin-left: 8px;
+    
+    :deep(.el-badge__content) {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      color: #666666;
+    }
+  }
+  
+  // 标签页样式改为白色系
+  :deep(.el-tabs__header) {
+    margin: 0;
+  }
+  
+  :deep(.el-tabs__item) {
+    color: #666666;
+    
+    &.is-active {
+      color: #333333;
+    }
+    
+    &:hover {
+      color: #333333;
+    }
+  }
+  
+  :deep(.el-tabs__active-bar) {
+    background-color: #666666;
   }
 }
 
@@ -444,11 +484,12 @@ onMounted(() => {
 }
 
 .coupon-card {
-  transition: all 0.3s ease;
+  transition: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
   
   &.available {
@@ -551,7 +592,41 @@ onMounted(() => {
 .pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 16px;
   margin-top: 30px;
+  
+  .page-btn {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    color: #333333;
+    border-radius: 8px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: none;
+    
+    &:hover:not(:disabled) {
+      background: #f5f5f5;
+      border-color: #d0d0d0;
+      color: #1a1a1a;
+    }
+    
+    &:disabled {
+      background: #fafafa;
+      border-color: #e0e0e0;
+      color: #cccccc;
+      cursor: not-allowed;
+    }
+  }
+  
+  .page-info {
+    color: #666666;
+    font-size: 14px;
+    min-width: 120px;
+    text-align: center;
+  }
 }
 
 @media (max-width: 768px) {

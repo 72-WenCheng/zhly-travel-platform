@@ -232,6 +232,14 @@
     :close-on-click-modal="false"
     class="change-password-dialog"
   >
+    <div class="password-warning">
+      <p class="password-warning-title">修改密码前请了解：</p>
+      <ul class="password-warning-list">
+        <li>新密码要求：至少9位，建议包含字母、数字和特殊字符，以提高安全性。</li>
+        <li>如果忘记原密码，请联系管理员或通过找回密码功能重置。</li>
+        <li>修改密码后，请妥善保管新密码，避免泄露给他人。</li>
+      </ul>
+    </div>
     <el-form
       ref="passwordFormRef"
       :model="passwordForm"
@@ -2039,6 +2047,33 @@ watch(
     padding: 18px 20px 10px !important;
     background: #ffffff !important;
     
+    // 密码修改提示框样式
+    .password-warning {
+      background: #fff5f5;
+      border: 1px solid #fecaca;
+      color: #c2410c;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+
+      .password-warning-title {
+        font-weight: 600;
+        font-size: 16px;
+        margin: 0 0 8px 0;
+      }
+
+      .password-warning-list {
+        margin: 0;
+        padding-left: 20px;
+
+        li {
+          margin: 4px 0;
+        }
+      }
+    }
+    
     // 强制覆盖修改密码对话框的输入框样式
     .el-form {
       .el-form-item {
@@ -2151,58 +2186,58 @@ watch(
         justify-content: center;
       }
       
-      // 取消按钮：灰色系
+      // 取消按钮：白色系
       .el-button:first-child {
         border: 1px solid #dcdfe6;
-        background-color: #f5f7fa;
-        color: #909399;
+        background-color: white;
+        color: #606266;
         
         &:hover {
           border-color: #c0c4cc;
-          color: #909399;
-          background-color: #ebeef5;
+          color: #303133;
+          background-color: white;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
           border-color: #c0c4cc;
-          color: #909399;
-          background-color: #e4e7ed;
+          color: #303133;
+          background-color: white;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
           border-color: #c0c4cc;
-          color: #909399;
-          background-color: #f5f7fa;
+          color: #606266;
+          background-color: white;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
       
-      // 确定按钮：灰色系
+      // 确定按钮：白色系
       .el-button--primary {
-        background-color: #f5f7fa;
+        background-color: white;
         border: 1px solid #dcdfe6;
-        color: #909399;
+        color: #606266;
         
         &:hover {
-          background-color: #ebeef5;
+          background-color: white;
           border-color: #c0c4cc;
-          color: #909399;
+          color: #303133;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
-          background-color: #e4e7ed;
+          background-color: white;
           border-color: #c0c4cc;
-          color: #909399;
+          color: #303133;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
-          background-color: #f5f7fa;
+          background-color: white;
           border-color: #c0c4cc;
-          color: #909399;
+          color: #606266;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
@@ -2394,58 +2429,58 @@ watch(
       align-items: center;
       justify-content: center;
       
-      // 取消按钮：灰色系
+      // 取消按钮：白色系
       &:first-child {
         border: 1px solid #dcdfe6;
-        background-color: #f5f7fa;
-        color: #909399;
+        background-color: white;
+        color: #606266;
         
         &:hover {
           border-color: #c0c4cc;
-          color: #909399;
-          background-color: #ebeef5;
+          color: #303133;
+          background-color: white;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
           border-color: #c0c4cc;
-          color: #909399;
-          background-color: #e4e7ed;
+          color: #303133;
+          background-color: white;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
           border-color: #c0c4cc;
-          color: #909399;
-          background-color: #f5f7fa;
+          color: #606266;
+          background-color: white;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }
       
-      // 确认注销按钮：灰色系
+      // 确认注销按钮：白色系
       &:last-child {
         border: 1px solid #dcdfe6;
-        background-color: #f5f7fa;
-        color: #909399;
+        background-color: white;
+        color: #606266;
         
         &:hover {
-          background-color: #ebeef5;
+          background-color: white;
           border-color: #c0c4cc;
-          color: #909399;
+          color: #303133;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:active {
-          background-color: #e4e7ed;
+          background-color: white;
           border-color: #c0c4cc;
-          color: #909399;
+          color: #303133;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
         &:focus {
-          background-color: #f5f7fa;
+          background-color: white;
           border-color: #c0c4cc;
-          color: #909399;
+          color: #606266;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
       }

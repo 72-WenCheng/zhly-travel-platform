@@ -4,6 +4,7 @@ import com.zhly.entity.AiGenerateLog;
 import com.zhly.mapper.AiGenerateLogMapper;
 import com.zhly.service.AiService;
 import com.zhly.service.AiClientService;
+import com.zhly.config.AiConfig;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,9 @@ public class AiServiceImpl extends ServiceImpl<AiGenerateLogMapper, AiGenerateLo
     
     @Autowired
     private AiClientService aiClientService;
+    
+    @Autowired(required = false)
+    private AiConfig aiConfig;
     
     @Override
     public Map<String, Object> getLogList(Integer page, Integer size, Long userId, Integer status) {
@@ -96,6 +100,62 @@ public class AiServiceImpl extends ServiceImpl<AiGenerateLogMapper, AiGenerateLo
             response = "AI生成失败: " + e.getMessage();
             logAiGenerate(userId, request, response, status, (int) responseTime, modelName, tokensUsed, cost);
             throw new RuntimeException("AI生成失败: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    public String generateTravelPlan(Long userId, Map<String, Object> params) {
+        long startTime = System.currentTimeMillis();
+        String response = "";
+        Integer status = 0;
+        Integer tokensUsed = 0;
+        Double cost = 0.0;
+        String modelName = aiConfig != null ? aiConfig.getModelName() : "gpt-3.5-turbo";
+        
+        try {
+            // 构建请求描述（用于日志记录）
+            String request = String.format("生成%s %d天旅游攻略，预算：%s，兴趣：%s，风格：%s",
+                params.get("destination"),
+                params.get("days"),
+                params.get("budget"),
+                params.get("interests"),
+                params.get("travelStyle")
+            );
+            
+            // 调用AI客户端服务生成攻略（使用模板方法）
+            response = aiClientService.generateTravelPlan(params);
+            
+            // 检查响应是否包含错误信息
+            if (response != null && (
+                response.contains("AI服务暂时不可用") || 
+                response.contains("AI服务调用失败") ||
+                response.contains("API密钥未配置") ||
+                response.contains("密钥格式错误")
+            )) {
+                throw new RuntimeException(response);
+            }
+            
+            // 计算响应时间
+            long responseTime = System.currentTimeMillis() - startTime;
+            
+            // 模拟token使用量和成本计算
+            tokensUsed = response.length() / 4; // 粗略估算
+            cost = tokensUsed * 0.0001; // 模拟成本
+            
+            status = 1; // 成功
+            
+            // 记录生成日志
+            logAiGenerate(userId, request, response, status, (int) responseTime, modelName, tokensUsed, cost);
+            
+            return response;
+            
+        } catch (Exception e) {
+            // 记录失败日志
+            long responseTime = System.currentTimeMillis() - startTime;
+            String request = String.format("生成%s旅游攻略", params.get("destination"));
+            response = "AI生成失败: " + e.getMessage();
+            logAiGenerate(userId, request, response, status, (int) responseTime, modelName, tokensUsed, cost);
+            throw new RuntimeException("AI生成攻略失败: " + e.getMessage(), e);
         }
     }
     

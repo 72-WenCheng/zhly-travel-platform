@@ -30,3 +30,5 @@ CHANGE COLUMN `start_date_temp` `start_date` VARCHAR(7) NULL COMMENT '项目开�
 -- SHOW COLUMNS FROM `culture_project` LIKE 'start_date';
 
 
+
+

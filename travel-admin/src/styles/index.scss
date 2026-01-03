@@ -738,3 +738,120 @@ body .el-overlay .change-password-dialog {
     }
   }
 }
+
+/* 用户平台对话框全局样式 - 统一标题和按钮样式（基于公告对话框样式） */
+/* 仅应用于用户平台（/home路径下的页面），不影响管理端 */
+body .el-overlay .el-dialog:not(.el-message-box),
+body .el-dialog__wrapper .el-dialog:not(.el-message-box) {
+  // 对话框标题样式
+  .el-dialog__header {
+    .el-dialog__title {
+      font-size: 28px !important;
+      font-weight: 600 !important;
+      color: #303133 !important;
+      line-height: 1.4 !important;
+    }
+  }
+  
+  // 对话框底部按钮样式
+  .el-dialog__footer {
+    .el-button {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 6px !important;
+      padding: 12px 28px !important;
+      font-size: 16px !important;
+      line-height: 1.5 !important;
+      height: auto !important;
+      min-height: 44px !important;
+      border-radius: 4px !important;
+      border: 1px solid #dcdfe6 !important;
+      background: #fff !important;
+      background-color: #fff !important;
+      color: #606266 !important;
+      font-weight: 400 !important;
+      box-shadow: none !important;
+      transition: border-color 0.2s ease, background-color 0.2s ease !important;
+      min-width: 80px !important;
+      cursor: pointer !important;
+      
+      &,
+      &:focus,
+      &:focus-visible {
+        border: 1px solid #dcdfe6 !important;
+        background: #fff !important;
+        background-color: #fff !important;
+        color: #606266 !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+      
+      :deep(.el-button__inner) {
+        color: #606266 !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      
+      &:hover {
+        border-color: #c0c4cc !important;
+        background: #fff !important;
+        background-color: #fff !important;
+        color: #606266 !important;
+        box-shadow: none !important;
+        
+        :deep(.el-button__inner) {
+          color: #606266 !important;
+        }
+      }
+      
+      &:active,
+      &:focus {
+        border-color: #c0c4cc !important;
+        background: #fff !important;
+        background-color: #fff !important;
+        color: #606266 !important;
+        box-shadow: none !important;
+        
+        :deep(.el-button__inner) {
+          color: #606266 !important;
+        }
+      }
+      
+      // 特殊处理 primary 和 danger 类型按钮，统一为白色背景
+      &.el-button--primary,
+      &.el-button--danger {
+        border: 1px solid #dcdfe6 !important;
+        background: #fff !important;
+        background-color: #fff !important;
+        color: #606266 !important;
+        
+        &:hover {
+          border-color: #c0c4cc !important;
+          background: #fff !important;
+          background-color: #fff !important;
+          color: #606266 !important;
+        }
+        
+        &:active,
+        &:focus {
+          border-color: #c0c4cc !important;
+          background: #fff !important;
+          background-color: #fff !important;
+          color: #606266 !important;
+        }
+      }
+      
+      // loading 状态保持白色背景
+      &.is-loading {
+        border: 1px solid #dcdfe6 !important;
+        background: #fff !important;
+        background-color: #fff !important;
+        color: #606266 !important;
+      }
+    }
+  }
+}

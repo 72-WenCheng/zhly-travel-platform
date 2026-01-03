@@ -156,10 +156,10 @@
           </div>
           
           <!-- 评分和景区级别 -->
-          <div class="card-rating-info" v-if="attraction.rating || attraction.score">
-            <div class="rating-item" v-if="attraction.rating">
+          <div class="card-rating-info" v-if="(attraction.rating && attraction.rating >= 1 && attraction.rating <= 5) || attraction.score">
+            <div class="rating-item" v-if="attraction.rating && attraction.rating >= 1 && attraction.rating <= 5">
               <span class="rating-label">级别</span>
-              <span class="rating-value">{{ attraction.rating }}A景区</span>
+              <span class="rating-value">{{ Math.round(attraction.rating) }}A景区</span>
             </div>
             <div class="rating-item" v-if="attraction.score && attraction.score > 0">
               <span class="rating-label">评分</span>
@@ -966,6 +966,17 @@ const loadAttractions = async () => {
             attractionType = typeMap[item.type] || 'culture'
           }
           
+          // 处理景区级别：优先使用rating字段，确保是1-5的整数
+          let rating = 0
+          if (item.rating !== null && item.rating !== undefined) {
+            // 如果rating是数字，确保是1-5的整数
+            const ratingNum = typeof item.rating === 'number' ? item.rating : Number(item.rating)
+            if (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) {
+              rating = Math.round(ratingNum) // 四舍五入确保是整数
+            }
+          }
+          // 注意：不使用score作为rating，因为score是推荐分数（可能是小数），不是景区级别
+          
           return {
             id: item.id,
             name: item.name || '',
@@ -980,7 +991,8 @@ const loadAttractions = async () => {
             views: item.viewCount || item.views || 0,
             favorites: item.collectCount || item.favorites || 0,
             isFavorite: item.isFavorite || false,
-            rating: item.score || 0
+            rating: rating, // 景区级别（1-5的整数）
+            score: item.score || 0 // 推荐分数（可能是小数）
           }
         })
         
@@ -1094,7 +1106,16 @@ const loadAttractions = async () => {
             views: item.viewCount || item.views || 0,
             favorites: item.collectCount || item.favorites || 0,
             isFavorite: item.isFavorite || false,
-            rating: item.rating || item.score || 0, // 景区级别（1-5）
+            // 处理景区级别：确保是1-5的整数
+            rating: (() => {
+              if (item.rating !== null && item.rating !== undefined) {
+                const ratingNum = typeof item.rating === 'number' ? item.rating : Number(item.rating)
+                if (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) {
+                  return Math.round(ratingNum) // 四舍五入确保是整数
+                }
+              }
+              return 0 // 如果没有有效的rating，返回0（不显示）
+            })(), // 景区级别（1-5的整数）
             score: item.score || 0, // 评分
             commentCount: item.commentCount || item.comments || 0, // 评论数
             avgStayTime: item.avgStayTime || 0, // 平均停留时间（秒），如果没有则默认为0

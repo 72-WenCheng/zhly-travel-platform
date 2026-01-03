@@ -12,3 +12,5 @@ ADD COLUMN `cooperation_type` VARCHAR(50) NULL COMMENT '合作意向（investmen
 -- 查看表结构确认
 -- DESCRIBE `project_application`;
 
+
+

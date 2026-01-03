@@ -123,19 +123,11 @@
           <el-tag type="info">{{ generatedPlan.destination }}</el-tag>
           <el-tag type="success">{{ generatedPlan.days }}天</el-tag>
           <el-tag type="warning">预算 {{ generatedPlan.budget }}</el-tag>
+          <el-tag v-if="generatedPlan.people" type="primary">{{ generatedPlan.people }}人</el-tag>
         </div>
         
         <div class="plan-details">
-          <div v-for="(day, index) in generatedPlan.days" :key="index" class="day-plan">
-            <h4>第{{ index + 1 }}天</h4>
-            <div class="day-content">
-              <div v-for="item in day.schedule" :key="item.time" class="schedule-item">
-                <span class="time">{{ item.time }}</span>
-                <span class="activity">{{ item.activity }}</span>
-                <span class="location">{{ item.location }}</span>
-              </div>
-            </div>
-          </div>
+          <div class="plan-text-content" v-html="formatPlanContent(generatedPlan.content)"></div>
         </div>
       </div>
     </el-card>
@@ -170,7 +162,7 @@ import { ref, reactive, onMounted } from 'vue'
 import BackButton from '@/components/BackButton.vue'
 import { ElMessage } from 'element-plus'
 import { MagicStick, InfoFilled } from '@element-plus/icons-vue'
-import { generateTravelPlan, getAiLogList } from '@/api/ai'
+import { generateTravelPlan, getAiLogList, checkAiConfig } from '@/api/ai'
 import type { AiGenerateLog } from '@/api/ai'
 
 // 生成表单
@@ -206,29 +198,79 @@ const generatedPlan = ref(null)
 // 历史记录
 const historyList = ref([])
 
+// 检查AI配置
+const checkConfig = async () => {
+  try {
+    const result = await checkAiConfig()
+    if (result.code === 200 && result.data) {
+      const config = result.data
+      if (!config.hasConfig) {
+        ElMessage.error('AI配置未初始化，请联系管理员')
+        return false
+      }
+      if (!config.hasApiKey) {
+        ElMessage.error('AI API密钥未配置，请在管理端配置API密钥')
+        return false
+      }
+      if (config.formatError) {
+        ElMessage.warning('AI API密钥格式错误: ' + config.formatError)
+        return false
+      }
+      return true
+    }
+    return false
+  } catch (error: any) {
+    console.error('检查AI配置失败:', error)
+    return false
+  }
+}
+
 // 生成攻略
 const generatePlan = async () => {
   try {
     generating.value = true
+    
+    // 先检查配置
+    const configValid = await checkConfig()
+    if (!configValid) {
+      generating.value = false
+      return
+    }
     
     // 调用AI生成API
     const result = await generateTravelPlan({
       destination: generateForm.destination,
       days: generateForm.days,
       budget: generateForm.budget,
-      interests: generateForm.preferences.join(','),
-      travelStyle: generateForm.specialNeeds || '休闲游'
+      interests: generateForm.preferences.length > 0 ? generateForm.preferences.join('、') : '无特殊偏好',
+      travelStyle: generateForm.specialNeeds || '休闲游',
+      people: generateForm.people,
+      specialNeeds: generateForm.specialNeeds
     })
     
     if (result.code === 200 && result.data) {
       // 解析AI返回的攻略内容
       const planData = result.data
+      const planContent = planData.plan || planData
+      
+      // 检查是否是错误信息
+      if (typeof planContent === 'string' && (
+        planContent.includes('AI服务暂时不可用') || 
+        planContent.includes('AI服务调用失败') ||
+        planContent.includes('API密钥未配置') ||
+        planContent.includes('密钥格式错误')
+      )) {
+        ElMessage.error(planContent)
+        return
+      }
+      
       generatedPlan.value = {
         title: `${generateForm.destination}${generateForm.days}日游攻略`,
         destination: generateForm.destination,
         days: generateForm.days,
         budget: generateForm.budget,
-        content: planData.plan || planData
+        people: generateForm.people,
+        content: planContent
       }
       
       ElMessage.success('攻略生成成功！')
@@ -325,6 +367,19 @@ const extractDestination = (text: string) => {
 const extractDays = (text: string) => {
   const match = text.match(/(\d+)天/)
   return match ? parseInt(match[1]) : 1
+}
+
+// 格式化攻略内容（将换行符转换为HTML）
+const formatPlanContent = (content: string) => {
+  if (!content) return ''
+  // 将换行符转换为<br>，保留原有的格式
+  return content
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Markdown粗体
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Markdown斜体
+    .replace(/^### (.*)$/gm, '<h3>$1</h3>') // Markdown三级标题
+    .replace(/^## (.*)$/gm, '<h2>$1</h2>') // Markdown二级标题
+    .replace(/^# (.*)$/gm, '<h1>$1</h1>') // Markdown一级标题
 }
 </script>
 
@@ -424,38 +479,47 @@ const extractDays = (text: string) => {
         }
       }
       
-      .day-plan {
-        margin-bottom: 20px;
+      .plan-text-content {
+        line-height: 1.8;
+        color: #303133;
+        font-size: 15px;
+        white-space: pre-wrap;
         
-        h4 {
-          margin: 0 0 12px 0;
+        :deep(h1) {
+          font-size: 24px;
+          font-weight: 700;
+          margin: 20px 0 16px 0;
           color: #303133;
-          border-bottom: 1px solid #e4e7ed;
+          border-bottom: 2px solid #409eff;
           padding-bottom: 8px;
         }
         
-        .schedule-item {
-          display: flex;
-          align-items: center;
-          padding: 8px 0;
-          border-bottom: 1px solid #f0f0f0;
-          
-          .time {
-            width: 80px;
-            color: #409eff;
-            font-weight: bold;
-          }
-          
-          .activity {
-            flex: 1;
-            margin: 0 16px;
-            color: #303133;
-          }
-          
-          .location {
-            color: #909399;
-            font-size: 14px;
-          }
+        :deep(h2) {
+          font-size: 20px;
+          font-weight: 600;
+          margin: 18px 0 12px 0;
+          color: #409eff;
+        }
+        
+        :deep(h3) {
+          font-size: 18px;
+          font-weight: 600;
+          margin: 16px 0 10px 0;
+          color: #606266;
+        }
+        
+        :deep(strong) {
+          font-weight: 700;
+          color: #303133;
+        }
+        
+        :deep(em) {
+          font-style: italic;
+          color: #606266;
+        }
+        
+        :deep(br) {
+          line-height: 1.8;
         }
       }
     }

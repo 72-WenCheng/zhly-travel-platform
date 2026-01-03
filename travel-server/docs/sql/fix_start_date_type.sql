@@ -19,3 +19,5 @@ MODIFY COLUMN `start_date` VARCHAR(7) NULL COMMENT '项目开始时间（年月�
 -- ALTER TABLE `culture_project` CHANGE COLUMN `start_date_temp` `start_date` VARCHAR(7) NULL COMMENT '项目开始时间（年月，格式：YYYY-MM）';
 
 
+
+

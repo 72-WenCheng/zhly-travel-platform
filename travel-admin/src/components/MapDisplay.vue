@@ -14,8 +14,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import { Loading, Warning } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 interface Props {
   longitude?: number
@@ -42,25 +42,61 @@ let marker: any = null
 let amapKey = ''
 let amapSecurityCode = ''
 
-// 获取高德地图API Key和安全密钥
+// 获取高德地图API Key和安全密钥（从后端获取）
 const getAmapKey = async () => {
   try {
+    // 优先从环境变量获取
     const envKey = import.meta.env.VITE_AMAP_KEY
     const envSecurityCode = import.meta.env.VITE_AMAP_SECURITY_CODE
     
     if (envKey && envKey !== 'your-amap-api-key') {
       amapKey = envKey
+      // 如果配置了安全密钥，也加载
       if (envSecurityCode && envSecurityCode !== 'your-security-code') {
         amapSecurityCode = envSecurityCode
       }
       return
     }
     
-    amapKey = envKey || 'your-amap-api-key'
-    amapSecurityCode = envSecurityCode || ''
+    // 如果环境变量没有，尝试从后端获取配置
+    try {
+      const keyResponse = await request.get('/system-config/value/amap.api.key')
+      if (keyResponse.code === 200 && keyResponse.data) {
+        amapKey = keyResponse.data
+      }
+      
+      // 尝试获取安全密钥
+      try {
+        const securityResponse = await request.get('/system-config/value/amap.security.code')
+        if (securityResponse.code === 200 && securityResponse.data) {
+          amapSecurityCode = securityResponse.data
+        }
+      } catch (e) {
+        // 安全密钥可选
+      }
+      
+      if (amapKey && amapKey !== 'your-amap-api-key') {
+        return
+      }
+    } catch (e) {
+      // 如果后端接口不存在，继续使用环境变量或默认值
+      console.warn('从后端获取API Key失败:', e)
+    }
+    
+    // 如果都没有配置，使用一个默认的Web端(JS API) Key（用于前端地图显示）
+    // 注意：这是Web端Key，不是Web服务Key
+    if (!amapKey || amapKey === 'your-amap-api-key') {
+      // 使用一个可能可用的默认Key（如果之前配置过）
+      amapKey = '4c1487f8f9b1c39bb406fdf78c214c76' // 默认Web端Key，如果不可用需要替换
+      console.warn('⚠️ 使用默认高德地图API Key，如果地图无法显示，请：')
+      console.warn('   1. 在前端.env文件中配置 VITE_AMAP_KEY=你的Web端Key')
+      console.warn('   2. 或在后端系统配置中添加 amap.api.key 配置项')
+      console.warn('   3. 确保使用的是Web端(JS API)类型的Key，不是Web服务Key')
+    }
   } catch (error) {
     console.error('获取高德地图Key失败:', error)
-    amapKey = import.meta.env.VITE_AMAP_KEY || 'your-amap-api-key'
+    // 降级方案：使用默认Key
+    amapKey = import.meta.env.VITE_AMAP_KEY || '4c1487f8f9b1c39bb406fdf78c214c76'
     amapSecurityCode = import.meta.env.VITE_AMAP_SECURITY_CODE || ''
   }
 }
@@ -74,10 +110,15 @@ const loadAmapScript = (): Promise<void> => {
     }
 
     if (!amapKey || amapKey === 'your-amap-api-key') {
-      error.value = '高德地图API Key未配置'
-      reject(new Error('高德地图API Key未配置'))
+      const errorMsg = '高德地图API Key未配置，请在前端.env文件中配置VITE_AMAP_KEY或在后端系统配置中添加amap.api.key'
+      error.value = errorMsg
+      console.error('❌', errorMsg)
+      console.error('当前amapKey值:', amapKey)
+      reject(new Error(errorMsg))
       return
     }
+    
+    console.log('✅ 使用高德地图API Key:', amapKey.substring(0, 10) + '...')
 
     if (amapSecurityCode) {
       ;(window as any)._AMapSecurityConfig = {

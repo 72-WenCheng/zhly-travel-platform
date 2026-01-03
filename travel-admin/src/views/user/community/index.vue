@@ -1751,8 +1751,12 @@ watch(statsPeriod, () => {
       border: 1px solid #f0f0f0;
       
       &:hover {
-        transform: translateY(-4px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        
+        .card-cover img {
+          transform: none;
+          scale: 1;
+        }
       }
       
       .card-cover {
@@ -1764,7 +1768,13 @@ watch(statsPeriod, () => {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: transform 0.3s ease;
+          transition: none;
+          transform: none;
+        }
+        
+        &:hover img {
+          transform: none;
+          scale: 1;
         }
         
         .featured-badge {
@@ -2438,9 +2448,13 @@ watch(statsPeriod, () => {
           border: 1px solid #f0f0f0;
 
           &:hover {
-            transform: translateY(-4px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
             border-color: #e4e7ed;
+            
+            .featured-image img {
+              transform: none;
+              scale: 1;
+            }
           }
 
           &.featured-1 {
@@ -2458,6 +2472,13 @@ watch(statsPeriod, () => {
               width: 100%;
               height: 100%;
               object-fit: cover;
+              transition: none;
+              transform: none;
+            }
+            
+            &:hover img {
+              transform: none;
+              scale: 1;
             }
 
             .featured-badge {

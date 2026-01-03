@@ -11,7 +11,7 @@
         </div>
         <div class="header-text">
           <h2>我的收藏</h2>
-          <p>管理你收藏的景点和攻略</p>
+          <p>管理你收藏的景点和攻略以及文旅</p>
         </div>
       </div>
     </div>
@@ -65,7 +65,7 @@
             </div>
             <div class="stats-info">
               <div class="stats-value">{{ stats.typeCounts.type3 }}</div>
-              <div class="stats-label">文旅项目</div>
+              <div class="stats-label">文旅收藏</div>
             </div>
           </div>
         </el-card>
@@ -83,7 +83,8 @@
             size="large"
             style="width: 350px;"
             class="search-input-large"
-            @change="handleSearch"
+            @input="handleSearchInput"
+            @clear="handleSearch"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
@@ -174,11 +175,7 @@
       v-if="!loading && collectList.length === 0" 
       description="暂无收藏"
       :image-size="120"
-    >
-      <el-button class="discover-btn" @click="$router.push('/home/user/recommendations')">
-        去发现景点
-      </el-button>
-    </el-empty>
+    />
 
     <!-- 加载更多提示 -->
     <div class="load-more-wrapper" v-if="collectList.length > 0">
@@ -202,6 +199,7 @@
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
 import { 
   Delete, Star, StarFilled, LocationFilled, 
   Files, Shop, Search, Picture, Clock, View, Loading, ArrowDown, Check
@@ -327,6 +325,22 @@ const formatDate = (dateStr: string) => {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+// 搜索防抖定时器
+let searchDebounceTimer: NodeJS.Timeout | null = null
+
+// 搜索输入处理（带防抖）
+const handleSearchInput = () => {
+  // 清除之前的定时器
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  
+  // 设置新的防抖定时器，500ms后执行搜索
+  searchDebounceTimer = setTimeout(() => {
+    handleSearch()
+  }, 500)
 }
 
 // 搜索
@@ -661,6 +675,12 @@ onUnmounted(() => {
     clearInterval(styleInterval)
     styleInterval = null
   }
+  
+  // 清除搜索防抖定时器
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
 })
 
 // 加载统计信息
@@ -754,21 +774,113 @@ const loadStats = async () => {
 }
 
 // 查看收藏
-const handleView = (item: any) => {
+const handleView = async (item: any) => {
   if (item.collectType === 1 && item.collectUrl) {
     window.open(item.collectUrl, '_blank', 'noopener,noreferrer')
     return
   }
 
-  const routeMap: Record<number, string> = {
-    1: '/home/user/plans/detail',
-    2: '/home/user/attractions/detail',
-    3: '/home/user/culture/detail'
+  // 先检查内容是否存在
+  try {
+    let checkResponse
+    const typeName = getTypeText(item.collectType)
+    
+    if (item.collectType === 1) {
+      // 攻略
+      checkResponse = await request.get(`/travel-plan/${item.collectId}`)
+    } else if (item.collectType === 2) {
+      // 景点
+      checkResponse = await request.get(`/user/attraction/detail/${item.collectId}`)
+    } else if (item.collectType === 3) {
+      // 文旅项目
+      checkResponse = await request.get(`/culture-project/${item.collectId}`)
+    }
+    
+    // 如果检查成功，跳转到详情页
+    if (checkResponse && checkResponse.code === 200 && checkResponse.data) {
+      const routeMap: Record<number, string> = {
+        1: '/home/user/plans/detail',
+        2: '/home/user/attractions/detail',
+        3: '/home/user/culture/detail'
+      }
+      
+      const route = routeMap[item.collectType]
+      if (route) {
+        router.push(`${route}/${item.collectId}`)
+      }
+    } else {
+      // 内容不存在，显示友好提示
+      showContentUnavailableDialog(item, typeName)
+    }
+  } catch (error: any) {
+    // 捕获404或其他错误
+    if (error.response?.status === 404 || error.message?.includes('不存在') || error.message?.includes('404')) {
+      showContentUnavailableDialog(item, getTypeText(item.collectType))
+    } else {
+      // 其他错误，仍然尝试跳转（可能是网络问题）
+      const routeMap: Record<number, string> = {
+        1: '/home/user/plans/detail',
+        2: '/home/user/attractions/detail',
+        3: '/home/user/culture/detail'
+      }
+      
+      const route = routeMap[item.collectType]
+      if (route) {
+        router.push(`${route}/${item.collectId}`)
+      }
+    }
   }
-  
-  const route = routeMap[item.collectType]
-  if (route) {
-    router.push(`${route}/${item.collectId}`)
+}
+
+// 显示内容不可用的友好提示对话框
+const showContentUnavailableDialog = async (item: any, typeName: string) => {
+  try {
+    await ElMessageBox.confirm(
+      `抱歉，您收藏的「${item.collectName || typeName}」已被下架或删除，无法查看。\n\n是否要取消收藏？`,
+      '内容不可用',
+      {
+        confirmButtonText: '取消收藏',
+        cancelButtonText: '保留收藏',
+        type: 'warning',
+        customClass: 'content-unavailable-dialog'
+      }
+    )
+    
+    // 用户选择取消收藏，直接执行取消收藏操作（不再弹出二次确认）
+    const userInfo = getCurrentUserInfo()
+    if (!userInfo) {
+      ElMessage.warning('请先登录')
+      return
+    }
+    
+    const userId = userInfo.id || userInfo.userId
+    
+    if (!userId) {
+      ElMessage.warning('用户信息获取失败')
+      return
+    }
+    
+    // 调用API取消收藏
+    const response = await request.post('/user-collect/remove', null, {
+      params: {
+        userId: userId,
+        collectType: item.collectType,
+        collectId: item.collectId
+      }
+    })
+    
+    if (response.code === 200) {
+      ElMessage.success('已取消收藏')
+      await loadCollectList(true)
+      await loadStats()
+    } else {
+      ElMessage.error(response.message || '取消收藏失败')
+    }
+  } catch (error) {
+    // 用户选择保留收藏或关闭对话框，不做任何操作
+    if (error !== 'cancel') {
+      console.log('用户选择保留收藏')
+    }
   }
 }
 
@@ -1185,34 +1297,20 @@ const handleDelete = async (item: any) => {
     border-radius: 12px;
     border: none;
     overflow: hidden;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: box-shadow 0.3s;
 
     &:hover {
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      transform: translateY(-4px);
       
       .card-cover {
         transform: none !important;
-        isolation: isolate !important;
-        contain: layout style paint !important;
+        scale: 1 !important;
         
         img {
-          transition: none !important;
-          transform: translate3d(0, 0, 0) !important;
-          transform-origin: center center !important;
-          transform-style: flat !important;
+          transform: none !important;
           scale: 1 !important;
           width: 100% !important;
           height: 100% !important;
-          box-shadow: none !important;
-          filter: none !important;
-          opacity: 1 !important;
-          backface-visibility: hidden !important;
-          perspective: none !important;
-          isolation: isolate !important;
-          position: relative !important;
-          top: 0 !important;
-          left: 0 !important;
         }
       }
     }
@@ -1248,6 +1346,7 @@ const handleDelete = async (item: any) => {
       cursor: pointer;
       transition: none !important;
       transform: none !important;
+      scale: 1 !important;
       isolation: isolate !important;
       contain: layout style paint !important;
       backface-visibility: hidden !important;
@@ -1258,9 +1357,7 @@ const handleDelete = async (item: any) => {
         height: 100% !important;
         object-fit: cover;
         transition: none !important;
-        transform: translate3d(0, 0, 0) !important;
-        transform-origin: center center !important;
-        transform-style: flat !important;
+        transform: none !important;
         scale: 1 !important;
         will-change: auto !important;
         max-width: 100% !important;
@@ -1279,12 +1376,11 @@ const handleDelete = async (item: any) => {
       &:hover {
         transition: none !important;
         transform: none !important;
+        scale: 1 !important;
         
         img {
           transition: none !important;
-          transform: translate3d(0, 0, 0) !important;
-          transform-origin: center center !important;
-          transform-style: flat !important;
+          transform: none !important;
           scale: 1 !important;
           width: 100% !important;
           height: 100% !important;
@@ -1683,29 +1779,35 @@ const handleDelete = async (item: any) => {
 
 <style lang="scss">
 // 全局禁用收藏卡片图片的所有效果
-.collect-card .card-cover img {
-  transition: none !important;
-  transform: translate3d(0, 0, 0) !important;
-  transform-origin: center center !important;
-  transform-style: flat !important;
+.collect-card .card-cover {
+  transform: none !important;
   scale: 1 !important;
-  box-shadow: none !important;
-  filter: none !important;
-  opacity: 1 !important;
-  backface-visibility: hidden !important;
-  perspective: none !important;
-  isolation: isolate !important;
+  
+  img {
+    transition: none !important;
+    transform: none !important;
+    scale: 1 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    backface-visibility: hidden !important;
+    perspective: none !important;
+    isolation: isolate !important;
+  }
 }
 
-.collect-card:hover .card-cover img {
-  transition: none !important;
-  transform: translate3d(0, 0, 0) !important;
-  transform-origin: center center !important;
-  transform-style: flat !important;
+.collect-card:hover .card-cover {
+  transform: none !important;
   scale: 1 !important;
-  box-shadow: none !important;
-  filter: none !important;
-  opacity: 1 !important;
+  
+  img {
+    transition: none !important;
+    transform: none !important;
+    scale: 1 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+  }
 }
 
 // 翻页组件下拉菜单样式 - 移除蓝色（因为下拉菜单挂载在body上，需要非scoped样式）
@@ -1840,6 +1942,52 @@ body .user-collect .collect-card .card-actions .el-button.action-btn {
   &:focus {
     outline: none !important;
     box-shadow: 0 0 0 1px rgba(144, 147, 153, 0.2) !important;
+  }
+}
+
+// 内容不可用对话框样式（全局样式，因为对话框挂载在body上）
+.content-unavailable-dialog {
+  .el-message-box__message {
+    text-align: left;
+    line-height: 1.8;
+    color: #606266;
+    
+    p {
+      margin: 0;
+      font-size: 15px;
+    }
+  }
+  
+  .el-message-box__btns {
+    margin-top: 20px;
+    
+    .el-button {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      
+      &.el-button--primary {
+        background-color: #f56c6c;
+        border-color: #f56c6c;
+        
+        &:hover {
+          background-color: #f78989;
+          border-color: #f78989;
+        }
+      }
+      
+      &.el-button--default {
+        background-color: white;
+        border-color: #dcdfe6;
+        color: #606266;
+        
+        &:hover {
+          background-color: #f5f7fa;
+          border-color: #c0c4cc;
+          color: #303133;
+        }
+      }
+    }
   }
 }
 </style>

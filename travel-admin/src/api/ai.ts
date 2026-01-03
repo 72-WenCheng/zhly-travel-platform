@@ -63,6 +63,11 @@ export function aiChat(question: string) {
   return request.post<any>('/ai/chat', { question })
 }
 
+// 检查AI配置
+export function checkAiConfig() {
+  return request.get<any>('/ai/check-config')
+}
+
 // 获取用户AI统计
 export function getUserAiStats(userId: number) {
   return request.get<any>(`/ai/user/${userId}/stats`)

@@ -157,7 +157,6 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
             cityAdcodeMap.put("杭州", "330100");
             cityAdcodeMap.put("成都", "510100");
             cityAdcodeMap.put("重庆", "500000");
-            cityAdcodeMap.put("重庆市", "500000");
             cityAdcodeMap.put("西安", "610100");
             cityAdcodeMap.put("武汉", "420100");
             cityAdcodeMap.put("南京", "320100");
@@ -168,7 +167,6 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
             cityAdcodeMap.put("福州", "350100");
             cityAdcodeMap.put("昆明", "530100");
             cityAdcodeMap.put("南宁", "450100");
-            cityAdcodeMap.put("南宁市", "450100");
             
             // 查找adcode（优先使用adcode，这是最可靠的方式）
             String adcode = cityAdcodeMap.get(baseCityName);
@@ -534,24 +532,6 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
         return "天气宜人，温度适中，祝您有美好的一天，心情愉悦";
     }
     
-    /**
-     * 转换中文城市名为英文（用于OpenWeatherMap）
-     */
-    private String convertCityToEnglish(String city) {
-        Map<String, String> cityMap = new HashMap<>();
-        cityMap.put("北京", "Beijing");
-        cityMap.put("上海", "Shanghai");
-        cityMap.put("广州", "Guangzhou");
-        cityMap.put("深圳", "Shenzhen");
-        cityMap.put("成都", "Chengdu");
-        cityMap.put("重庆", "Chongqing");
-        cityMap.put("杭州", "Hangzhou");
-        cityMap.put("南京", "Nanjing");
-        cityMap.put("西安", "Xi'an");
-        cityMap.put("武汉", "Wuhan");
-        
-        return cityMap.getOrDefault(city, city);
-    }
     
     /**
      * 生成天气建议

@@ -12,14 +12,7 @@
 
     <el-card class="address-card">
       <div class="card-header">
-        <div class="title-left">
-          <h3>
-            <el-icon><Location /></el-icon>
-            收货地址列表
-          </h3>
-          <p class="subtitle">管理你的常用收货地址，确认订单时将优先使用默认地址</p>
-        </div>
-        <el-button type="primary" @click="openCreate">
+        <el-button class="add-address-btn" @click="openCreate">
           <el-icon><Plus /></el-icon>
           新增地址
         </el-button>
@@ -39,15 +32,17 @@
           :class="{ active: selectedAddressId === address.id }"
           @click="selectedAddressId = address.id"
         >
-          <div class="address-radio-wrapper">
-            <el-radio :label="address.id" />
+          <div class="address-header">
+            <div class="address-radio-wrapper">
+              <el-radio :label="address.id" />
+            </div>
+            <el-tag v-if="address.isDefault" type="danger" size="small">默认</el-tag>
           </div>
 
           <div class="address-info">
             <div class="info-row">
               <span class="name">{{ address.name }}</span>
               <span class="phone">{{ address.phone }}</span>
-              <el-tag v-if="address.isDefault" type="danger" size="small">默认</el-tag>
             </div>
             <div class="address-row">
               {{ address.province }} {{ address.city }} {{ address.district }} {{ address.detail }}
@@ -310,24 +305,31 @@ onMounted(() => {
   .card-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-bottom: 20px;
 
-    .title-left {
-      h3 {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 18px;
-        font-weight: 700;
-        color: #303133;
-        margin: 0;
+    .add-address-btn {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      color: #333333;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #f5f5f5;
+        border-color: #d0d0d0;
+        color: #1a1a1a;
       }
 
-      .subtitle {
-        margin: 4px 0 0;
-        font-size: 13px;
-        color: #909399;
+      &:active {
+        background: #eeeeee;
+        border-color: #c0c0c0;
+      }
+
+      .el-icon {
+        margin-right: 4px;
       }
     }
   }
@@ -337,12 +339,21 @@ onMounted(() => {
   }
 
   .address-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
 
     .address-item {
       display: flex;
+      flex-direction: column;
       gap: 12px;
       padding: 20px;
       border: 2px solid #dcdfe6;
@@ -357,27 +368,52 @@ onMounted(() => {
       }
 
       &.active {
-        border-color: #409eff;
-        background: linear-gradient(135deg, #f0f9ff 0%, #ecf5ff 100%);
-        box-shadow: 0 2px 12px rgba(64, 158, 255, 0.2);
+        border-color: #d0d0d0;
+        background: #ffffff;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 
         .info-row .name {
-          color: #409eff;
+          color: #303133;
         }
       }
 
-      .address-radio-wrapper {
-        flex-shrink: 0;
-        padding-top: 2px;
+      .address-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
 
-        :deep(.el-radio) {
-          .el-radio__input .el-radio__inner {
-            width: 16px;
-            height: 16px;
-          }
+        .address-radio-wrapper {
+          flex-shrink: 0;
 
-          .el-radio__label {
-            display: none;
+          :deep(.el-radio) {
+            .el-radio__input {
+              .el-radio__inner {
+                width: 16px;
+                height: 16px;
+                border-color: #d0d0d0;
+                background-color: #ffffff;
+                
+                &::after {
+                  background-color: #666666;
+                  width: 8px;
+                  height: 8px;
+                }
+              }
+              
+              &.is-checked .el-radio__inner {
+                border-color: #d0d0d0;
+                background-color: #ffffff;
+                
+                &::after {
+                  background-color: #666666;
+                }
+              }
+            }
+
+            .el-radio__label {
+              display: none;
+            }
           }
         }
       }
@@ -385,6 +421,8 @@ onMounted(() => {
       .address-info {
         flex: 1;
         min-width: 0;
+        display: flex;
+        flex-direction: column;
 
         .info-row {
           display: flex;
@@ -401,10 +439,6 @@ onMounted(() => {
           .phone {
             font-size: 14px;
             color: #909399;
-          }
-
-          .el-tag {
-            margin-left: auto;
           }
         }
 
@@ -438,6 +472,8 @@ onMounted(() => {
   }
 }
 </style>
+
+
 
 
 

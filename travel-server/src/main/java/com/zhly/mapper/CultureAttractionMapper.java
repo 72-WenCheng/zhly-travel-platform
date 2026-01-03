@@ -31,3 +31,5 @@ public interface CultureAttractionMapper extends BaseMapper<CultureAttraction> {
 
 
 
+
+

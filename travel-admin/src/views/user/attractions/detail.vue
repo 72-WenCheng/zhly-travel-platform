@@ -196,13 +196,6 @@
                   {{ attractionDetail.ticketPrice === 0 || attractionDetail.ticketPrice === '0' ? '免费' : `¥${attractionDetail.ticketPrice}` }}
                 </span>
               </div>
-            <div class="ticket-action">
-              <div class="quantity">
-                <span>数量：</span>
-                <el-input-number v-model="orderQuantity" :min="1" :max="10" size="small" />
-              </div>
-              <el-button type="primary" @click="handleBuyTicket">立即购票</el-button>
-            </div>
             </div>
           </el-card>
 
@@ -427,7 +420,6 @@ const { userPlatformName } = storeToRefs(systemStore);
 const attractionId = ref(parseInt(route.params.id));
 const loading = ref(false);
 const attractionDetail = ref({});
-const orderQuantity = ref(1);
 const nearbyAttractions = ref([]);
 const relatedPlans = ref([]);
 const ratingSummary = ref({
@@ -602,42 +594,6 @@ const handleRatingChange = async (value: number) => {
     ElMessage.error(error?.message || '评分失败，请稍后重试');
   } finally {
     ratingSubmitting.value = false;
-  }
-};
-
-// 购票下单
-const handleBuyTicket = async () => {
-  const qty = orderQuantity.value || 1;
-  if (qty <= 0) {
-    ElMessage.warning('请输入正确的购票数量');
-    return;
-  }
-  const price = Number(attractionDetail.value.ticketPrice || 0);
-  const total = price * qty;
-  try {
-    await ElMessageBox.confirm(
-      `确认购买「${attractionDetail.value.name || '景点'}」门票？\n数量：${qty}\n总计：¥${total}`,
-      '确认购票',
-      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
-    );
-    const payload = {
-      productId: attractionDetail.value.id,
-      productType: 1, // 作为商品/门票下单
-      productName: attractionDetail.value.name,
-      productImage: attractionImages.value[0],
-      productPrice: price,
-      quantity: qty,
-      totalAmount: total,
-      finalAmount: total
-    };
-    const res = await request.post('/culture/order', payload);
-    if (res.code === 200) {
-      ElMessage.success('下单成功！');
-    } else {
-      ElMessage.error(res.message || '下单失败');
-    }
-  } catch {
-    // 用户取消
   }
 };
 
@@ -1607,12 +1563,38 @@ const drawInfoCard = (ctx: CanvasRenderingContext2D, x: number, y: number, width
 
 // 导航
 const handleNavigation = () => {
+  // 优先使用详细地址
+  let targetAddress = '';
+  
   if (attractionDetail.value.address) {
-    // 这里可以集成高德地图或百度地图的导航功能
-    const address = encodeURIComponent(attractionDetail.value.address);
-    window.open(`https://uri.amap.com/navigation?to=${address}&mode=car&policy=1&src=myapp&coordinate=gaode`, '_blank');
+    // 如果有城市信息，组合城市和详细地址
+    if (attractionDetail.value.city) {
+      targetAddress = `${attractionDetail.value.city}${attractionDetail.value.address}`;
+    } else {
+      targetAddress = attractionDetail.value.address;
+    }
+  } else if (attractionDetail.value.city) {
+    // 如果没有详细地址，使用城市
+    targetAddress = attractionDetail.value.city;
+  }
+  
+  // 如果有经纬度，优先使用经纬度导航（更准确）
+  if (attractionDetail.value.longitude && attractionDetail.value.latitude) {
+    const lng = attractionDetail.value.longitude;
+    const lat = attractionDetail.value.latitude;
+    // 使用经纬度导航，如果有地址信息也带上
+    if (targetAddress) {
+      const encodedAddress = encodeURIComponent(targetAddress);
+      window.open(`https://uri.amap.com/navigation?to=${lng},${lat}&toName=${encodedAddress}&mode=car&policy=1&src=myapp&coordinate=gaode`, '_blank');
+    } else {
+      window.open(`https://uri.amap.com/navigation?to=${lng},${lat}&mode=car&policy=1&src=myapp&coordinate=gaode`, '_blank');
+    }
+  } else if (targetAddress) {
+    // 使用地址导航
+    const encodedAddress = encodeURIComponent(targetAddress);
+    window.open(`https://uri.amap.com/navigation?to=${encodedAddress}&mode=car&policy=1&src=myapp&coordinate=gaode`, '_blank');
   } else {
-    ElMessage.warning('暂无地址信息');
+    ElMessage.warning('暂无地址信息，无法导航');
   }
 };
 

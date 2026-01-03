@@ -34,6 +34,11 @@ public interface AiService extends IService<AiGenerateLog> {
     String generateContent(Long userId, String request, String modelName);
 
     /**
+     * 生成旅游攻略（使用模板）
+     */
+    String generateTravelPlan(Long userId, Map<String, Object> params);
+
+    /**
      * 记录AI生成日志
      */
     boolean logAiGenerate(Long userId, String request, String response, Integer status, Integer responseTime, String modelName, Integer tokensUsed, Double cost);

@@ -1,10 +1,18 @@
 <template>
   <div class="culture-center">
+    <!-- 页面标题 -->
+    <el-card class="page-header">
+      <h1>
+        <el-icon><Shop /></el-icon>
+        文旅体验中心
+      </h1>
+    </el-card>
+
     <el-card class="page-card">
-      <el-row :gutter="16" class="entry-row">
+      <el-row :gutter="20" class="entry-row">
         <el-col :xs="24" :sm="12" :md="6">
           <!-- 我的预约：文化体验 -->
-          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/bookings?mode=experience')">
+          <el-card class="entry-card" shadow="never" @click="go('/home/user/culture/bookings?mode=experience')">
             <div class="entry-icon primary">
               <span class="icon-base icon-calendar" aria-hidden="true"></span>
             </div>
@@ -14,7 +22,7 @@
         </el-col>
 
         <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/orders')">
+          <el-card class="entry-card" shadow="never" @click="go('/home/user/culture/orders')">
             <div class="entry-icon success">
               <span class="icon-base icon-list" aria-hidden="true"></span>
             </div>
@@ -25,7 +33,7 @@
 
         <el-col :xs="24" :sm="12" :md="6">
           <!-- 我的预定：农家乐 / 民宿 -->
-          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/bookings?mode=stay')">
+          <el-card class="entry-card" shadow="never" @click="go('/home/user/culture/bookings?mode=stay')">
             <div class="entry-icon warning">
               <span class="icon-base icon-ticket" aria-hidden="true"></span>
             </div>
@@ -35,7 +43,7 @@
         </el-col>
 
         <el-col :xs="24" :sm="12" :md="6">
-          <el-card class="entry-card" shadow="hover" @click="go('/home/user/culture/applications')">
+          <el-card class="entry-card" shadow="never" @click="go('/home/user/culture/applications')">
             <div class="entry-icon info">
               <span class="icon-base icon-doc" aria-hidden="true"></span>
             </div>
@@ -66,6 +74,8 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { Shop } from '@element-plus/icons-vue'
+
 const router = useRouter()
 const go = (path: string) => {
   router.push(path)
@@ -84,11 +94,33 @@ const sponsors = [
 
 <style scoped lang="scss">
 .culture-center {
-  padding: 12px;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 24px;
+
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #303133;
+    margin: 0;
+
+    .el-icon {
+      font-size: 28px;
+      color: #409eff;
+    }
+  }
 }
 
 .page-card {
   border-radius: 12px;
+  padding: 32px 24px;
 }
 
 .page-header {
@@ -121,43 +153,56 @@ const sponsors = [
 }
 
 .entry-row {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .entry-card {
   border-radius: 12px;
   cursor: pointer;
-  transition: box-shadow 0.2s ease;
+  transition: none;
+  padding: 28px 24px;
+  height: 100%;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 
   &:hover {
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transform: none;
+    border-color: #f0f0f0;
   }
 }
 
 .entry-icon {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid #e5e7eb;
   background: #f5f6f8;
   color: #5f6368;
-  font-size: 22px;
-  margin-bottom: 10px;
+  font-size: 28px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .entry-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #111827;
+  margin-bottom: 8px;
 }
 
 .entry-desc {
-  margin-top: 6px;
+  margin-top: 0;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.6;
+  flex: 1;
 }
 
 .icon-base {
@@ -185,54 +230,80 @@ const sponsors = [
 }
 
 .sponsor-card {
-  margin-top: 16px;
+  margin-top: 24px;
   text-align: center;
+  padding: 32px 24px;
 }
 
 .sponsor-header {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
   color: #111827;
+  margin-bottom: 8px;
 }
 
 .sponsor-subtitle {
-  margin-top: 4px;
-  font-size: 13px;
+  margin-top: 0;
+  font-size: 14px;
   color: #9ca3af;
+  margin-bottom: 24px;
 }
 
 .sponsor-list {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 32px;
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 24px;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .sponsor-item {
-  min-width: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  transition: none;
+
+  &:hover {
+    background: #fafafa;
+    border-color: #f0f0f0;
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 .sponsor-logo {
-  width: 72px;
-  height: 32px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  width: 80px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff, #f3f4f6);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
 }
 
 .sponsor-name {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
+  font-weight: 500;
 }
 
 </style>

@@ -286,7 +286,7 @@
         特色周边
       </h2>
       <div class="products-grid">
-        <div v-for="product in services.products" :key="product.id" class="product-card" @click="handleProductClick(product)">
+        <div v-for="product in attractions" :key="product.id" class="product-card" @click="handleProductClick(product)">
           <div class="product-badge">{{ product.badge }}</div>
           <div class="product-header">
             <h4>{{ product.name || product.title }}</h4>
@@ -307,7 +307,7 @@
           </div>
         </div>
       </div>
-      <div v-if="!services.products.length" class="empty-hint">暂无特色周边</div>
+      <div v-if="!attractions.length" class="empty-hint">暂无特色周边</div>
     </div>
 
 
@@ -399,7 +399,7 @@ const router = useRouter()
 const systemStore = useSystemStore()
 const { footerDescription } = storeToRefs(systemStore)
 
-console.log('✅ 中等版本文旅页面开始加载')
+console.log('中等版本文旅页面开始加载')
 
 // 当前激活的区块
 const activeSection = ref('banner')
@@ -429,10 +429,10 @@ const carouselBanners = ref([])
 
 // 四大核心功能（与详情页对应）
 const coreNavCards = ref([
-  { title: '政策对接', desc: '政府窗口直连，政策解读、项目申报一站协同', meta: '立即对接', icon: '🏛️', accent: 'linear-gradient(135deg, #e3e8ff, #f6f7ff)', path: '/home/admin/culture', tags: ['政策解读', '项目申报', '合规指导'] },
-  { title: '产业振兴', desc: '产业规划、运营陪跑、培训落地，帮你把路走稳', meta: '查看方案', icon: '📈', accent: 'linear-gradient(135deg, #e9fff7, #f8fffb)', path: '/home/user/culture/project', tags: ['规划落地', '运营陪跑', '培训赋能'] },
-  { title: '文化体验', desc: '非遗工坊、沉浸演艺与精品路线，一键预约体验', meta: '去体验', icon: '🎭', accent: 'linear-gradient(135deg, #e8f5ff, #f7fbff)', path: '/home/user/culture/experience', tags: ['非遗工坊', '沉浸演艺', '精品路线'] },
-  { title: '特色周边', desc: '产地直采+供应链，上架渠道与履约一体化', meta: '上架商品', icon: '🛍️', accent: 'linear-gradient(135deg, #fff4e8, #fffaf3)', path: '/home/user/culture/product', tags: ['供应链', '多渠道上架', '履约售后'] }
+  { title: '政策对接', desc: '政府窗口直连,政策解读项目申报一站协同', meta: '立即对接', icon: '', accent: 'linear-gradient(135deg, #e3e8ff, #f6f7ff)', path: '/home/admin/culture', tags: ['政策解读', '项目申报', '合规指导'] },
+  { title: '产业振兴', desc: '产业规划运营陪跑培训落地,帮你把路走稳', meta: '查看方案', icon: '', accent: 'linear-gradient(135deg, #e9fff7, #f8fffb)', path: '/home/user/culture/project', tags: ['规划落地', '运营陪跑', '培训赋能'] },
+  { title: '文化体验', desc: '非遗工坊沉浸演艺与精品路线，一键预约体验', meta: '去体验', icon: '', accent: 'linear-gradient(135deg, #e8f5ff, #f7fbff)', path: '/home/user/culture/experience', tags: ['非遗工坊', '沉浸演艺', '精品路线'] },
+  { title: '特色周边', desc: '产地直采+供应链,上架渠道与履约一体化', meta: '上架商品', icon: '', accent: 'linear-gradient(135deg, #fff4e8, #fffaf3)', path: '/home/user/culture/product', tags: ['供应链', '多渠道上架', '履约售后'] }
 ])
 
 const activeNavIndex = ref(0)
@@ -638,6 +638,9 @@ const govProjects = ref([])
 // 文化体验项目（与管理端数据结构对应）
 const cultureExperiences = ref([])
 
+// 特色周边（独立数据源，与农特产品区分）
+const attractions = ref([])
+
 const normalizeImages = (images) => {
   if (!images) return []
   try {
@@ -788,16 +791,75 @@ const loadHomestay = async () => {
   }
 }
 
-// 加载特色周边（用户端）——只展示自己的特色周边，不再混用农特产品
-const loadProducts = async () => {
+// 加载农特产品（从culture/products获取，productType=4）
+const loadAgriProducts = async () => {
   try {
+    console.log('开始加载农特产品...')
+    // 使用 /culture/products/page 接口，productType=4 表示农特产品
+    const res = await request.get('/culture/products/page', {
+      params: { page: 1, size: 20, type: 4 }
+    })
+    console.log('农特产品API响应:', res)
+    
+    // 接口返回的是 Page 对象，数据在 records 字段中
+    const list = res?.data?.records || res?.data?.list || []
+    console.log('农特产品列表:', list, '数量:', list?.length || 0)
+    
+    if (Array.isArray(list) && list.length) {
+      // 按销量和评分排序
+      const sorted = [...list].sort((a, b) => {
+        const aHot = (a.salesCount || 0) + (a.reviewCount || 0) * 10
+        const bHot = (b.salesCount || 0) + (b.reviewCount || 0) * 10
+        return bHot - aHot
+      })
+      
+      services.value.products = sorted.slice(0, 6).map((item, idx) => {
+        const tags = normalizeArray(item.features || item.highlights)
+        const price = item.price ? Number(item.price) : 0
+        const images = normalizeImages(item.images || item.coverImage)
+        
+        return {
+          id: item.id || idx,
+          title: item.productName || `农特产品 ${idx + 1}`,
+          name: item.productName || `农特产品 ${idx + 1}`,
+          location: item.origin || '待定',
+          origin: item.origin || '本地',
+          badge: item.badge || tags[0] || '农特产品',
+          price,
+          sales: item.salesCount || 0,
+          rating: item.rating ? Number(item.rating) : 4.5,
+          unit: item.unit || '/件',
+          viewCount: item.reviewCount || 0,
+          summary: item.summary || item.description || '',
+          cover: images[0] || ''
+        }
+      })
+      console.log('农特产品加载成功，数量:', services.value.products.length)
+    } else {
+      services.value.products = []
+      console.warn('农特产品列表为空')
+    }
+  } catch (error) {
+    console.error('加载农特产品失败:', error)
+    services.value.products = []
+  }
+}
+
+// 加载特色周边（从attractions获取，type=8）
+const loadAttractions = async () => {
+  try {
+    console.log('开始加载特色周边...')
     // type = 8 为特色周边，status 在服务端固定为已上架
     const res = await request.get('/culture/attractions/page', {
       params: { page: 1, size: 6, type: 8 }
     })
+    console.log('特色周边API响应:', res)
+    
     const list = res?.data?.records || res?.data?.list || []
+    console.log('特色周边列表:', list, '数量:', list.length)
+    
     if (Array.isArray(list) && list.length) {
-      services.value.products = list.map((item, idx) => {
+      attractions.value = list.map((item, idx) => {
         const price = item.ticketPrice != null ? Number(item.ticketPrice) : 0
         const rating = item.rating != null ? Number(item.rating) : 4.6
         const locationParts = [item.province, item.city].filter(Boolean)
@@ -809,8 +871,8 @@ const loadProducts = async () => {
 
         return {
           id: item.id || idx,
-          title: item.name || `产品 ${idx + 1}`,
-          name: item.name || `产品 ${idx + 1}`,
+          title: item.name || `特色周边 ${idx + 1}`,
+          name: item.name || `特色周边 ${idx + 1}`,
           location: locationParts.join(' · ') || item.address || '待定',
           origin: item.city || item.province || '本地',
           // 角标优先使用后台单独的 badge 字段，其次用 tags 的第一个
@@ -822,19 +884,21 @@ const loadProducts = async () => {
           viewCount: item.viewCount || 0
         }
       })
+      console.log('特色周边加载成功，数量:', attractions.value.length)
     } else {
-      services.value.products = []
+      attractions.value = []
+      console.warn('特色周边列表为空')
     }
   } catch (error) {
-    console.warn('加载特色周边失败，保持空数据', error)
-    services.value.products = []
+    console.error('加载特色周边失败:', error)
+    attractions.value = []
   }
 }
 
 // 加载政策对接（只获取政府项目 type=3）
 const loadGovProjects = async () => {
   try {
-    console.log('🔍 开始加载政策对接项目...')
+    console.log('开始加载政策对接项目...')
     const res = await request.get('/culture-project/list', { 
       params: { 
         page: 1, 
@@ -852,7 +916,7 @@ const loadGovProjects = async () => {
     console.log('📋 解析后的列表:', list, '长度:', list?.length)
     
     if (Array.isArray(list) && list.length) {
-      console.log('✅ 找到', list.length, '个政府项目')
+      console.log('找到', list.length, '个政府项目')
       govProjects.value = list.slice(0, 6).map((item, idx) => {
         // 处理状态文本和样式
         let statusText = '进行中'
@@ -894,7 +958,7 @@ const loadGovProjects = async () => {
           goalBrief: item.description ? (item.description.length > 50 ? item.description.slice(0, 50) + '...' : item.description) : ''
         }
       })
-      console.log('✅ 处理后的项目列表:', govProjects.value)
+      console.log('处理后的项目列表:', govProjects.value)
     } else {
       console.warn('⚠️ 没有找到政府项目数据，列表为空或不是数组')
       govProjects.value = []
@@ -1038,7 +1102,7 @@ const scrollToSection = (sectionId) => {
     return
   }
   
-  console.log('✅ 找到元素:', element)
+  console.log('找到元素:', element)
   
   // 查找滚动容器（优先查找 .main-content，然后是 .el-main）
   const scrollContainer = document.querySelector('.main-content') || 
@@ -1159,7 +1223,8 @@ onMounted(() => {
   loadCultureExperiences() // 文化体验
   loadFarmstay() // 农家乐
   loadHomestay() // 民宿
-  loadProducts() // 农特产品
+  loadAgriProducts() // 农特产品
+  loadAttractions() // 特色周边
   loadGovProjects() // 政策对接
   startNavAutoplay()
   const scrollContainer = getScrollContainer()
@@ -1192,7 +1257,7 @@ const handleCaseClick = (caseItem) => {
   router.push(`/home/user/culture/case/${caseItem.id}`)
 }
 
-console.log('✅ 中等版本文旅页面数据初始化完成')
+console.log('中等版本文旅页面数据初始化完成')
 </script>
 
 <style scoped>
