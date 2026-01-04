@@ -41,7 +41,6 @@
               v-model="filters.bookingNo"
               placeholder="请输入预订编号"
               clearable
-              @keyup.enter="handleSearch"
             />
           </el-form-item>
           <el-form-item label="服务类型">
@@ -83,7 +82,6 @@
               v-model="filters.contactName"
               placeholder="请输入联系人姓名"
               clearable
-              @keyup.enter="handleSearch"
             />
           </el-form-item>
           <el-form-item label="联系电话">
@@ -91,15 +89,12 @@
               v-model="filters.contactPhone"
               placeholder="请输入联系电话"
               clearable
-              @keyup.enter="handleSearch"
             />
           </el-form-item>
           <el-form-item label=" " class="filter-actions">
-            <el-button type="primary" @click="handleSearch">
-              <el-icon><Search /></el-icon>
-              搜索
+            <el-button class="reset-btn" @click="handleReset">
+              重置筛选
             </el-button>
-            <el-button @click="handleReset">重置</el-button>
           </el-form-item>
         </div>
       </el-form>
@@ -144,80 +139,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 筛选和搜索 -->
-    <el-card class="filter-card-modern" shadow="never">
-      <div class="filter-header">
-        <el-icon><Search /></el-icon>
-        <span>筛选条件</span>
-      </div>
-      <el-form :model="filters" class="filter-form">
-        <div class="filter-row">
-          <el-form-item label="预订编号">
-            <el-input
-              v-model="filters.bookingNo"
-              placeholder="请输入预订编号"
-              clearable
-              @keyup.enter="handleSearch"
-            />
-          </el-form-item>
-          <el-form-item label="服务类型">
-            <el-select v-model="filters.serviceType" placeholder="请选择服务类型" clearable>
-              <el-option label="农家乐" value="farmstay" />
-              <el-option label="民宿" value="homestay" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="预订状态">
-            <el-select v-model="filters.status" placeholder="请选择预订状态" clearable>
-              <el-option label="待确认" :value="1" />
-              <el-option label="已确认" :value="2" />
-              <el-option label="已完成" :value="3" />
-              <el-option label="已取消" :value="4" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="支付状态">
-            <el-select v-model="filters.paymentStatus" placeholder="请选择支付状态" clearable>
-              <el-option label="未支付" :value="1" />
-              <el-option label="已支付" :value="2" />
-              <el-option label="已退款" :value="3" />
-            </el-select>
-          </el-form-item>
-          <el-form-item class="filter-actions">
-            <el-button class="reset-btn" @click="handleReset">
-              重置筛选
-            </el-button>
-          </el-form-item>
-        </div>
-        <div class="filter-row">
-          <el-form-item label="预订日期">
-            <el-date-picker
-              v-model="filters.dateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="联系人">
-            <el-input
-              v-model="filters.contactName"
-              placeholder="请输入联系人姓名"
-              clearable
-              @keyup.enter="handleSearch"
-            />
-          </el-form-item>
-          <el-form-item label="联系电话">
-            <el-input
-              v-model="filters.contactPhone"
-              placeholder="请输入联系电话"
-              clearable
-              @keyup.enter="handleSearch"
-            />
-          </el-form-item>
-        </div>
-      </el-form>
-    </el-card>
 
     <!-- 预订列表 -->
     <el-card class="table-card-modern" shadow="never">

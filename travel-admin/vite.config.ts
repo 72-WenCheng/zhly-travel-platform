@@ -62,6 +62,17 @@ export default defineConfig({
         target: 'http://127.0.0.1:8070',
         changeOrigin: true,
         ws: true
+      },
+      '/upLoad': {
+        target: 'http://127.0.0.1:8070',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/upLoad/, '/upload')
+      },
+      '/images': {
+        target: 'http://127.0.0.1:8070',
+        changeOrigin: true,
+        ws: true
       }
     }
   },

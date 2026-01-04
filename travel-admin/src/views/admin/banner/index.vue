@@ -164,7 +164,7 @@
         <el-table-column prop="label" label="标签" width="120" show-overflow-tooltip />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="subtitle" label="副标题" min-width="220" show-overflow-tooltip />
-        <el-table-column label="显示位置" width="140">
+        <el-table-column label="显示位置" width="180">
           <template #default="{ row }">
             <el-tag :type="getPositionTag(row.position)" size="small">
               {{ getPositionText(row.position) }}

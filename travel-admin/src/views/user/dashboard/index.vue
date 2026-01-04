@@ -1,6 +1,13 @@
 <template>
   <div class="modern-user-dashboard">
-    <!-- 轮播图（最顶部） -->
+    <!-- 
+      轮播图区域：展示平台精选的旅游主题和活动信息，支持自动轮播和手动切换
+      核心功能：
+      1. 使用Element Plus的el-carousel组件实现自动轮播（5秒间隔）
+      2. 通过v-for遍历轮播图数据，动态绑定背景图片和内容
+      3. 点击轮播图可跳转到对应链接
+      4. 展示标题、副标题、徽章等信息
+    -->
     <div id="carousel" class="carousel-section" v-if="banners.length > 0">
       <el-carousel :interval="5000" arrow="never" height="580px" class="premium-carousel">
         <el-carousel-item v-for="(banner, index) in banners" :key="banner.id || index">
@@ -690,6 +697,7 @@ import { useSystemStore } from '@/stores/system'
 import { storeToRefs } from 'pinia'
 import { getHotProjects, getProjectList } from '@/api/cultureProject'
 import { getHotExperiences } from '@/api/cultureExperience'
+import { processImageUrl, processImageUrls } from '@/utils/image'
 
 const router = useRouter()
 const systemStore = useSystemStore()
@@ -2041,9 +2049,19 @@ const viewCulture = (item) => {
   } else if (item.itemType === 'experience') {
     router.push(`/home/user/culture/experience/${item.id}`)
   } else if (item.itemType === 'attraction') {
-    router.push(`/home/user/culture/attraction/${item.id}`)
+    // 特色周边跳转到产品详情页
+    if (item.typeName === '特色周边') {
+      router.push(`/home/user/culture/product/${item.id}`)
+    } else {
+      router.push(`/home/user/culture/attraction/${item.id}`)
+    }
   } else if (item.itemType === 'product') {
-    router.push(`/home/user/culture/product/${item.id}`)
+    // 农特产品跳转到农特产品详情页，其他产品跳转到产品详情页
+    if (item.typeName === '农特产品') {
+      router.push(`/home/user/culture/agri-product/${item.id}`)
+    } else {
+      router.push(`/home/user/culture/product/${item.id}`)
+    }
   } else if (item.itemType === 'project') {
     router.push(`/home/user/culture/project/${item.id}`)
   } else {
@@ -2053,27 +2071,14 @@ const viewCulture = (item) => {
 
 // 解析图片字段
 const parseImage = (item: any) => {
-  if (item.image) return item.image
-  if (item.cover) return item.cover
-  if (item.coverImage) return item.coverImage
+  if (item.image) return processImageUrl(item.image)
+  if (item.cover) return processImageUrl(item.cover)
+  if (item.coverImage) return processImageUrl(item.coverImage)
   
   if (item.images) {
-    if (Array.isArray(item.images) && item.images.length > 0) {
-      return item.images[0]
-    }
-    if (typeof item.images === 'string') {
-      try {
-        const parsed = JSON.parse(item.images)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed[0]
-        }
-      } catch (e) {
-        // 如果不是JSON，可能是逗号分隔的字符串
-        const images = item.images.split(',').filter((img: string) => img.trim())
-        if (images.length > 0) {
-          return images[0].trim()
-        }
-      }
+    const processedImages = processImageUrls(item.images)
+    if (processedImages.length > 0) {
+      return processedImages[0]
     }
   }
   

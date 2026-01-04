@@ -159,7 +159,6 @@
               <el-image 
                 v-if="row.images && row.images.length > 0"
                 :src="row.images[0]" 
-                :preview-src-list="row.images"
                 style="width: 80px; height: 50px; border-radius: 8px;"
                 fit="cover"
               />
@@ -402,6 +401,22 @@ const normalizeStatus = (status: any): number => {
   return status
 }
 
+// 统一图片格式为数组
+const normalizeImages = (images: any): string[] => {
+  if (!images) return []
+  if (Array.isArray(images)) return images
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // ignore
+    }
+    return images.split(',').map((url: string) => url.trim()).filter(Boolean)
+  }
+  return []
+}
+
 // 获取状态名称
 const getStatusName = (status: number) => {
   const statusMap: Record<number, string> = {
@@ -487,8 +502,9 @@ const loadServiceList = async () => {
       serviceList.value = raw.map((item: any, idx: number) => ({
         id: item.id ?? idx,
         name: item.name || item.title || '',
-        region: item.region || item.location || '',
-        location: item.location || '',
+        region: item.region || '',
+        location: item.address || item.location || item.detailedLocation || item.detailedAddress || '',
+        images: normalizeImages(item.images || item.image || item.cover),
         price: item.price ?? item.investment ?? 0,
         contactPerson: item.contactPerson || item.principal || '',
         contactPhone: item.contactPhone || item.phone || '',

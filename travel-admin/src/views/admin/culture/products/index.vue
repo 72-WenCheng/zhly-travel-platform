@@ -159,7 +159,6 @@
               <el-image 
                 v-if="row.images && row.images.length > 0"
                 :src="row.images[0]" 
-                :preview-src-list="row.images"
                 style="width: 80px; height: 50px; border-radius: 8px;"
                 fit="cover"
               />
@@ -490,14 +489,14 @@ const loadServiceList = async () => {
         []
       serviceList.value = raw.map((item: any, idx: number) => ({
         id: item.id ?? idx,
-        name: item.name || item.title || '',
+        name: item.productName || item.name || item.title || '',
         origin: item.origin || item.location || '',
         badge: item.badge || item.tag || '',
         price: item.price ?? item.packages?.[0]?.price ?? 0,
         unit: item.unit || '/件',
         stock: item.stock ?? -1,
         rating: item.rating ?? item.score ?? 0,
-        sales: item.sales ?? item.orderCount ?? 0,
+        sales: item.sales ?? item.salesCount ?? item.orderCount ?? 0,
         views: item.views ?? item.viewCount ?? 0,
         images: normalizeImages(item.images || item.cover || item.image),
         status: item.status ?? 1,

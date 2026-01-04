@@ -159,7 +159,6 @@
               <el-image 
                 v-if="row.images && row.images.length > 0"
                 :src="row.images[0]" 
-                :preview-src-list="row.images"
                 style="width: 80px; height: 50px; border-radius: 8px;"
                 fit="cover"
               />

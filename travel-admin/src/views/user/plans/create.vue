@@ -685,8 +685,29 @@ const checkPublishPermission = async (userId: number) => {
       }
     })
     
+    console.log('权限检查结果:', permissionRes)
+    
     if (permissionRes.code !== 200 || !permissionRes.data?.hasPermission) {
-      ElMessage.warning('您当前等级不支持发布攻略，请先完成任务升级到白银探索者')
+      // 获取用户积分信息，显示更详细的错误信息
+      try {
+        const pointsRes = await request.get('/user/points/my', {
+          params: { userId }
+        })
+        if (pointsRes.code === 200 && pointsRes.data) {
+          const totalPoints = pointsRes.data.userPoints?.totalPoints || 0
+          const levelName = pointsRes.data.currentLevel?.levelName || '未知等级'
+          console.log('用户积分信息:', {
+            totalPoints,
+            levelName,
+            currentLevel: pointsRes.data.currentLevel
+          })
+          ElMessage.warning(`您当前等级（${levelName}，${totalPoints}积分）不支持发布攻略，请先完成任务升级到白银探索者（100积分）`)
+        } else {
+          ElMessage.warning('您当前等级不支持发布攻略，请先完成任务升级到白银探索者')
+        }
+      } catch (e) {
+        ElMessage.warning('您当前等级不支持发布攻略，请先完成任务升级到白银探索者')
+      }
       return false
     }
     

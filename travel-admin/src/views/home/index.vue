@@ -730,7 +730,7 @@ const recordMenuUsage = async (path: string) => {
       actionIcon: meta.actionIcon
     })
   } catch (error) {
-    console.error('记录常用操作失败:', error)
+    // 静默失败，不打印错误日志
   }
 }
 

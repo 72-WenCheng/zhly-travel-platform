@@ -585,8 +585,23 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
     @Override
     public Map<String, Object> getAmapPoi(String keyword, String city) {
         try {
-            String url = String.format("%s/v3/place/text?key=%s&keywords=%s&city=%s&output=json&extensions=all", 
-                apiConfig.getAmapApiUrl(), apiConfig.getAmapApiKey(), keyword, city);
+            // URL编码关键词和城市参数
+            String encodedKeyword = java.net.URLEncoder.encode(keyword, "UTF-8");
+            String encodedCity = (city != null && !city.isEmpty()) 
+                ? java.net.URLEncoder.encode(city, "UTF-8") 
+                : "";
+            
+            String url = String.format("%s/v3/place/text?key=%s&keywords=%s&city=%s&output=json&extensions=all&offset=1&page=1&types=", 
+                apiConfig.getAmapApiUrl(), apiConfig.getAmapApiKey(), encodedKeyword, encodedCity);
+            
+            // 检查API Key是否有效
+            if (apiConfig.getAmapApiKey() == null || 
+                apiConfig.getAmapApiKey().equals("your-amap-api-key") ||
+                apiConfig.getAmapApiKey().equals("your-dev-amap-api-key") ||
+                apiConfig.getAmapApiKey().isEmpty()) {
+                System.err.println("高德地图API Key未配置");
+                return null;
+            }
             
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "TravelApp/1.0");
@@ -596,26 +611,64 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
             
             if (response.getStatusCode() == HttpStatus.OK) {
                 JsonNode jsonNode = objectMapper.readTree(response.getBody());
+                String status = jsonNode.get("status").asText();
                 
-                Map<String, Object> result = new HashMap<>();
-                result.put("status", jsonNode.get("status").asText());
-                result.put("count", jsonNode.get("count").asInt());
-                result.put("pois", jsonNode.get("pois"));
-                result.put("info", jsonNode.get("info").asText());
-                
-                // 处理POI数据，提取有用信息
-                List<Map<String, Object>> processedPois = processPoiData(jsonNode.get("pois"));
-                result.put("processedPois", processedPois);
-                
-                return result;
+                if ("1".equals(status) && jsonNode.has("pois") && jsonNode.get("pois").isArray() && jsonNode.get("pois").size() > 0) {
+                    JsonNode pois = jsonNode.get("pois");
+                    JsonNode firstPoi = pois.get(0);
+                    
+                    // 提取第一个POI的详细信息
+                    Map<String, Object> result = new HashMap<>();
+                    
+                    // 位置信息
+                    if (firstPoi.has("location")) {
+                        String location = firstPoi.get("location").asText();
+                        String[] coords = location.split(",");
+                        if (coords.length == 2) {
+                            result.put("longitude", new java.math.BigDecimal(coords[0]));
+                            result.put("latitude", new java.math.BigDecimal(coords[1]));
+                        }
+                    }
+                    
+                    // 名称和地址
+                    result.put("name", firstPoi.has("name") ? firstPoi.get("name").asText() : keyword);
+                    result.put("address", firstPoi.has("address") ? firstPoi.get("address").asText() : "");
+                    result.put("adname", firstPoi.has("adname") ? firstPoi.get("adname").asText() : "");
+                    result.put("pname", firstPoi.has("pname") ? firstPoi.get("pname").asText() : "");
+                    result.put("cityname", firstPoi.has("cityname") ? firstPoi.get("cityname").asText() : "");
+                    
+                    // 构建完整地址
+                    StringBuilder fullAddress = new StringBuilder();
+                    if (firstPoi.has("name")) {
+                        fullAddress.append(firstPoi.get("name").asText());
+                    }
+                    if (firstPoi.has("address")) {
+                        if (fullAddress.length() > 0) {
+                            fullAddress.append(" - ");
+                        }
+                        fullAddress.append(firstPoi.get("address").asText());
+                    }
+                    if (firstPoi.has("adname")) {
+                        if (fullAddress.length() > 0) {
+                            fullAddress.append("，");
+                        }
+                        fullAddress.append(firstPoi.get("adname").asText());
+                    }
+                    result.put("formattedAddress", fullAddress.toString());
+                    
+                    return result;
+                } else {
+                    String info = jsonNode.has("info") ? jsonNode.get("info").asText() : "未知错误";
+                    System.err.println("POI搜索API返回错误: status=" + status + ", info=" + info);
+                }
             }
             
         } catch (Exception e) {
             System.err.println("获取高德地图POI失败: " + e.getMessage());
+            e.printStackTrace();
         }
         
-        // 返回模拟数据
-        return generateMockPoiData(keyword, city);
+        return null;
     }
     
     @Override
@@ -645,15 +698,22 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
                     Map<String, Object> result = new HashMap<>();
                     result.put("longitude", new java.math.BigDecimal(coords[0]));
                     result.put("latitude", new java.math.BigDecimal(coords[1]));
-                    result.put("formattedAddress", geocode.get("formatted_address").asText());
+                    if (geocode.has("formatted_address")) {
+                        result.put("formattedAddress", geocode.get("formatted_address").asText());
+                    }
                     return result;
+                } else {
+                    // 记录错误信息
+                    String info = jsonNode.has("info") ? jsonNode.get("info").asText() : "未知错误";
+                    System.err.println("地理编码API返回错误: status=" + status + ", info=" + info);
                 }
             }
         } catch (Exception e) {
             System.err.println("地理编码失败: " + e.getMessage());
+            e.printStackTrace();
         }
         
-        return new HashMap<>();
+        return null;
     }
     
     @Override
@@ -731,20 +791,41 @@ public class ThirdPartyApiServiceImpl implements ThirdPartyApiService {
                     
                     Map<String, Object> result = new HashMap<>();
                     
-                    // 提取城市信息
+                    // 提取完整的地址信息
                     String province = addressComponent.has("province") ? addressComponent.get("province").asText() : "";
                     String city = addressComponent.has("city") ? addressComponent.get("city").asText() : "";
                     String district = addressComponent.has("district") ? addressComponent.get("district").asText() : "";
+                    String township = addressComponent.has("township") ? addressComponent.get("township").asText() : "";
+                    String street = addressComponent.has("street") ? addressComponent.get("street").asText() : "";
+                    String streetNumber = addressComponent.has("streetNumber") ? addressComponent.get("streetNumber").asText() : "";
                     
                     // 如果city为空，使用province（直辖市的情况）
                     if (city == null || city.isEmpty()) {
                         city = province;
                     }
                     
+                    // 优先使用formatted_address（高德返回的完整格式化地址）
+                    String formattedAddress = regeocode.has("formatted_address") ? regeocode.get("formatted_address").asText() : "";
+                    
+                    // 如果没有formatted_address，手动拼接完整地址
+                    if (formattedAddress == null || formattedAddress.isEmpty()) {
+                        StringBuilder fullAddress = new StringBuilder();
+                        if (province != null && !province.isEmpty()) fullAddress.append(province);
+                        if (city != null && !city.isEmpty()) fullAddress.append(city);
+                        if (district != null && !district.isEmpty()) fullAddress.append(district);
+                        if (township != null && !township.isEmpty()) fullAddress.append(township);
+                        if (street != null && !street.isEmpty()) fullAddress.append(street);
+                        if (streetNumber != null && !streetNumber.isEmpty()) fullAddress.append(streetNumber);
+                        formattedAddress = fullAddress.toString();
+                    }
+                    
                     result.put("city", city);
                     result.put("province", province);
                     result.put("district", district);
-                    result.put("formattedAddress", regeocode.has("formatted_address") ? regeocode.get("formatted_address").asText() : "");
+                    result.put("township", township);
+                    result.put("street", street);
+                    result.put("streetNumber", streetNumber);
+                    result.put("formattedAddress", formattedAddress);
                     
                     return result;
                 }

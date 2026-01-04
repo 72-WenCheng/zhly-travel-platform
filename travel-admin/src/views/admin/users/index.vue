@@ -66,12 +66,11 @@
               prefix-icon="Message"
             />
           </el-form-item>
-          <el-form-item label="个性化标签">
-            <el-select v-model="searchForm.userType" placeholder="请选择个性化标签" clearable>
-              <el-option label="个人" :value="1" />
-              <el-option label="情侣" :value="2" />
-              <el-option label="家庭" :value="3" />
-              <el-option label="团队" :value="4" />
+          <el-form-item label="性别">
+            <el-select v-model="searchForm.gender" placeholder="请选择性别" clearable>
+              <el-option label="男" :value="1" />
+              <el-option label="女" :value="2" />
+              <el-option label="未知" :value="0" />
             </el-select>
           </el-form-item>
           <el-form-item label="用户角色">
@@ -175,11 +174,16 @@
         <el-table-column prop="nickname" label="昵称" width="130" />
         <el-table-column prop="email" label="邮箱" width="200" show-overflow-tooltip />
         <el-table-column prop="phone" label="手机号" width="140" />
-        <el-table-column prop="userType" label="个性化标签" width="120" align="center">
+        <el-table-column prop="gender" label="性别" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="getUserTypeTag(row.userType)" class="user-type-tag">
-              {{ getUserTypeName(row.userType) }}
+            <el-tag :type="getGenderTag(row.gender)" size="small">
+              {{ getGenderName(row.gender) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="age" label="年龄" width="80" align="center">
+          <template #default="{ row }">
+            <span>{{ row.age || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="role" label="用户角色" width="100" align="center">
@@ -196,14 +200,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="points" label="积分" width="100" align="center">
+        <el-table-column prop="loginCount" label="登录次数" width="100" align="center">
           <template #default="{ row }">
-            <span class="points-cell">{{ row.points }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="level" label="等级" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag type="warning" size="small" class="level-tag">Lv.{{ row.level }}</el-tag>
+            <span>{{ row.loginCount || 0 }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="90" align="center">
@@ -216,7 +215,12 @@
         </el-table-column>
         <el-table-column prop="lastLoginTime" label="最后登录" width="170">
           <template #default="{ row }">
-            <span v-if="row.lastLoginTime">{{ formatDateTime(row.lastLoginTime) }}</span>
+            <div v-if="row.lastLoginTime">
+              <div>{{ formatDateTime(row.lastLoginTime) }}</div>
+              <div v-if="row.lastLoginIp" style="font-size: 12px; color: #999; margin-top: 4px;">
+                IP: {{ row.lastLoginIp }}
+              </div>
+            </div>
             <span v-else style="color: #999;">未登录</span>
           </template>
         </el-table-column>
@@ -329,13 +333,16 @@
           <el-input v-model="editForm.phone" placeholder="请输入手机号" />
         </el-form-item>
         
-        <el-form-item label="个性化标签" prop="userType">
-          <el-select v-model="editForm.userType" placeholder="请选择个性化标签">
-            <el-option label="个人" :value="1" />
-            <el-option label="情侣" :value="2" />
-            <el-option label="家庭" :value="3" />
-            <el-option label="团队" :value="4" />
+        <el-form-item label="性别" prop="gender">
+          <el-select v-model="editForm.gender" placeholder="请选择性别">
+            <el-option label="男" :value="1" />
+            <el-option label="女" :value="2" />
+            <el-option label="未知" :value="0" />
           </el-select>
+        </el-form-item>
+        
+        <el-form-item label="年龄" prop="age">
+          <el-input-number v-model="editForm.age" :min="0" :max="150" placeholder="请输入年龄" style="width: 100%;" />
         </el-form-item>
         
         <el-form-item label="用户角色" prop="role">
@@ -396,8 +403,10 @@
             <el-descriptions-item label="昵称">{{ userDetail.basicInfo.nickname }}</el-descriptions-item>
             <el-descriptions-item label="邮箱">{{ userDetail.basicInfo.email }}</el-descriptions-item>
             <el-descriptions-item label="手机号">{{ userDetail.basicInfo.phone }}</el-descriptions-item>
-            <el-descriptions-item label="积分">{{ userDetail.basicInfo.points || 0 }}</el-descriptions-item>
-            <el-descriptions-item label="等级">Lv.{{ userDetail.basicInfo.level || 1 }}</el-descriptions-item>
+            <el-descriptions-item label="性别">{{ getGenderName(userDetail.basicInfo.gender) }}</el-descriptions-item>
+            <el-descriptions-item label="年龄">{{ userDetail.basicInfo.age || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="登录次数">{{ userDetail.basicInfo.loginCount || 0 }}</el-descriptions-item>
+            <el-descriptions-item label="最后登录IP">{{ userDetail.basicInfo.lastLoginIp || '-' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="userDetail.basicInfo.status === 1 ? 'success' : 'danger'">
                 {{ userDetail.basicInfo.status === 1 ? '正常' : '禁用' }}
@@ -419,92 +428,6 @@
           </el-descriptions>
         </div>
       </div>
-    </el-dialog>
-
-    <!-- 积分调整对话框 -->
-    <el-dialog 
-      v-model="pointsDialogVisible" 
-      width="500px"
-      :close-on-click-modal="false"
-      class="points-adjust-dialog"
-      :show-close="true"
-    >
-      <template #header>
-        <div style="border-bottom: none !important; padding-bottom: 0;">
-          <span style="font-size: 18px; font-weight: 600;">调整用户积分</span>
-        </div>
-      </template>
-      <el-form :model="pointsForm" label-width="100px">
-        <el-form-item label="当前积分">
-          <el-input :value="currentUser?.points || 0" disabled />
-        </el-form-item>
-        <el-form-item label="积分变动" required>
-          <el-input-number 
-            v-model="pointsForm.points" 
-            :min="-999999" 
-            :max="999999"
-            placeholder="正数为增加，负数为扣除"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="变动原因">
-          <el-input 
-            v-model="pointsForm.reason" 
-            type="textarea" 
-            :rows="3"
-            placeholder="请输入积分变动原因"
-          />
-        </el-form-item>
-        <el-form-item>
-          <div class="form-tip">调整后积分：{{ (currentUser?.points || 0) + (pointsForm.points || 0) }}</div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button class="white-btn" @click="pointsDialogVisible = false">取消</el-button>
-        <el-button 
-          class="white-btn"
-          @click="submitPointsAdjust" 
-          :loading="pointsLoading"
-          style="--el-button-icon-left: none;"
-        >
-          <span>确认调整</span>
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 等级调整对话框 -->
-    <el-dialog 
-      v-model="levelDialogVisible" 
-      title="调整等级" 
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form :model="levelForm" label-width="100px">
-        <el-form-item label="当前等级">
-          <el-input :value="`Lv.${currentUser?.level || 1}`" disabled />
-        </el-form-item>
-        <el-form-item label="新等级" required>
-          <el-input-number 
-            v-model="levelForm.level" 
-            :min="1" 
-            :max="10"
-            placeholder="请输入等级（1-10）"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="调整原因">
-          <el-input 
-            v-model="levelForm.reason" 
-            type="textarea" 
-            :rows="3"
-            placeholder="请输入等级调整原因"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="levelDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitLevelAdjust" :loading="levelLoading">确定</el-button>
-      </template>
     </el-dialog>
 
     <!-- 登录历史对话框 -->
@@ -635,7 +558,7 @@ const lastUpdateTime = ref<string>('')
 const searchForm = reactive({
   username: '',
   email: '',
-  userType: null,
+  gender: null,
   role: null,
   status: null,
   dateRange: null
@@ -686,7 +609,8 @@ const editForm = reactive({
   nickname: '',
   email: '',
   phone: '',
-  userType: null,
+  gender: null,
+  age: null,
   role: null,
   travelPreference: null,
   interestTags: '',
@@ -710,22 +634,6 @@ const currentUser = ref<any>(null)
 const detailDialogVisible = ref(false)
 const detailLoading = ref(false)
 const userDetail = ref<any>({})
-
-// 积分调整对话框
-const pointsDialogVisible = ref(false)
-const pointsLoading = ref(false)
-const pointsForm = reactive({
-  points: 0,
-  reason: ''
-})
-
-// 等级调整对话框
-const levelDialogVisible = ref(false)
-const levelLoading = ref(false)
-const levelForm = reactive({
-  level: 1,
-  reason: ''
-})
 
 // 登录历史对话框
 const loginHistoryDialogVisible = ref(false)
@@ -776,26 +684,24 @@ const stats = computed(() => [
   }
 ])
 
-// 获取用户类型名称（个性化标签）
-const getUserTypeName = (type: number) => {
-  const typeMap = {
-    1: '个人',
-    2: '情侣',
-    3: '家庭',
-    4: '团队'
+// 获取性别名称
+const getGenderName = (gender: number) => {
+  const genderMap = {
+    0: '未知',
+    1: '男',
+    2: '女'
   }
-  return typeMap[type] || '未知'
+  return genderMap[gender] || '未知'
 }
 
-// 获取用户类型标签
-const getUserTypeTag = (type: number) => {
+// 获取性别标签
+const getGenderTag = (gender: number) => {
   const tagMap = {
-    1: 'info',     // 个人用蓝色
-    2: 'success',  // 情侣用绿色
-    3: 'warning',  // 家庭用橙色
-    4: 'danger'    // 团队用红色
+    0: 'info',     // 未知用蓝色
+    1: 'primary',  // 男用蓝色
+    2: 'danger'    // 女用红色
   }
-  return tagMap[type] || ''
+  return tagMap[gender] || 'info'
 }
 
 // 获取用户角色名称
@@ -839,7 +745,7 @@ const handleReset = () => {
   Object.assign(searchForm, {
     username: '',
     email: '',
-    userType: null,
+    gender: null,
     role: null,
     status: null,
     dateRange: null
@@ -854,7 +760,7 @@ watch(
   () => [
     searchForm.username,
     searchForm.email,
-    searchForm.userType,
+    searchForm.gender,
     searchForm.role,
     searchForm.status,
     searchForm.dateRange
@@ -901,10 +807,10 @@ const loadUserList = async () => {
         )
       }
       
-      // 前端筛选：个性化标签
-      if (searchForm.userType !== null && searchForm.userType !== undefined) {
+      // 前端筛选：性别
+      if (searchForm.gender !== null && searchForm.gender !== undefined) {
         filteredData = filteredData.filter((user: any) => 
-          user.userType === searchForm.userType
+          user.gender === searchForm.gender
         )
       }
       
@@ -944,7 +850,8 @@ const editUser = (row: any) => {
   editForm.nickname = row.nickname || ''
   editForm.email = row.email || ''
   editForm.phone = row.phone || ''
-  editForm.userType = row.userType
+  editForm.gender = row.gender
+  editForm.age = row.age
   editForm.role = row.role
   editForm.travelPreference = row.travelPreference
   editForm.interestTags = row.interestTags || ''
@@ -1063,8 +970,8 @@ const exportUsers = async () => {
     if (searchForm.username) {
       params.keyword = searchForm.username
     }
-    if (searchForm.userType !== null && searchForm.userType !== undefined) {
-      params.userType = searchForm.userType
+    if (searchForm.gender !== null && searchForm.gender !== undefined) {
+      params.gender = searchForm.gender
     }
     if (searchForm.role !== null && searchForm.role !== undefined) {
       params.role = searchForm.role
@@ -1371,69 +1278,6 @@ const handleUserAction = (command: string, row: any) => {
   }
 }
 
-// 提交积分调整
-const submitPointsAdjust = async () => {
-  if (!pointsForm.points || pointsForm.points === 0) {
-    ElMessage.warning('请输入积分变动值')
-    return
-  }
-  
-  pointsLoading.value = true
-  try {
-    const result = await request.put(`/admin/user/${currentUser.value.id}/points`, null, {
-      params: {
-        points: pointsForm.points,
-        reason: pointsForm.reason || '管理员调整积分'
-      }
-    })
-    
-    if (result.code === 200) {
-      ElMessage.success('积分调整成功')
-      pointsDialogVisible.value = false
-      loadUserList()
-      loadUserStats()
-    } else {
-      ElMessage.error(result.message || '积分调整失败')
-    }
-  } catch (error: any) {
-    console.error('积分调整失败:', error)
-    ElMessage.error('积分调整失败: ' + (error.message || '未知错误'))
-  } finally {
-    pointsLoading.value = false
-  }
-}
-
-// 提交等级调整
-const submitLevelAdjust = async () => {
-  if (!levelForm.level || levelForm.level < 1 || levelForm.level > 10) {
-    ElMessage.warning('请输入有效的等级（1-10）')
-    return
-  }
-  
-  levelLoading.value = true
-  try {
-    const result = await request.put(`/admin/user/${currentUser.value.id}/level`, null, {
-      params: {
-        level: levelForm.level,
-        reason: levelForm.reason || '管理员调整等级'
-      }
-    })
-    
-    if (result.code === 200) {
-      ElMessage.success('等级调整成功')
-      levelDialogVisible.value = false
-      loadUserList()
-    } else {
-      ElMessage.error(result.message || '等级调整失败')
-    }
-  } catch (error: any) {
-    console.error('等级调整失败:', error)
-    ElMessage.error('等级调整失败: ' + (error.message || '未知错误'))
-  } finally {
-    levelLoading.value = false
-  }
-}
-
 // 登录历史翻页处理
 const handleLoginHistoryCurrentChange = (current: number) => {
   loginHistoryPagination.current = current
@@ -1528,134 +1372,7 @@ onUnmounted(() => {
 <style lang="scss">
 @import '@/styles/admin-list.scss';
 
-// 积分调整对话框样式 - 移除标题下方的线和按钮图标（非scoped，确保样式生效）
-.points-adjust-dialog {
-  // 移除标题下方的所有边框和装饰线
-  .el-dialog__header {
-    padding: 20px 20px 0 !important;
-    border-bottom: none !important;
-    border: none !important;
-    border-bottom-width: 0 !important;
-    margin-bottom: 0 !important;
-    
-    // 移除所有伪元素
-    &::after {
-      content: none !important;
-      display: none !important;
-      height: 0 !important;
-      width: 0 !important;
-      border: none !important;
-      background: none !important;
-    }
-    
-    &::before {
-      content: none !important;
-      display: none !important;
-      height: 0 !important;
-      width: 0 !important;
-      border: none !important;
-      background: none !important;
-    }
-    
-    // 移除标题内的所有边框
-    .el-dialog__title {
-      border-bottom: none !important;
-      padding-bottom: 0 !important;
-      margin-bottom: 0 !important;
-      
-      &::after {
-        display: none !important;
-        content: none !important;
-      }
-    }
-    
-    // 移除 header 内的所有子元素的边框
-    > * {
-      border-bottom: none !important;
-    }
-  }
-  
-  .el-dialog__body {
-    padding: 24px;
-  }
-  
-  // 白色系按钮样式
-  .el-dialog__footer {
-    .white-btn {
-      background: #ffffff;
-      border: 1px solid #dcdfe6;
-      color: #606266;
-      transition: all 0.3s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      vertical-align: middle;
-      
-      &:hover {
-        background: #f5f7fa;
-        border-color: #c0c4cc;
-        color: #303133;
-      }
-      
-      &:active {
-        background: #f0f2f5;
-      }
-      
-      // 隐藏所有图标
-      .el-icon,
-      i,
-      svg {
-        display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      
-      // 移除按钮内的所有图标元素
-      > .el-icon,
-      span .el-icon,
-      i.el-icon,
-      .el-button__icon {
-        display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-      }
-      
-      // 确保按钮文字正常显示并垂直居中
-      span:not(.el-icon):not(.el-button__icon) {
-        display: inline-block !important;
-        line-height: 1.5;
-        vertical-align: middle;
-      }
-    }
-  }
-}
-
-// 全局覆盖 - 确保积分调整对话框没有标题下方的线
-.el-overlay .points-adjust-dialog .el-dialog .el-dialog__header {
-  border-bottom: none !important;
-  border-bottom-width: 0 !important;
-  border-bottom-style: none !important;
-  padding-bottom: 0 !important;
-  margin-bottom: 0 !important;
-  
-  &::after,
-  &::before {
-    display: none !important;
-    content: none !important;
-    height: 0 !important;
-    width: 0 !important;
-    border: none !important;
-    background: none !important;
-  }
-  
-  .el-dialog__title {
-    border-bottom: none !important;
-  }
-}
+// 积分调整对话框样式已移除
 </style>
 
 <style lang="scss" scoped>

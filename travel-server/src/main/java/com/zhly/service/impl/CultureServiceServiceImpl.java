@@ -12,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +32,34 @@ public class CultureServiceServiceImpl extends ServiceImpl<CultureServiceMapper,
                .like(location != null && !location.isEmpty(), CultureService::getLocation, location)
                .eq(status != null, CultureService::getStatus, status)
                .orderByDesc(CultureService::getUpdateTime);
-        return this.page(pageParam, wrapper);
+        Page<CultureService> result = this.page(pageParam, wrapper);
+        
+        // 批量加载套餐数据
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            List<Long> serviceIds = result.getRecords().stream()
+                    .map(CultureService::getId)
+                    .collect(Collectors.toList());
+            
+            if (!serviceIds.isEmpty()) {
+                // 批量查询所有套餐
+                List<CultureServicePackage> allPackages = packageMapper.selectList(
+                        new LambdaQueryWrapper<CultureServicePackage>()
+                                .in(CultureServicePackage::getServiceId, serviceIds)
+                                .orderByAsc(CultureServicePackage::getPrice));
+                
+                // 按服务ID分组
+                Map<Long, List<CultureServicePackage>> packagesMap = allPackages.stream()
+                        .collect(Collectors.groupingBy(CultureServicePackage::getServiceId));
+                
+                // 为每个服务设置套餐列表
+                result.getRecords().forEach(service -> {
+                    List<CultureServicePackage> packages = packagesMap.getOrDefault(service.getId(), Collections.emptyList());
+                    service.setPackages(packages);
+                });
+            }
+        }
+        
+        return result;
     }
 
     @Override
@@ -48,9 +77,12 @@ public class CultureServiceServiceImpl extends ServiceImpl<CultureServiceMapper,
     @Transactional(rollbackFor = Exception.class)
     public boolean create(CultureService service, List<CultureServicePackage> packages) {
         boolean saved = this.save(service);
-        if (saved && packages != null) {
+        if (saved && packages != null && !packages.isEmpty()) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
             for (CultureServicePackage pkg : packages) {
                 pkg.setServiceId(service.getId());
+                pkg.setCreateTime(now);
+                pkg.setUpdateTime(now);
                 packageMapper.insert(pkg);
             }
         }
@@ -65,9 +97,18 @@ public class CultureServiceServiceImpl extends ServiceImpl<CultureServiceMapper,
         if (updated) {
             // 先删再插
             packageMapper.delete(new LambdaQueryWrapper<CultureServicePackage>().eq(CultureServicePackage::getServiceId, id));
-            if (packages != null) {
+            if (packages != null && !packages.isEmpty()) {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
                 for (CultureServicePackage pkg : packages) {
                     pkg.setServiceId(id);
+                    // 如果是新套餐（没有id），设置创建时间和更新时间
+                    if (pkg.getId() == null) {
+                        pkg.setCreateTime(now);
+                        pkg.setUpdateTime(now);
+                    } else {
+                        // 如果是已有套餐，只更新更新时间
+                        pkg.setUpdateTime(now);
+                    }
                     packageMapper.insert(pkg);
                 }
             }

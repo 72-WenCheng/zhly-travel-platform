@@ -30,12 +30,8 @@
       <!-- 底部信息 -->
       <div class="map-info">
         <div class="info-item">
-          <span class="label">地址：</span>
+          <span class="label">详细地址：</span>
           <span class="value">{{ selectedAddress || '请在地图上点击选择位置' }}</span>
-        </div>
-        <div v-if="selectedLocation" class="info-item">
-          <span class="label">坐标：</span>
-          <span class="value">经度: {{ selectedLocation.lng.toFixed(6) }}, 纬度: {{ selectedLocation.lat.toFixed(6) }}</span>
         </div>
       </div>
     </div>
@@ -147,15 +143,20 @@ const getAmapKey = async () => {
       // 如果后端接口不存在，继续使用环境变量或默认值
     }
     
-    // 使用环境变量或提示用户配置
-    amapKey = envKey || 'your-amap-api-key'
-    if (amapKey === 'your-amap-api-key') {
-      console.warn('请配置高德地图API Key: VITE_AMAP_KEY环境变量或系统配置')
-      ElMessage.warning('地图功能需要配置高德地图API Key')
+    // 如果都没有配置，使用一个默认的Web端(JS API) Key（用于前端地图显示）
+    // 注意：这是Web端Key，不是Web服务Key
+    if (!amapKey || amapKey === 'your-amap-api-key') {
+      // 使用一个可能可用的默认Key（如果之前配置过）
+      amapKey = '4c1487f8f9b1c39bb406fdf78c214c76' // 默认Web端Key，如果不可用需要替换
+      console.warn('⚠️ 使用默认高德地图API Key，如果地图无法显示，请：')
+      console.warn('   1. 在前端.env文件中配置 VITE_AMAP_KEY=你的Web端Key')
+      console.warn('   2. 或在后端系统配置中添加 amap.api.key 配置项')
+      console.warn('   3. 确保使用的是Web端(JS API)类型的Key，不是Web服务Key')
     }
   } catch (error) {
     console.error('获取高德地图Key失败:', error)
-    amapKey = import.meta.env.VITE_AMAP_KEY || 'your-amap-api-key'
+    // 降级方案：使用默认Key
+    amapKey = import.meta.env.VITE_AMAP_KEY || '4c1487f8f9b1c39bb406fdf78c214c76'
     amapSecurityCode = import.meta.env.VITE_AMAP_SECURITY_CODE || ''
   }
 }
@@ -171,10 +172,14 @@ const loadAmapScript = (): Promise<void> => {
 
     // 检查API Key
     if (!amapKey || amapKey === 'your-amap-api-key') {
+      const errorMsg = '高德地图API Key未配置，请在前端.env文件中配置VITE_AMAP_KEY或在后端系统配置中添加amap.api.key'
+      console.error('❌', errorMsg)
       ElMessage.error('高德地图API Key未配置，请在环境变量中设置VITE_AMAP_KEY')
-      reject(new Error('高德地图API Key未配置'))
+      reject(new Error(errorMsg))
       return
     }
+    
+    console.log('✅ 使用高德地图API Key:', amapKey.substring(0, 10) + '...')
 
     // 如果配置了安全密钥，需要在加载脚本前设置全局配置
     if (amapSecurityCode) {
@@ -321,15 +326,51 @@ const addMarker = (lng: number, lat: number) => {
   selectedLocation.value = { lng, lat }
 }
 
-// 逆地理编码（根据坐标获取地址）
+// 逆地理编码（根据坐标获取地址）- 使用后端API
 const reverseGeocode = async (lng: number, lat: number) => {
+  try {
+    // 优先使用后端API获取详细地址（使用Web服务API Key，更准确）
+    const response = await request.get('/third-party/reverse-geocode', {
+      params: {
+        longitude: lng,
+        latitude: lat
+      }
+    })
+    
+    if (response.code === 200 && response.data) {
+      const data = response.data
+      
+      // 获取格式化地址
+      if (data.formattedAddress) {
+        selectedAddress.value = data.formattedAddress
+      } else {
+        // 如果没有格式化地址，手动拼接
+        const parts = []
+        if (data.province) parts.push(data.province)
+        if (data.city) parts.push(data.city)
+        if (data.district) parts.push(data.district)
+        selectedAddress.value = parts.length > 0 ? parts.join('') : '地址解析中...'
+      }
+      
+      // 提取省市区信息
+      selectedProvince.value = data.province || ''
+      selectedCity.value = data.city || data.district || props.defaultCity || ''
+      
+      return
+    }
+  } catch (error) {
+    console.warn('后端逆地理编码失败，尝试使用前端API:', error)
+  }
+  
+  // 降级方案：使用前端高德地图API
   const AMap = (window as any).AMap
   if (!AMap) {
+    selectedAddress.value = '无法获取地址信息，请重新选择位置'
+    ElMessage.warning('地图API未加载，请刷新页面重试')
     return
   }
 
   if (!geocoder) {
-    // 确保插件已加载，然后创建geocoder
     try {
       await loadAmapPlugins()
       geocoder = new AMap.Geocoder({
@@ -337,6 +378,7 @@ const reverseGeocode = async (lng: number, lat: number) => {
       })
     } catch (error) {
       console.error('加载地理编码插件失败:', error)
+      selectedAddress.value = '无法获取地址信息，请重新选择位置'
       return
     }
   }
@@ -344,16 +386,35 @@ const reverseGeocode = async (lng: number, lat: number) => {
   geocoder.getAddress([lng, lat], (status: string, result: any) => {
     if (status === 'complete' && result.info === 'OK') {
       const regeocode = result.regeocode
-      selectedAddress.value = regeocode.formattedAddress || ''
-      
-      // 提取省市区信息
       const addressComponent = regeocode.addressComponent
+      
+      // 构建完整的详细地址
+      let fullAddress = ''
       if (addressComponent) {
+        // 拼接完整地址：省 + 市 + 区/县 + 街道 + 门牌号
+        const parts = []
+        if (addressComponent.province) parts.push(addressComponent.province)
+        if (addressComponent.city) parts.push(addressComponent.city)
+        if (addressComponent.district) parts.push(addressComponent.district)
+        if (addressComponent.township) parts.push(addressComponent.township)
+        if (addressComponent.street) parts.push(addressComponent.street)
+        if (addressComponent.streetNumber) parts.push(addressComponent.streetNumber)
+        
+        // 如果有完整地址组件，使用拼接的地址
+        if (parts.length > 0) {
+          fullAddress = parts.join('')
+        }
+        
+        // 如果有格式化地址，优先使用（通常更准确）
+        if (regeocode.formattedAddress) {
+          fullAddress = regeocode.formattedAddress
+        }
+        
+        // 提取省市区信息
         selectedProvince.value = addressComponent.province || ''
-        // 优先使用city，如果没有city则使用district
         selectedCity.value = addressComponent.city || addressComponent.district || props.defaultCity || ''
         
-        // 如果没有省份但有城市，从城市名称中提取省份（例如：北京市 -> 北京市）
+        // 如果没有省份但有城市，从城市名称中提取省份
         if (!selectedProvince.value && selectedCity.value) {
           if (selectedCity.value.includes('市')) {
             selectedProvince.value = selectedCity.value.split('市')[0] + '市'
@@ -361,11 +422,17 @@ const reverseGeocode = async (lng: number, lat: number) => {
             selectedProvince.value = selectedCity.value.split('省')[0] + '省'
           }
         }
+      } else if (regeocode.formattedAddress) {
+        // 如果没有地址组件，使用格式化地址
+        fullAddress = regeocode.formattedAddress
       }
+      
+      selectedAddress.value = fullAddress || '地址解析中...'
     } else {
       console.warn('逆地理编码失败:', status, result)
-      // 如果逆地理编码失败，至少设置坐标
-      selectedAddress.value = `经度: ${lng.toFixed(6)}, 纬度: ${lat.toFixed(6)}`
+      // 如果逆地理编码失败，提示用户重新选择
+      selectedAddress.value = '无法获取地址信息，请重新选择位置'
+      ElMessage.warning('无法获取该位置的详细地址，请尝试选择其他位置')
     }
   })
 }
@@ -377,51 +444,137 @@ const handleSearch = async () => {
     return
   }
 
+  const keyword = searchKeyword.value.trim()
+
   try {
-    const AMap = (window as any).AMap
-    if (!AMap) {
-      ElMessage.error('地图未初始化')
-      return
+    // 优先使用后端API进行地理编码（适用于地址、城市、省份等）
+    try {
+      const geocodeResponse = await request.get('/third-party/amap/geocode', {
+        params: { address: keyword }
+      })
+      
+      console.log('地理编码响应:', geocodeResponse)
+      
+      if (geocodeResponse.code === 200 && geocodeResponse.data) {
+        const data = geocodeResponse.data
+        if (data.longitude && data.latitude) {
+          const lng = Number(data.longitude)
+          const lat = Number(data.latitude)
+          
+          if (!isNaN(lng) && !isNaN(lat)) {
+            addMarker(lng, lat)
+            // 使用逆地理编码获取详细地址
+            await reverseGeocode(lng, lat)
+            return
+          }
+        }
+      }
+      // 如果地理编码失败，继续尝试其他方法（不抛出错误）
+      console.warn('地理编码未找到结果，尝试输入提示API')
+    } catch (geocodeError: any) {
+      console.warn('地理编码请求失败，尝试输入提示API:', geocodeError)
+      
+      // 尝试使用输入提示API
+      try {
+        const tipsResponse = await request.get('/third-party/amap/inputtips', {
+          params: { 
+            keywords: keyword,
+            city: props.defaultCity || '',
+            citylimit: false
+          }
+        })
+        
+        console.log('输入提示响应:', tipsResponse)
+        
+        if (tipsResponse.code === 200 && tipsResponse.data && Array.isArray(tipsResponse.data) && tipsResponse.data.length > 0) {
+          const tip = tipsResponse.data[0]
+          if (tip.location && typeof tip.location === 'string') {
+            const locationParts = tip.location.split(',')
+            if (locationParts.length === 2) {
+              const lng = Number(locationParts[0].trim())
+              const lat = Number(locationParts[1].trim())
+              if (!isNaN(lng) && !isNaN(lat)) {
+                addMarker(lng, lat)
+                // 构建地址信息
+                let address = tip.name || ''
+                if (tip.address) {
+                  address += (address ? ' - ' : '') + tip.address
+                }
+                if (tip.district) {
+                  address += (address ? '，' : '') + tip.district
+                }
+                selectedAddress.value = address || keyword
+                await reverseGeocode(lng, lat)
+                return
+              }
+            }
+          }
+        } else {
+          console.warn('输入提示API未返回有效数据')
+        }
+      } catch (tipsError: any) {
+        console.warn('输入提示API也失败，尝试POI搜索:', tipsError)
+      }
     }
 
-    // 确保插件已加载
-    await loadAmapPlugins()
-
-    // 使用高德地图POI搜索
-    const placeSearch = new AMap.PlaceSearch({
-      city: props.defaultCity || '全国',
-      pageSize: 10,
-      // 如果配置了安全密钥，会在全局设置中生效
-    })
-
-    placeSearch.search(searchKeyword.value, (status: string, result: any) => {
-      if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
-        const poi = result.poiList.pois[0]
-        const location = poi.location
-        addMarker(location.lng, location.lat)
-        selectedAddress.value = poi.name + (poi.address ? ` - ${poi.address}` : '')
-        
-        // 提取省市区信息
-        if (poi.adname) {
-          const parts = poi.adname.split(/\s+/)
-          if (parts.length >= 2) {
-            selectedProvince.value = parts[0]
-            selectedCity.value = parts[1] || parts[0]
-          } else if (parts.length === 1) {
-            // 如果只有一个部分，尝试解析
-            const fullName = parts[0]
-            if (fullName.includes('市')) {
-              selectedCity.value = fullName
-              selectedProvince.value = fullName.split('市')[0] + '市'
-            } else if (fullName.includes('省')) {
-              selectedProvince.value = fullName.split('省')[0] + '省'
+    // 降级方案：使用后端POI搜索API
+    try {
+      const poiResponse = await request.get('/third-party/amap/poi', {
+        params: {
+          keyword: keyword,
+          city: props.defaultCity || ''
+        }
+      })
+      
+      console.log('POI搜索响应:', poiResponse)
+      
+      if (poiResponse.code === 200 && poiResponse.data) {
+        const data = poiResponse.data
+        if (data.longitude && data.latitude) {
+          const lng = Number(data.longitude)
+          const lat = Number(data.latitude)
+          
+          if (!isNaN(lng) && !isNaN(lat)) {
+            addMarker(lng, lat)
+            
+            // 使用返回的地址信息
+            if (data.formattedAddress) {
+              selectedAddress.value = data.formattedAddress
+            } else {
+              let address = data.name || ''
+              if (data.address) {
+                address += (address ? ' - ' : '') + data.address
+              }
+              if (data.adname) {
+                address += (address ? '，' : '') + data.adname
+              }
+              selectedAddress.value = address || keyword
             }
+            
+            // 提取省市区信息
+            if (data.pname) {
+              selectedProvince.value = data.pname
+            }
+            if (data.cityname) {
+              selectedCity.value = data.cityname
+            } else if (data.adname) {
+              selectedCity.value = data.adname
+            }
+            
+            // 使用逆地理编码获取更详细的地址
+            await reverseGeocode(lng, lat)
+            return
           }
         }
       } else {
-        ElMessage.warning('未找到相关地点')
+        console.warn('POI搜索返回错误:', poiResponse.message || '未知错误')
       }
-    })
+    } catch (poiError: any) {
+      console.warn('后端POI搜索失败:', poiError)
+    }
+    
+    // 如果所有方法都失败，提示用户
+    ElMessage.warning('未找到相关地点，请尝试输入更具体的地点名称或地址')
   } catch (error) {
     console.error('搜索失败:', error)
     ElMessage.error('搜索失败，请稍后重试')

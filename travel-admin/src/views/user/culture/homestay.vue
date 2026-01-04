@@ -12,13 +12,21 @@
               :preview-src-list="previewImages"
               fit="cover"
               class="hero-img"
-            />
+              @error="handleImageError"
+            >
+              <template #error>
+                <div class="image-error">
+                  <el-icon><Picture /></el-icon>
+                  <span>加载失败</span>
+                </div>
+              </template>
+            </el-image>
             <div v-else class="hero-img placeholder">暂无图片</div>
             <div v-if="homestay.images && homestay.images.length > 1" class="thumbs">
               <el-image
                 v-for="(img, idx) in homestay.images"
                 :key="img + idx"
-                :src="img"
+                :src="processImageUrl(img)"
                 :preview-src-list="previewImages"
                 fit="cover"
                 class="thumb"
@@ -126,9 +134,11 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Picture } from '@element-plus/icons-vue'
 import BackButton from '@/components/BackButton.vue'
 import CouponSelector from '@/components/CouponSelector.vue'
 import request from '@/utils/request'
+import { processImageUrl, processImageUrls } from '@/utils/image'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,20 +163,26 @@ const homestay = ref({
 })
 
 const heroCover = computed(() => {
-  if (homestay.value.cover) return homestay.value.cover
-  if (homestay.value.images && homestay.value.images.length) return homestay.value.images[0]
+  if (homestay.value.cover) return processImageUrl(homestay.value.cover)
+  if (homestay.value.images && homestay.value.images.length) return processImageUrl(homestay.value.images[0])
   return ''
 })
 
 // 预览列表：封面优先，其次是服务图片（去重）
 const previewImages = computed(() => {
   const imgs = homestay.value.images || []
-  const cover = heroCover.value
+  const cover = homestay.value.cover
   if (!cover && !imgs.length) return []
   const result: string[] = []
-  if (cover) result.push(cover)
+  if (cover) {
+    const processedCover = processImageUrl(cover)
+    if (processedCover) result.push(processedCover)
+  }
   for (const url of imgs) {
-    if (url && !result.includes(url)) result.push(url)
+    if (url) {
+      const processedUrl = processImageUrl(url)
+      if (processedUrl && !result.includes(processedUrl)) result.push(processedUrl)
+    }
   }
   return result
 })
@@ -282,6 +298,31 @@ const loadDetail = async () => {
     const res = await request.get(`/culture/homestays/${id}`)
     if (res.code === 200 && res.data) {
       const data = res.data as any
+      console.log('民宿详情数据:', data)
+      console.log('原始cover:', data.cover)
+      console.log('原始images:', data.images)
+      
+      // 先解析images数组，再处理URL
+      let imagesArray: string[] = []
+      if (data.images) {
+        if (Array.isArray(data.images)) {
+          imagesArray = data.images
+        } else if (typeof data.images === 'string') {
+          try {
+            const parsed = JSON.parse(data.images)
+            imagesArray = Array.isArray(parsed) ? parsed : [data.images]
+          } catch {
+            imagesArray = data.images.split(',').map((url: string) => url.trim()).filter(Boolean)
+          }
+        }
+      } else if (data.cover) {
+        imagesArray = [data.cover]
+      }
+      
+      console.log('解析后的images数组:', imagesArray)
+      const processedImages = imagesArray.map(img => processImageUrl(img))
+      console.log('处理后的images:', processedImages)
+      
       homestay.value = {
         id: data.id,
         title: data.title,
@@ -298,8 +339,10 @@ const loadDetail = async () => {
         highlightTags: normalizeArray(data.highlightTags),
         highlights: data.highlights || '',
         cover: data.cover || '',
-        images: normalizeImages(data.images || data.cover || [])
+        images: processedImages
       }
+      
+      console.log('最终homestay.value:', homestay.value)
     } else {
       ElMessage.error(res.message || '加载民宿详情失败')
     }
@@ -320,19 +363,10 @@ const normalizeArray = (val: any) => {
   }
 }
 
-const normalizeImages = (images: any): string[] => {
-  if (!images) return []
-  if (Array.isArray(images)) return images
-  if (typeof images === 'string') {
-    try {
-      const parsed = JSON.parse(images)
-      if (Array.isArray(parsed)) return parsed
-      return [images]
-    } catch {
-      return [images]
-    }
-  }
-  return []
+
+const handleImageError = (e: any) => {
+  console.error('图片加载失败:', e)
+  console.error('图片URL:', heroCover.value)
 }
 
 onMounted(() => {

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Tag(name = "管理端-特色民宿")
@@ -50,6 +51,9 @@ public class AdminCultureHomestayController {
     @PostMapping
     public Result<String> create(@RequestBody CultureHomestay homestay) {
         try {
+            LocalDateTime now = LocalDateTime.now();
+            homestay.setCreateTime(now);
+            homestay.setUpdateTime(now);
             boolean ok = cultureHomestayService.save(homestay);
             return ok ? Result.success("新增成功") : Result.error("新增失败");
         } catch (Exception e) {
@@ -62,6 +66,15 @@ public class AdminCultureHomestayController {
     public Result<String> update(@PathVariable Long id, @RequestBody CultureHomestay homestay) {
         try {
             homestay.setId(id);
+            // 更新时只更新 updateTime，保留原有的 createTime
+            CultureHomestay existing = cultureHomestayService.getById(id);
+            if (existing != null && existing.getCreateTime() != null) {
+                homestay.setCreateTime(existing.getCreateTime());
+            } else {
+                // 如果原有记录没有创建时间，则设置为当前时间
+                homestay.setCreateTime(LocalDateTime.now());
+            }
+            homestay.setUpdateTime(LocalDateTime.now());
             boolean ok = cultureHomestayService.updateById(homestay);
             return ok ? Result.success("更新成功") : Result.error("更新失败");
         } catch (Exception e) {

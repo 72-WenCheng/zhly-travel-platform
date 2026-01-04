@@ -214,17 +214,53 @@ public class UserPointsServiceImpl extends ServiceImpl<UserPointsMapper, UserPoi
         // 统一使用积分计算等级（根据升级指南）
         int totalPoints = userPoints.getTotalPoints() != null ? userPoints.getTotalPoints() : 0;
         UserLevel level = userLevelMapper.getLevelByPoints(totalPoints);
+        
+        // 如果数据库中没有找到等级配置，使用默认的积分判断逻辑
         if (level == null) {
-            return false;
+            return checkPermissionByPoints(totalPoints, permissionType);
         }
         
+        // 如果数据库中有配置，优先使用数据库配置
+        // 但如果配置不正确（canPostPlan为null或0），也使用积分判断作为兜底
         switch (permissionType) {
             case "POST_PLAN":
-                return level.getCanPostPlan() == 1;
+                // 白银探索者及以上（100积分）可以发布攻略
+                if (level.getCanPostPlan() != null && level.getCanPostPlan() == 1) {
+                    return true;
+                }
+                // 如果数据库配置不正确，使用积分判断
+                return checkPermissionByPoints(totalPoints, permissionType);
             case "COMMENT":
-                return level.getCanComment() == 1;
+                if (level.getCanComment() != null && level.getCanComment() == 1) {
+                    return true;
+                }
+                // 评论权限：所有等级都可以评论
+                return true;
             case "VIEW_PREMIUM":
-                return level.getCanViewPremium() == 1;
+                if (level.getCanViewPremium() != null && level.getCanViewPremium() == 1) {
+                    return true;
+                }
+                return false;
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * 根据积分直接判断权限（不依赖数据库配置）
+     * 这是兜底逻辑，确保即使数据库配置有问题也能正常工作
+     */
+    private boolean checkPermissionByPoints(int totalPoints, String permissionType) {
+        switch (permissionType) {
+            case "POST_PLAN":
+                // 白银探索者及以上（100积分）可以发布攻略
+                return totalPoints >= 100;
+            case "COMMENT":
+                // 所有等级都可以评论
+                return true;
+            case "VIEW_PREMIUM":
+                // 铂金旅者及以上（2000积分）可以查看精品内容
+                return totalPoints >= 2000;
             default:
                 return false;
         }

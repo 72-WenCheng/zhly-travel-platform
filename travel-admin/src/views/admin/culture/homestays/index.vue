@@ -159,7 +159,6 @@
               <el-image 
                 v-if="row.images && row.images.length > 0"
                 :src="row.images[0]" 
-                :preview-src-list="row.images"
                 style="width: 80px; height: 50px; border-radius: 8px;"
                 fit="cover"
               />
@@ -488,6 +487,8 @@ const loadServiceList = async () => {
         []
       serviceList.value = raw.map((item: any, idx: number) => {
         const imgs = normalizeImages(item.images || item.cover || item.image)
+        // 处理创建时间字段，尝试多种可能的字段名
+        const createTime = item.createTime || item.gmtCreate || item.createdAt || item.create_time || item.gmt_create || null
         return {
           id: item.id ?? idx,
           title: item.title || item.name || '',
@@ -500,7 +501,7 @@ const loadServiceList = async () => {
           views: item.views ?? item.viewCount ?? 0,
           images: imgs,
           status: item.status ?? 1,
-          createTime: item.createTime || item.gmtCreate || item.createdAt || ''
+          createTime: createTime
         }
       })
       pagination.total =

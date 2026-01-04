@@ -30,6 +30,11 @@ public class CultureHomestayServiceImpl extends ServiceImpl<CultureHomestayMappe
         CultureHomestay homestay = this.getById(id);
         if (homestay == null) return false;
         homestay.setStatus(status);
+        // 更新状态时也更新 updateTime
+        if (homestay.getCreateTime() == null) {
+            homestay.setCreateTime(java.time.LocalDateTime.now());
+        }
+        homestay.setUpdateTime(java.time.LocalDateTime.now());
         return this.updateById(homestay);
     }
 

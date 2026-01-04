@@ -499,7 +499,12 @@ const handleHide = async (row) => {
     const response = await request.put(`/admin/comment/hide/${row.id}`);
     if (response.code === 200) {
       ElMessage.success('已隐藏');
-      loadComments();
+      // 更新当前项的状态，而不是重新加载
+      const index = commentList.value.findIndex(item => item.id === row.id);
+      if (index > -1) {
+        commentList.value[index].status = 'HIDDEN';
+      }
+      // 更新统计数据
       loadStats();
     } else {
       ElMessage.error(response.message || '隐藏失败');
@@ -522,7 +527,13 @@ const handleDelete = async (row) => {
     const response = await request.delete(`/admin/comment/delete/${row.id}`);
     if (response.code === 200) {
       ElMessage.success('删除成功');
-      loadComments();
+      // 直接从列表中移除该项，而不是重新加载
+      const index = commentList.value.findIndex(item => item.id === row.id);
+      if (index > -1) {
+        commentList.value.splice(index, 1);
+        pagination.total = Math.max(0, pagination.total - 1);
+      }
+      // 更新统计数据
       loadStats();
     } else {
       ElMessage.error(response.message || '删除失败');
@@ -530,7 +541,7 @@ const handleDelete = async (row) => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error);
-      ElMessage.error('删除失败');
+      ElMessage.error('删除失败: ' + (error.message || '未知错误'));
     }
   }
 };
@@ -549,8 +560,16 @@ const handleBatchDelete = async () => {
     
     if (response.code === 200) {
       ElMessage.success('批量删除成功');
+      // 直接从列表中移除已删除的项
+      ids.forEach(id => {
+        const index = commentList.value.findIndex(item => item.id === id);
+        if (index > -1) {
+          commentList.value.splice(index, 1);
+        }
+      });
+      pagination.total = Math.max(0, pagination.total - ids.length);
       clearSelection();
-      loadComments();
+      // 更新统计数据
       loadStats();
     } else {
       ElMessage.error(response.message || '批量删除失败');
@@ -558,7 +577,7 @@ const handleBatchDelete = async () => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('批量删除失败:', error);
-      ElMessage.error('批量删除失败');
+      ElMessage.error('批量删除失败: ' + (error.message || '未知错误'));
     }
   }
 };
@@ -577,8 +596,15 @@ const handleBatchHide = async () => {
     
     if (response.code === 200) {
       ElMessage.success('批量隐藏成功');
+      // 更新当前项的状态
+      ids.forEach(id => {
+        const index = commentList.value.findIndex(item => item.id === id);
+        if (index > -1) {
+          commentList.value[index].status = 'HIDDEN';
+        }
+      });
       clearSelection();
-      loadComments();
+      // 更新统计数据
       loadStats();
     } else {
       ElMessage.error(response.message || '批量隐藏失败');

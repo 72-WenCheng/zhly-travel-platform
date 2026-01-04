@@ -45,18 +45,6 @@
             >
               当前订单金额不足，以下优惠券暂不可用，提升消费金额后即可使用。
             </div>
-            <!-- 不使用优惠券 -->
-            <div
-              class="coupon-item"
-              :class="{ 'active': selectedCouponId === null }"
-              @click="selectCoupon(null)"
-            >
-              <div class="coupon-content no-coupon">
-                <el-icon><Close /></el-icon>
-                <span>不使用优惠券</span>
-              </div>
-            </div>
-
             <!-- 优惠券列表 -->
             <div
               v-for="coupon in availableCoupons"
@@ -511,9 +499,10 @@ onMounted(() => {
   border-bottom: 1px solid #ebeef5;
 
   .panel-title {
-    font-weight: 600;
-    font-size: 16px;
-    color: #303133;
+    font-size: 28px !important;
+    font-weight: 600 !important;
+    color: #303133 !important;
+    line-height: 1.4 !important;
   }
 
   .panel-close {
@@ -529,6 +518,109 @@ onMounted(() => {
   gap: 12px;
   padding: 12px 20px 16px;
   border-top: 1px solid #ebeef5;
+  
+  .el-button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    padding: 12px 28px !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    height: auto !important;
+    min-height: 44px !important;
+    border-radius: 4px !important;
+    border: 1px solid #dcdfe6 !important;
+    background: #fff !important;
+    background-color: #fff !important;
+    color: #606266 !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease !important;
+    min-width: 80px !important;
+    cursor: pointer !important;
+    
+    &,
+    &:focus,
+    &:focus-visible {
+      border: 1px solid #dcdfe6 !important;
+      background: #fff !important;
+      background-color: #fff !important;
+      color: #606266 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    
+    :deep(.el-button__inner) {
+      color: #606266 !important;
+      font-size: 16px !important;
+      line-height: 1.5 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    
+    &:hover {
+      border-color: #c0c4cc !important;
+      background: #fff !important;
+      background-color: #fff !important;
+      color: #606266 !important;
+      box-shadow: none !important;
+      
+      :deep(.el-button__inner) {
+        color: #606266 !important;
+      }
+    }
+    
+    &:active,
+    &:focus {
+      border-color: #c0c4cc !important;
+      background: #fff !important;
+      background-color: #fff !important;
+      color: #606266 !important;
+      box-shadow: none !important;
+      
+      :deep(.el-button__inner) {
+        color: #606266 !important;
+      }
+    }
+    
+    // 主要按钮样式（确定按钮）
+    &.el-button--primary {
+      background-color: white !important;
+      border: 1px solid #dcdfe6 !important;
+      color: #606266 !important;
+      
+      &:hover {
+        background-color: white !important;
+        border-color: #c0c4cc !important;
+        color: #303133 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      }
+      
+      &:active {
+        background-color: white !important;
+        border-color: #c0c4cc !important;
+        color: #303133 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      }
+      
+      &:focus {
+        background-color: white !important;
+        border-color: #c0c4cc !important;
+        color: #606266 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      }
+      
+      :deep(.el-button__inner) {
+        color: #606266 !important;
+      }
+      
+      &:hover :deep(.el-button__inner) {
+        color: #303133 !important;
+      }
+    }
+  }
 }
 
 .coupon-tip-unavailable {

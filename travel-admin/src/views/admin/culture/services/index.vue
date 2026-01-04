@@ -159,7 +159,6 @@
               <el-image 
                 v-if="row.images && row.images.length > 0"
                 :src="row.images[0]" 
-                :preview-src-list="row.images"
                 style="width: 80px; height: 50px; border-radius: 8px;"
                 fit="cover"
               />
@@ -181,11 +180,13 @@
               <span style="color: #303133;">{{ row.contactPhone || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="套餐价格" width="150" align="center">
+          <el-table-column label="套餐价格" width="200" align="center">
             <template #default="{ row }">
-              <span v-if="row.packages && row.packages.length > 0" style="color: #f56c6c; font-weight: 600;">
-                ¥{{ row.packages[0].price }} - ¥{{ row.packages[row.packages.length - 1].price }}
-              </span>
+              <div v-if="row.packages && row.packages.length > 0" style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+                <div v-for="(pkg, index) in row.packages" :key="index" style="color: #f56c6c; font-weight: 600; font-size: 13px;">
+                  套餐{{ index + 1 }}: ¥{{ pkg.price }}{{ pkg.unit ? '/' + pkg.unit : '' }}
+                </div>
+              </div>
               <span v-else style="color: #c0c4cc;">-</span>
             </template>
           </el-table-column>

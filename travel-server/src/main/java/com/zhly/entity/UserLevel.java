@@ -39,6 +39,12 @@ public class UserLevel implements Serializable {
     private Integer levelCode;
     
     /**
+     * 等级编号（与level_code相同，用于兼容数据库字段）
+     */
+    @TableField("level_number")
+    private Integer levelNumber;
+    
+    /**
      * 所需积分
      */
     @TableField("required_points")

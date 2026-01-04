@@ -157,12 +157,17 @@
         >
           <el-table-column type="selection" width="55" align="center" />
           <el-table-column prop="id" label="ID" width="80" align="center" />
-          <el-table-column prop="coverImage" label="图片" width="120" align="center">
+          <el-table-column prop="images" label="图片" width="120" align="center">
             <template #default="{ row }">
               <el-image 
-                v-if="row.coverImage || row.image"
+                v-if="row.images && row.images.length > 0"
+                :src="row.images[0]" 
+                style="width: 80px; height: 50px; border-radius: 8px;"
+                fit="cover"
+              />
+              <el-image 
+                v-else-if="row.coverImage || row.image"
                 :src="row.coverImage || row.image" 
-                :preview-src-list="getImageList(row)"
                 style="width: 80px; height: 50px; border-radius: 8px;"
                 fit="cover"
               />
@@ -426,6 +431,22 @@ const formatCurrentTime = () => {
   return `${hours}:${minutes}:${seconds}`
 }
 
+// 统一图片格式为数组
+const normalizeImages = (images: any): string[] => {
+  if (!images) return []
+  if (Array.isArray(images)) return images
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // ignore
+    }
+    return images.split(',').map((url: string) => url.trim()).filter(Boolean)
+  }
+  return []
+}
+
 // 获取状态名称
 const getStatusName = (status: number) => {
   const statusMap: Record<number, string> = {
@@ -513,23 +534,29 @@ const loadProductList = async () => {
         result.data.records ||
         result.data.rows ||
         []
-      productList.value = raw.map((item: any, idx: number) => ({
-        id: item.id ?? idx,
-        name: item.name || item.title || '',
-        city: item.city || item.origin || '',
-        province: item.province || '',
-        badge: item.badge || item.tag || '',
-        type: item.type ?? item.category ?? 0,
-        address: item.address || item.location || '',
-        ticketPrice: item.ticketPrice ?? item.price ?? 0,
-        rating: item.rating ?? item.score ?? 0,
-        viewCount: item.viewCount ?? item.views ?? 0,
-        collectCount: item.collectCount ?? item.favorites ?? 0,
-        status: item.status ?? 1,
-        images: item.images || item.image || item.coverImage || [],
-        description: item.description || '',
-        createTime: item.createTime || item.gmtCreate || item.createdAt || ''
-      }))
+      productList.value = raw.map((item: any, idx: number) => {
+        const normalizedImages = normalizeImages(item.images || item.image || item.coverImage)
+        return {
+          id: item.id ?? idx,
+          name: item.name || item.title || '',
+          city: item.city || item.origin || '',
+          province: item.province || '',
+          origin: item.origin || item.city || '',
+          badge: item.badge || item.tag || '',
+          type: item.type ?? item.category ?? 0,
+          address: item.address || item.location || '',
+          ticketPrice: item.ticketPrice ?? item.price ?? 0,
+          rating: item.rating ?? item.score ?? 0,
+          viewCount: item.viewCount ?? item.views ?? 0,
+          collectCount: item.collectCount ?? item.favorites ?? 0,
+          status: item.status ?? 1,
+          images: normalizedImages,
+          image: normalizedImages[0] || item.image || item.coverImage || '',
+          coverImage: normalizedImages[0] || item.coverImage || item.image || '',
+          description: item.description || '',
+          createTime: item.createTime || item.gmtCreate || item.createdAt || ''
+        }
+      })
       pagination.total =
         result.data.total ||
         result.data.count ||

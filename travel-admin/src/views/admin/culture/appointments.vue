@@ -169,7 +169,6 @@
                 :src="row.experienceImage || 'https://picsum.photos/60/60?random=20'"
                 fit="cover"
                 class="experience-image"
-                :preview-src-list="row.experienceImage ? [row.experienceImage] : []"
               >
                 <template #error>
                   <div class="image-slot">

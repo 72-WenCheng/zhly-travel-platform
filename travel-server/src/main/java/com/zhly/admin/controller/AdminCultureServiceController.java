@@ -57,6 +57,10 @@ public class AdminCultureServiceController {
     public Result<String> create(@RequestBody Map<String, Object> payload) {
         try {
             CultureService service = mapToService(payload);
+            // 创建时设置创建时间和更新时间
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            service.setCreateTime(now);
+            service.setUpdateTime(now);
             List<CultureServicePackage> packages = mapToPackages(payload.get("packages"));
             boolean ok = cultureServiceService.create(service, packages);
             return ok ? Result.success("新增成功") : Result.error("新增失败");
@@ -70,6 +74,15 @@ public class AdminCultureServiceController {
     public Result<String> update(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
         try {
             CultureService service = mapToService(payload);
+            // 更新时保留原有的创建时间，设置更新时间
+            CultureService existing = cultureServiceService.getById(id);
+            if (existing != null && existing.getCreateTime() != null) {
+                service.setCreateTime(existing.getCreateTime());
+            } else {
+                service.setCreateTime(java.time.LocalDateTime.now());
+            }
+            service.setUpdateTime(java.time.LocalDateTime.now());
+            
             List<CultureServicePackage> packages = mapToPackages(payload.get("packages"));
             boolean ok = cultureServiceService.update(id, service, packages);
             return ok ? Result.success("更新成功") : Result.error("更新失败");
@@ -133,7 +146,17 @@ public class AdminCultureServiceController {
             List<Map<String, Object>> list = (List<Map<String, Object>>) obj;
             return list.stream().map(m -> {
                 CultureServicePackage pkg = new CultureServicePackage();
-                pkg.setId(m.get("id") == null ? null : Long.valueOf(m.get("id").toString()));
+                // 处理 id 字段，可能是 null、undefined 或数字
+                Object idObj = m.get("id");
+                if (idObj != null && !"undefined".equals(idObj.toString()) && !"null".equals(idObj.toString())) {
+                    try {
+                        pkg.setId(Long.valueOf(idObj.toString()));
+                    } catch (Exception e) {
+                        pkg.setId(null);
+                    }
+                } else {
+                    pkg.setId(null);
+                }
                 pkg.setName(string(m.get("name")));
                 pkg.setPrice(toDecimal(m.get("price")));
                 pkg.setUnit(string(m.get("unit")));
@@ -142,6 +165,7 @@ public class AdminCultureServiceController {
                 return pkg;
             }).collect(java.util.stream.Collectors.toList());
         } catch (Exception e) {
+            e.printStackTrace();
             return Collections.emptyList();
         }
     }

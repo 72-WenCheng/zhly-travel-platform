@@ -307,6 +307,11 @@
             v-model="addressDialogVisible"
             title="选择收货地址"
             width="600px"
+            :modal="true"
+            :append-to-body="true"
+            :close-on-click-modal="false"
+            :modal-class="'address-dialog-modal'"
+            :z-index="3000"
           >
             <div v-if="addresses.length === 0" class="empty-address">
               <el-empty description="暂无收货地址">
@@ -1110,6 +1115,39 @@ onMounted(() => {
 
 .empty-address {
   padding: 30px 0;
+}
+</style>
+
+<style lang="scss">
+// 确保地址选择弹窗的遮罩层完全覆盖整个页面，包括头部导航
+.address-dialog-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 3000 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+// 确保遮罩层覆盖所有内容
+.el-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2999 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+// 确保弹窗本身在最上层
+.el-dialog {
+  z-index: 3001 !important;
 }
 </style>
 

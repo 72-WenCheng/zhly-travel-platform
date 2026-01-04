@@ -290,18 +290,6 @@
       class="coupon-dialog"
     >
       <div class="coupon-list">
-        <!-- 不使用优惠券 -->
-        <div 
-          class="coupon-item" 
-          :class="{ 'active': selectedCouponId === null }"
-          @click="selectCoupon(null)"
-        >
-          <div class="coupon-content no-coupon">
-            <el-icon><Close /></el-icon>
-            <span>不使用优惠券</span>
-          </div>
-        </div>
-
         <!-- 优惠券列表 -->
         <div 
           v-for="coupon in availableCouponsComputed" 

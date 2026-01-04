@@ -72,6 +72,25 @@ public class ThirdPartyApiController {
     }
     
     /**
+     * 高德地图POI搜索：根据关键词搜索地点
+     */
+    @GetMapping("/amap/poi")
+    public Result<Map<String, Object>> getAmapPoi(
+            @RequestParam String keyword,
+            @RequestParam(required = false) String city) {
+        try {
+            Map<String, Object> result = thirdPartyApiService.getAmapPoi(keyword, city != null ? city : "");
+            if (result != null && !result.isEmpty()) {
+                return Result.success("POI搜索成功", result);
+            } else {
+                return Result.error("未找到相关地点");
+            }
+        } catch (Exception e) {
+            return Result.error("POI搜索失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 获取天气信息
      */
     @GetMapping("/weather")

@@ -419,7 +419,13 @@
       width="520px"
     >
       <el-form :model="grantForm" label-width="120px">
-        <el-form-item label="目标用户ID">
+        <el-form-item label="发放方式">
+          <el-radio-group v-model="grantForm.grantType">
+            <el-radio label="single">指定用户</el-radio>
+            <el-radio label="all">全部用户</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="grantForm.grantType === 'single'" label="目标用户ID">
           <el-input
             v-model="grantForm.userId"
             placeholder="请输入用户ID"
@@ -524,6 +530,7 @@ const validType = ref('days')
 const grantDialogVisible = ref(false)
 const grantLoading = ref(false)
 const grantForm = reactive({
+  grantType: 'single' as 'single' | 'all',
   userId: '',
   couponId: null as number | null,
   validDays: '',
@@ -894,26 +901,52 @@ const resetForm = () => {
 
 // 打开发放弹窗
 const openGrantDialog = () => {
+  grantForm.grantType = 'single'
+  grantForm.userId = ''
+  grantForm.couponId = null
+  grantForm.validDays = ''
+  grantForm.sourceDesc = ''
   grantDialogVisible.value = true
 }
 
 // 提交发放
 const submitGrant = async () => {
-  if (!grantForm.userId || !grantForm.couponId) {
-    ElMessage.warning('请填写用户ID并选择优惠券')
+  if (!grantForm.couponId) {
+    ElMessage.warning('请选择优惠券')
+    return
+  }
+  if (grantForm.grantType === 'single' && !grantForm.userId) {
+    ElMessage.warning('请填写用户ID')
     return
   }
   grantLoading.value = true
   try {
-    const res = await request.post('/admin/user/coupon/grant', {
-      userId: grantForm.userId,
-      couponId: grantForm.couponId,
-      validDays: grantForm.validDays || undefined,
-      sourceDesc: grantForm.sourceDesc || '管理端发放'
-    })
+    let res
+    if (grantForm.grantType === 'all') {
+      // 批量发放给全部用户
+      res = await request.post('/admin/user/coupon/grant/all', {
+        couponId: grantForm.couponId,
+        validDays: grantForm.validDays || undefined,
+        sourceDesc: grantForm.sourceDesc || '管理端批量发放'
+      })
+    } else {
+      // 发放给指定用户
+      res = await request.post('/admin/user/coupon/grant', {
+        userId: grantForm.userId,
+        couponId: grantForm.couponId,
+        validDays: grantForm.validDays || undefined,
+        sourceDesc: grantForm.sourceDesc || '管理端发放'
+      })
+    }
     if (res.code === 200) {
-      ElMessage.success('发放成功')
+      ElMessage.success(res.message || '发放成功')
       grantDialogVisible.value = false
+      // 重置表单
+      grantForm.grantType = 'single'
+      grantForm.userId = ''
+      grantForm.couponId = null
+      grantForm.validDays = ''
+      grantForm.sourceDesc = ''
     } else {
       ElMessage.error(res.message || '发放失败')
     }

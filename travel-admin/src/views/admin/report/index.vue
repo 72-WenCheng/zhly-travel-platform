@@ -60,7 +60,6 @@
         <div class="filter-row single">
           <el-form-item label="状态">
             <el-select v-model="filters.status" placeholder="选择状态" clearable>
-              <el-option label="全部状态" :value="null" />
               <el-option label="待处理" :value="0" />
               <el-option label="已处理" :value="2" />
               <el-option label="已驳回" :value="3" />
@@ -207,15 +206,15 @@
         <div class="dialog-footer">
           <el-button class="white-btn" @click="detailDialogVisible = false">取消</el-button>
           <el-button
+            v-if="canOperate"
             class="white-btn"
-            :disabled="!canOperate"
             @click="confirmProcess('REJECT')"
           >
             驳回
           </el-button>
           <el-button
+            v-if="canOperate"
             class="white-btn"
-            :disabled="!canOperate"
             @click="confirmProcess('RESOLVE')"
           >
             处理并删除评论
@@ -257,7 +256,7 @@ const stats = reactive({
 })
 
 const filters = reactive({
-  status: 0 as number | null
+  status: null as number | null
 })
 
 const pagination = reactive({
@@ -335,7 +334,7 @@ const loadReports = async () => {
 }
 
 const handleReset = () => {
-  filters.status = 0
+  filters.status = null
   pagination.page = 1
   loadReports()
 }

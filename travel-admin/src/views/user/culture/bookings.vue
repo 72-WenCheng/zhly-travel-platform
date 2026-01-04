@@ -538,6 +538,50 @@ const handleCurrentChange = (page) => {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
 
+  // 确保预订卡片内的按钮样式不被全局样式覆盖
+  .booking-actions {
+    :deep(.el-button--primary:not(.el-button--text):not(.el-button--link):not(.el-button--danger)) {
+      background-color: #409eff !important;
+      background: #409eff !important;
+      border-color: #409eff !important;
+      border: 1px solid #409eff !important;
+      color: #ffffff !important;
+      box-shadow: none !important;
+      
+      :deep(.el-button__inner) {
+        color: #ffffff !important;
+      }
+      
+      &:hover {
+        background-color: #66b1ff !important;
+        background: #66b1ff !important;
+        border-color: #66b1ff !important;
+        border: 1px solid #66b1ff !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3) !important;
+        
+        :deep(.el-button__inner) {
+          color: #ffffff !important;
+        }
+      }
+      
+      &:active,
+      &:focus,
+      &:focus-visible {
+        background-color: #3a8ee6 !important;
+        background: #3a8ee6 !important;
+        border-color: #3a8ee6 !important;
+        border: 1px solid #3a8ee6 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+        
+        :deep(.el-button__inner) {
+          color: #ffffff !important;
+        }
+      }
+    }
+  }
+
   .booking-header {
     display: flex;
     justify-content: space-between;
@@ -721,8 +765,92 @@ const handleCurrentChange = (page) => {
     border-top: 1px solid #ebeef5;
     flex-wrap: wrap;
 
-    .el-button {
+    :deep(.el-button) {
       min-width: 100px;
+    }
+
+    // 确保"查看详情"按钮保持 primary 样式（蓝色）- 使用更高优先级覆盖全局样式
+    :deep(.el-button--primary:not(.el-button--text):not(.el-button--link):not(.el-button--danger)) {
+      background-color: #409eff !important;
+      background: #409eff !important;
+      border-color: #409eff !important;
+      border: 1px solid #409eff !important;
+      color: #ffffff !important;
+      box-shadow: none !important;
+      
+      :deep(.el-button__inner) {
+        color: #ffffff !important;
+      }
+      
+      &:hover {
+        background-color: #66b1ff !important;
+        background: #66b1ff !important;
+        border-color: #66b1ff !important;
+        border: 1px solid #66b1ff !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3) !important;
+        
+        :deep(.el-button__inner) {
+          color: #ffffff !important;
+        }
+      }
+      
+      &:active,
+      &:focus,
+      &:focus-visible {
+        background-color: #3a8ee6 !important;
+        background: #3a8ee6 !important;
+        border-color: #3a8ee6 !important;
+        border: 1px solid #3a8ee6 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+        
+        :deep(.el-button__inner) {
+          color: #ffffff !important;
+        }
+      }
+    }
+
+    // 确保默认按钮（取消预订、联系客服）保持默认样式（白色）
+    :deep(.el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--text):not(.el-button--link)) {
+      background-color: #ffffff !important;
+      background: #ffffff !important;
+      border-color: #dcdfe6 !important;
+      border: 1px solid #dcdfe6 !important;
+      color: #606266 !important;
+      box-shadow: none !important;
+      
+      :deep(.el-button__inner) {
+        color: #606266 !important;
+      }
+      
+      &:hover {
+        background-color: #ecf5ff !important;
+        background: #ecf5ff !important;
+        border-color: #b3d8ff !important;
+        border: 1px solid #b3d8ff !important;
+        color: #409eff !important;
+        box-shadow: none !important;
+        
+        :deep(.el-button__inner) {
+          color: #409eff !important;
+        }
+      }
+      
+      &:active,
+      &:focus,
+      &:focus-visible {
+        background-color: #ecf5ff !important;
+        background: #ecf5ff !important;
+        border-color: #b3d8ff !important;
+        border: 1px solid #b3d8ff !important;
+        color: #409eff !important;
+        box-shadow: none !important;
+        
+        :deep(.el-button__inner) {
+          color: #409eff !important;
+        }
+      }
     }
   }
 }

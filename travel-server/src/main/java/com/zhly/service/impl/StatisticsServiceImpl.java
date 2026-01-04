@@ -12,6 +12,9 @@ import com.zhly.mapper.AttractionMapper;
 import com.zhly.mapper.CultureProjectMapper;
 import com.zhly.mapper.CultureBookingMapper;
 import com.zhly.mapper.ProjectApplicationMapper;
+import com.zhly.mapper.CultureAppointmentMapper;
+import com.zhly.entity.CultureAppointment;
+import com.zhly.entity.CultureOrder;
 import com.zhly.mapper.AiGenerateLogMapper;
 import com.zhly.mapper.UserDeactivateRequestMapper;
 import com.zhly.service.UserDeactivationManager;
@@ -20,6 +23,7 @@ import com.zhly.mapper.CommentMapper;
 import com.zhly.mapper.UserCollectMapper;
 import com.zhly.mapper.UserLikeMapper;
 import com.zhly.mapper.OrderMapper;
+import com.zhly.mapper.CultureOrderMapper;
 import com.zhly.mapper.UserBrowseHistoryMapper;
 import com.zhly.mapper.SearchLogMapper;
 import com.zhly.mapper.ReportMapper;
@@ -77,6 +81,9 @@ public class StatisticsServiceImpl implements StatisticsService {
     private OrderMapper orderMapper;
 
     @Autowired
+    private CultureOrderMapper cultureOrderMapper;
+
+    @Autowired
     private UserBrowseHistoryMapper browseHistoryMapper;
     
     @Autowired
@@ -93,6 +100,9 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Autowired
     private ProjectApplicationMapper projectApplicationMapper;
+
+    @Autowired
+    private CultureAppointmentMapper cultureAppointmentMapper;
 
     @Autowired
     private UserDeactivateRequestMapper userDeactivateRequestMapper;
@@ -298,44 +308,56 @@ public class StatisticsServiceImpl implements StatisticsService {
             result.put("totalAttractionViews", totalAttractionViews);
             result.put("publishRate", Math.round(publishRate * 100.0) / 100.0);
 
-            // ========== 订单统计 ==========
-            Map<String, Object> orderStats = orderMapper.selectOrderStatistics();
-            Long totalOrders = orderStats != null && orderStats.get("total") != null ?
-                    ((Number) orderStats.get("total")).longValue() : 0L;
+            // ========== 订单统计（农特产品和特色周边） ==========
+            // 只统计 productType=1（特色周边/农特产品）的订单
+            // 根据 CultureOrder 实体类注释：1-特色产品（包括特色周边和农特产品）
+            QueryWrapper<com.zhly.entity.CultureOrder> baseWrapper = new QueryWrapper<>();
+            baseWrapper.eq("product_type", 1); // 1-特色产品（特色周边和农特产品）
+            
+            // 总订单数
+            Long totalOrders = cultureOrderMapper.selectCount(baseWrapper);
 
             // 今日订单
-            QueryWrapper<com.zhly.entity.Order> orderTodayWrapper = new QueryWrapper<>();
+            QueryWrapper<com.zhly.entity.CultureOrder> orderTodayWrapper = new QueryWrapper<>();
+            orderTodayWrapper.eq("product_type", 1);
             orderTodayWrapper.ge("create_time", todayStart);
             orderTodayWrapper.lt("create_time", todayEnd);
-            Long todayOrders = orderMapper.selectCount(orderTodayWrapper);
+            Long todayOrders = cultureOrderMapper.selectCount(orderTodayWrapper);
 
             // 本月订单
-            QueryWrapper<com.zhly.entity.Order> orderMonthWrapper = new QueryWrapper<>();
+            QueryWrapper<com.zhly.entity.CultureOrder> orderMonthWrapper = new QueryWrapper<>();
+            orderMonthWrapper.eq("product_type", 1);
             orderMonthWrapper.ge("create_time", monthStart);
-            Long monthlyOrders = orderMapper.selectCount(orderMonthWrapper);
+            Long monthlyOrders = cultureOrderMapper.selectCount(orderMonthWrapper);
 
-            // 待支付订单（order_status=0）
-            QueryWrapper<com.zhly.entity.Order> orderPendingWrapper = new QueryWrapper<>();
-            orderPendingWrapper.eq("order_status", 0);
-            Long pendingOrders = orderMapper.selectCount(orderPendingWrapper);
+            // 待支付订单（order_status=1）
+            QueryWrapper<com.zhly.entity.CultureOrder> orderPendingWrapper = new QueryWrapper<>();
+            orderPendingWrapper.eq("product_type", 1);
+            orderPendingWrapper.eq("order_status", 1); // 1-待支付
+            Long pendingOrders = cultureOrderMapper.selectCount(orderPendingWrapper);
 
-            // 订单总金额
-            QueryWrapper<com.zhly.entity.Order> orderAmountWrapper = new QueryWrapper<>();
-            orderAmountWrapper.select("SUM(total_amount) as totalAmount");
-            orderAmountWrapper.eq("order_status", 1); // 已支付
-            List<Map<String, Object>> totalAmountList = orderMapper.selectMaps(orderAmountWrapper);
+            // 订单总金额（已支付订单的金额，order_status=2）
+            QueryWrapper<com.zhly.entity.CultureOrder> orderAmountWrapper = new QueryWrapper<>();
+            orderAmountWrapper.eq("product_type", 1);
+            orderAmountWrapper.eq("order_status", 2); // 2-已支付
+            orderAmountWrapper.select("SUM(final_amount) as totalAmount");
+            List<Map<String, Object>> totalAmountList = cultureOrderMapper.selectMaps(orderAmountWrapper);
             BigDecimal totalAmount = BigDecimal.ZERO;
             if (totalAmountList != null && !totalAmountList.isEmpty()) {
                 Map<String, Object> firstRow = totalAmountList.get(0);
                 if (firstRow != null && firstRow.get("totalAmount") != null) {
-                    totalAmount = new BigDecimal(firstRow.get("totalAmount").toString());
+                    Object amountObj = firstRow.get("totalAmount");
+                    if (amountObj != null) {
+                        totalAmount = new BigDecimal(amountObj.toString());
+                    }
                 }
             }
 
             // 转化率（已支付订单数 / 总订单数）
-            QueryWrapper<com.zhly.entity.Order> paidOrderWrapper = new QueryWrapper<>();
-            paidOrderWrapper.eq("order_status", 1);
-            Long paidOrders = orderMapper.selectCount(paidOrderWrapper);
+            QueryWrapper<com.zhly.entity.CultureOrder> paidOrderWrapper = new QueryWrapper<>();
+            paidOrderWrapper.eq("product_type", 1);
+            paidOrderWrapper.eq("order_status", 2); // 2-已支付
+            Long paidOrders = cultureOrderMapper.selectCount(paidOrderWrapper);
             double conversionRate = totalOrders > 0 ?
                     ((double) paidOrders / totalOrders * 100) : 0.0;
             conversionRate = Math.min(100.0, Math.max(0.0, conversionRate));
@@ -754,12 +776,12 @@ public class StatisticsServiceImpl implements StatisticsService {
             long interactionPrevious = countInteractions(window.getPreviousStart(), window.getPreviousEnd());
             appendUsageMetric(result, "interaction", interactionCurrent, interactionPrevious);
 
-            // 5. 文旅对接：文旅浏览 (type=3/4) + 预订 + 项目申请
+            // 5. 文旅对接：预订 + 预约 + 申请
             long cultureCurrent = countCultureUsage(window.getCurrentStart(), window.getCurrentEnd());
             long culturePrevious = countCultureUsage(window.getPreviousStart(), window.getPreviousEnd());
             appendUsageMetric(result, "culture", cultureCurrent, culturePrevious);
 
-            // 6. 订单交易：订单创建数量
+            // 6. 订单交易：订单创建数量（包括普通订单和文旅订单）
             long orderCurrent = countOrders(window.getCurrentStart(), window.getCurrentEnd());
             long orderPrevious = countOrders(window.getPreviousStart(), window.getPreviousEnd());
             appendUsageMetric(result, "order", orderCurrent, orderPrevious);
@@ -1174,10 +1196,53 @@ public class StatisticsServiceImpl implements StatisticsService {
             result.put("usedCoupons", 0L);
             result.put("couponRate", 0.0);
 
-            // 文旅预订统计（暂时为0，需要预订表）
-            result.put("cultureBookings", 0L);
-            result.put("projectApplications", 0L);
-            result.put("pendingReview", 0L);
+            // 文旅预订统计
+            Long totalBookings = cultureBookingMapper.selectCount(null);
+            QueryWrapper<com.zhly.entity.CultureBooking> bookingPendingWrapper = new QueryWrapper<>();
+            bookingPendingWrapper.eq("status", 1); // 1-待确认
+            Long pendingBookings = cultureBookingMapper.selectCount(bookingPendingWrapper);
+            QueryWrapper<com.zhly.entity.CultureBooking> bookingConfirmedWrapper = new QueryWrapper<>();
+            bookingConfirmedWrapper.eq("status", 2); // 2-已确认
+            Long confirmedBookings = cultureBookingMapper.selectCount(bookingConfirmedWrapper);
+            QueryWrapper<com.zhly.entity.CultureBooking> bookingCompletedWrapper = new QueryWrapper<>();
+            bookingCompletedWrapper.eq("status", 3); // 3-已完成
+            Long completedBookings = cultureBookingMapper.selectCount(bookingCompletedWrapper);
+            result.put("cultureBookings", totalBookings);
+            result.put("pendingBookings", pendingBookings);
+            result.put("confirmedBookings", confirmedBookings);
+            result.put("completedBookings", completedBookings);
+
+            // 预约统计
+            Long totalAppointments = cultureAppointmentMapper.selectCount(null);
+            QueryWrapper<CultureAppointment> appointmentPendingWrapper = new QueryWrapper<>();
+            appointmentPendingWrapper.eq("status", 1); // 1-待确认
+            Long pendingAppointments = cultureAppointmentMapper.selectCount(appointmentPendingWrapper);
+            QueryWrapper<CultureAppointment> appointmentConfirmedWrapper = new QueryWrapper<>();
+            appointmentConfirmedWrapper.eq("status", 2); // 2-已确认
+            Long confirmedAppointments = cultureAppointmentMapper.selectCount(appointmentConfirmedWrapper);
+            QueryWrapper<CultureAppointment> appointmentCompletedWrapper = new QueryWrapper<>();
+            appointmentCompletedWrapper.eq("status", 3); // 3-已完成
+            Long completedAppointments = cultureAppointmentMapper.selectCount(appointmentCompletedWrapper);
+            result.put("totalAppointments", totalAppointments);
+            result.put("pendingAppointments", pendingAppointments);
+            result.put("confirmedAppointments", confirmedAppointments);
+            result.put("completedAppointments", completedAppointments);
+
+            // 项目申请统计
+            Long totalApplications = projectApplicationMapper.selectCount(null);
+            QueryWrapper<ProjectApplication> applicationPendingWrapper = new QueryWrapper<>();
+            applicationPendingWrapper.in("status", Arrays.asList(1, 2)); // 1-待审核 2-审核中
+            Long pendingApplications = projectApplicationMapper.selectCount(applicationPendingWrapper);
+            QueryWrapper<ProjectApplication> applicationApprovedWrapper = new QueryWrapper<>();
+            applicationApprovedWrapper.eq("status", 3); // 3-已通过
+            Long approvedApplications = projectApplicationMapper.selectCount(applicationApprovedWrapper);
+            QueryWrapper<ProjectApplication> applicationRejectedWrapper = new QueryWrapper<>();
+            applicationRejectedWrapper.eq("status", 4); // 4-已拒绝
+            Long rejectedApplications = projectApplicationMapper.selectCount(applicationRejectedWrapper);
+            result.put("projectApplications", totalApplications);
+            result.put("pendingReview", pendingApplications);
+            result.put("approvedApplications", approvedApplications);
+            result.put("rejectedApplications", rejectedApplications);
 
             return result;
         } catch (Exception e) {
@@ -1542,10 +1607,11 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     private long countCultureUsage(LocalDateTime start, LocalDateTime end) {
-        long cultureViews = countBrowseByTypes(Arrays.asList(3, 4), start, end);
+        // 文旅对接统计：预订 + 预约 + 申请
         long bookings = countCultureBookings(start, end);
+        long appointments = countCultureAppointments(start, end);
         long applications = countProjectApplications(start, end);
-        return cultureViews + bookings + applications;
+        return bookings + appointments + applications;
     }
 
     private long countCultureBookings(LocalDateTime start, LocalDateTime end) {
@@ -1563,6 +1629,21 @@ public class StatisticsServiceImpl implements StatisticsService {
         return count != null ? count : 0L;
     }
 
+    private long countCultureAppointments(LocalDateTime start, LocalDateTime end) {
+        if (cultureAppointmentMapper == null) {
+            return 0L;
+        }
+        QueryWrapper<CultureAppointment> wrapper = new QueryWrapper<>();
+        if (start != null) {
+            wrapper.ge("create_time", start);
+        }
+        if (end != null) {
+            wrapper.lt("create_time", end);
+        }
+        Long count = cultureAppointmentMapper.selectCount(wrapper);
+        return count != null ? count : 0L;
+    }
+
     private long countProjectApplications(LocalDateTime start, LocalDateTime end) {
         QueryWrapper<ProjectApplication> wrapper = new QueryWrapper<>();
         if (start != null) {
@@ -1576,6 +1657,16 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     private long countOrders(LocalDateTime start, LocalDateTime end) {
+        // 订单交易统计：普通订单 + 文旅订单
+        long normalOrders = countNormalOrders(start, end);
+        long cultureOrders = countCultureOrders(start, end);
+        return normalOrders + cultureOrders;
+    }
+
+    private long countNormalOrders(LocalDateTime start, LocalDateTime end) {
+        if (orderMapper == null) {
+            return 0L;
+        }
         QueryWrapper<com.zhly.entity.Order> wrapper = new QueryWrapper<>();
         if (start != null) {
             wrapper.ge("create_time", start);
@@ -1584,6 +1675,21 @@ public class StatisticsServiceImpl implements StatisticsService {
             wrapper.lt("create_time", end);
         }
         Long count = orderMapper.selectCount(wrapper);
+        return count != null ? count : 0L;
+    }
+
+    private long countCultureOrders(LocalDateTime start, LocalDateTime end) {
+        if (cultureOrderMapper == null) {
+            return 0L;
+        }
+        QueryWrapper<CultureOrder> wrapper = new QueryWrapper<>();
+        if (start != null) {
+            wrapper.ge("create_time", start);
+        }
+        if (end != null) {
+            wrapper.lt("create_time", end);
+        }
+        Long count = cultureOrderMapper.selectCount(wrapper);
         return count != null ? count : 0L;
     }
 

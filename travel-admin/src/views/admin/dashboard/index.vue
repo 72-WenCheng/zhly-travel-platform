@@ -520,23 +520,77 @@
               </div>
             </div>
 
-            <!-- 预订申请 -->
+            <!-- 预定统计 -->
             <div class="stats-group">
               <div class="group-header">
-                <span class="group-title">预订申请</span>
+                <span class="group-title">预定统计</span>
               </div>
               <div class="stats-grid">
                 <div class="stat-item">
-                  <div class="stat-label">文化体验</div>
+                  <div class="stat-label">总预定</div>
                   <div class="stat-value">{{ businessStats.cultureBookings }}<span class="unit">次</span></div>
                 </div>
+                <div class="stat-item warning-item">
+                  <div class="stat-label">待确认</div>
+                  <div class="stat-value warning">{{ businessStats.pendingBookings }}<span class="unit">次</span></div>
+                </div>
+                <div class="stat-item success-item">
+                  <div class="stat-label">已确认</div>
+                  <div class="stat-value success">{{ businessStats.confirmedBookings }}<span class="unit">次</span></div>
+                </div>
                 <div class="stat-item">
-                  <div class="stat-label">项目申请</div>
+                  <div class="stat-label">已完成</div>
+                  <div class="stat-value">{{ businessStats.completedBookings }}<span class="unit">次</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 预约统计 -->
+            <div class="stats-group">
+              <div class="group-header">
+                <span class="group-title">预约统计</span>
+              </div>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-label">总预约</div>
+                  <div class="stat-value">{{ businessStats.totalAppointments }}<span class="unit">次</span></div>
+                </div>
+                <div class="stat-item warning-item">
+                  <div class="stat-label">待确认</div>
+                  <div class="stat-value warning">{{ businessStats.pendingAppointments }}<span class="unit">次</span></div>
+                </div>
+                <div class="stat-item success-item">
+                  <div class="stat-label">已确认</div>
+                  <div class="stat-value success">{{ businessStats.confirmedAppointments }}<span class="unit">次</span></div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">已完成</div>
+                  <div class="stat-value">{{ businessStats.completedAppointments }}<span class="unit">次</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 申请统计 -->
+            <div class="stats-group">
+              <div class="group-header">
+                <span class="group-title">申请统计</span>
+              </div>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-label">总申请</div>
                   <div class="stat-value">{{ businessStats.projectApplications }}<span class="unit">个</span></div>
                 </div>
                 <div class="stat-item warning-item">
                   <div class="stat-label">待审核</div>
                   <div class="stat-value warning">{{ businessStats.pendingReview }}<span class="unit">个</span></div>
+                </div>
+                <div class="stat-item success-item">
+                  <div class="stat-label">已通过</div>
+                  <div class="stat-value success">{{ businessStats.approvedApplications }}<span class="unit">个</span></div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">已拒绝</div>
+                  <div class="stat-value">{{ businessStats.rejectedApplications }}<span class="unit">个</span></div>
                 </div>
               </div>
             </div>
@@ -660,7 +714,7 @@
             >
               <div class="notification-icon" :class="`type-${notification.type}`">
                 <el-icon>
-                  <component :is="notification.icon" />
+                  <component :is="iconComponents[notification.icon] || Warning" />
                 </el-icon>
               </div>
               <div class="notification-content">
@@ -1028,8 +1082,17 @@ const businessStats = ref({
   usedCoupons: 0,
   couponRate: 0,
   cultureBookings: 0,
+  pendingBookings: 0,
+  confirmedBookings: 0,
+  completedBookings: 0,
+  totalAppointments: 0,
+  pendingAppointments: 0,
+  confirmedAppointments: 0,
+  completedAppointments: 0,
   projectApplications: 0,
-  pendingReview: 0
+  pendingReview: 0,
+  approvedApplications: 0,
+  rejectedApplications: 0
 })
 
 // 互动数据（评论统计）
@@ -2347,8 +2410,17 @@ const loadDashboardData = async () => {
           usedCoupons: businessResult.data.usedCoupons || 0,
           couponRate: businessResult.data.couponRate || 0,
           cultureBookings: businessResult.data.cultureBookings || 0,
+          pendingBookings: businessResult.data.pendingBookings || 0,
+          confirmedBookings: businessResult.data.confirmedBookings || 0,
+          completedBookings: businessResult.data.completedBookings || 0,
+          totalAppointments: businessResult.data.totalAppointments || 0,
+          pendingAppointments: businessResult.data.pendingAppointments || 0,
+          confirmedAppointments: businessResult.data.confirmedAppointments || 0,
+          completedAppointments: businessResult.data.completedAppointments || 0,
           projectApplications: businessResult.data.projectApplications || 0,
-          pendingReview: businessResult.data.pendingReview || 0
+          pendingReview: businessResult.data.pendingReview || 0,
+          approvedApplications: businessResult.data.approvedApplications || 0,
+          rejectedApplications: businessResult.data.rejectedApplications || 0
         }
       }
     } catch (error) {
@@ -2555,7 +2627,7 @@ const recordCommonAction = async (action: QuickAction) => {
     })
     loadCommonActions()
   } catch (error) {
-    console.error('记录常用操作失败:', error)
+    // 静默失败，不打印错误日志
   }
 }
 
@@ -3824,6 +3896,10 @@ const loadFunctionUsage = async (suppressError = true) => {
 
         &.type-application {
           background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        &.type-report {
+          background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
         }
       }
 

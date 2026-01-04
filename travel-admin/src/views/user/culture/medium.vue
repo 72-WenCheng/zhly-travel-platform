@@ -102,6 +102,21 @@
       <div class="service-content">
         <div class="service-grid">
           <div v-for="service in currentServices" :key="service.id" class="service-card" @click="handleServiceClick(service)">
+            <div v-if="service.cover" class="service-image">
+              <el-image
+                :src="service.cover"
+                fit="cover"
+                class="service-cover-img"
+                :preview-src-list="service.cover ? [service.cover] : []"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+            </div>
             <div class="service-header">
               <div class="service-title-wrap">
                 <h3>{{ service.title }}</h3>
@@ -110,9 +125,13 @@
               <div class="service-price-block">
                 <span class="service-price">¥{{ service.price }}</span>
                 <span class="service-price-unit">
-                  <template v-if="activeTab === 'products'">{{ service.unit || '/盒' }}</template>
+                  <template v-if="activeTab === 'products'">
+                    {{ service.unit && service.unit.startsWith('/') ? service.unit : '/' + (service.unit || '盒') }}
+                  </template>
                   <template v-else-if="activeTab === 'homestay'">/晚</template>
-                  <template v-else>{{ service.unit || '/人' }}</template>
+                  <template v-else>
+                    {{ service.unit && service.unit.startsWith('/') ? service.unit : '/' + (service.unit || '人') }}
+                  </template>
                 </span>
               </div>
             </div>
@@ -270,7 +289,7 @@
             <div class="experience-footer">
               <span class="experience-price">
                 <span class="price-label">体验价</span>
-                <span class="price-value">¥{{ experience.price }}</span>
+                <span class="price-value">¥{{ experience.price || 0 }}</span>
               </span>
             </div>
           </div>
@@ -287,6 +306,21 @@
       </h2>
       <div class="products-grid">
         <div v-for="product in attractions" :key="product.id" class="product-card" @click="handleProductClick(product)">
+          <div v-if="product.cover" class="product-image">
+            <el-image
+              :src="product.cover"
+              fit="cover"
+              class="product-cover-img"
+              :preview-src-list="product.cover ? [product.cover] : []"
+            >
+              <template #error>
+                <div class="image-error">
+                  <el-icon><Picture /></el-icon>
+                  <span>加载失败</span>
+                </div>
+              </template>
+            </el-image>
+          </div>
           <div class="product-badge">{{ product.badge }}</div>
           <div class="product-header">
             <h4>{{ product.name || product.title }}</h4>
@@ -303,7 +337,12 @@
           </div>
           <div class="product-footer">
             <span class="product-sales">已售 {{ product.sales }}</span>
-            <span class="product-price">¥{{ product.price }}</span>
+            <span class="product-price">
+              ¥{{ product.price }}
+              <span class="product-price-unit">
+                {{ product.unit && product.unit.startsWith('/') ? product.unit : '/' + (product.unit || '件') }}
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -381,51 +420,65 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import request from '@/utils/request'
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from "vue-router";
+import request from '@/utils/request';
+import { processImageUrl, processImageUrls } from '@/utils/image';
 import { 
   Star, Grid, Service, OfficeBuilding, Tickets, ShoppingBag, Trophy, UserFilled, Top,
   ArrowLeft, ArrowRight, Location, Calendar, Coin, Clock, StarFilled, View, TrendCharts, Box,
-  House, User, Setting, Phone
-} from '@element-plus/icons-vue'
-import BackButton from '@/components/BackButton.vue'
-import { useSystemStore } from '@/stores/system'
-import { storeToRefs } from 'pinia'
-import * as cultureExperienceApi from '@/api/cultureExperience'
+  House, User, Setting, Phone, Picture
+} from '@element-plus/icons-vue';
+import BackButton from '@/components/BackButton.vue';
+import { useSystemStore } from '@/stores/system';
+import { storeToRefs } from 'pinia';
+import * as cultureExperienceApi from '@/api/cultureExperience';
 
-const router = useRouter()
-const systemStore = useSystemStore()
-const { footerDescription } = storeToRefs(systemStore)
+const router = useRouter();
+const systemStore = useSystemStore();
+const { footerDescription } = storeToRefs(systemStore);
 
-console.log('中等版本文旅页面开始加载')
+console.log('中等版本文旅页面开始加载');
 
 // 当前激活的区块
-const activeSection = ref('banner')
+const activeSection = ref('banner');
 
 // 是否显示返回顶部按钮
-const showBackToTop = ref(false)
+const showBackToTop = ref(false);
 
 // 顶部数据展示
 const heroStats = ref([
   { label: '合作文旅项目', value: '320+' },
   { label: '年度活跃对接', value: '1.2亿' },
   { label: '政府协同', value: '48个地区' }
-])
+]);
+
+// 合作伙伴
+const partners = ref([
+  { id: 1, emoji: '🏛️', name: '重庆市文化和旅游发展委员会' },
+  { id: 2, emoji: '🏢', name: '重庆市农业农村委员会' },
+  { id: 3, emoji: '🏦', name: '中国农业银行重庆分行' },
+  { id: 4, emoji: '🏭', name: '重庆旅游投资集团' },
+  { id: 5, emoji: '🎓', name: '重庆大学旅游学院' },
+  { id: 6, emoji: '📱', name: '携程旅游' },
+  { id: 7, emoji: '🌐', name: '美团点评' },
+  { id: 8, emoji: '🚗', name: '滴滴出行' },
+  { id: 9, emoji: '🤝', name: '本地文旅合作联盟' }
+]);
 
 const heroSuccess = ref([
   { title: '政策对接', desc: '申报直连与合规指导', value: '320+', unit: '项目/年' },
   { title: '产业振兴', desc: '规划落地与运营陪跑', value: '48', unit: '产业带' },
   { title: '文化体验', desc: '非遗体验与精品路线', value: '560+', unit: '体验' },
   { title: '特色周边', desc: '供应链与全渠道上架', value: '1.2K', unit: 'SKU' }
-])
+]);
 const heroPartners = computed(() => {
-  return partners.value.slice(0, 4).map(p => p.name)
-})
+  return partners.value.slice(0, 4).map(p => p.name);
+});
 
 // 轮播图数据
-const carouselBanners = ref([])
+const carouselBanners = ref([]);
 
 // 四大核心功能（与详情页对应）
 const coreNavCards = ref([
@@ -642,13 +695,7 @@ const cultureExperiences = ref([])
 const attractions = ref([])
 
 const normalizeImages = (images) => {
-  if (!images) return []
-  try {
-    const parsed = Array.isArray(images) ? images : JSON.parse(images)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return typeof images === 'string' ? [images] : []
-  }
+  return processImageUrls(images)
 }
 
 // 通用：把字符串 / JSON 字符串 / 数组统一转成数组
@@ -705,6 +752,25 @@ const loadFarmstay = async () => {
         const featuresRaw = normalizeArray(item.features)
         const features = dedupeTags(featuresRaw) // 只用特色字段
 
+        // 处理图片：优先使用 images，其次使用 cover
+        let imagesArray: string[] = [];
+        if (item.images) {
+          if (Array.isArray(item.images)) {
+            imagesArray = item.images;
+          } else if (typeof item.images === 'string') {
+            try {
+              const parsed = JSON.parse(item.images);
+              imagesArray = Array.isArray(parsed) ? parsed : [item.images];
+            } catch {
+              imagesArray = item.images.split(',').map((url: string) => url.trim()).filter(Boolean);
+            }
+          }
+        } else if (item.cover) {
+          imagesArray = [item.cover];
+        }
+        
+        const coverUrl = imagesArray.length > 0 ? processImageUrl(imagesArray[0]) : '';
+
         return {
           id: item.id || idx,
           title: item.title || item.name || `农家乐 ${idx + 1}`,
@@ -717,7 +783,8 @@ const loadFarmstay = async () => {
           views: item.views || item.viewCount || 0,
           contactPhone: item.contactPhone || '',
           features,
-          highlights: [] // 卡片不再使用 highlights
+          highlights: [], // 卡片不再使用 highlights
+          cover: coverUrl // 添加封面图片
         }
       })
 
@@ -765,23 +832,50 @@ const loadHomestay = async () => {
     // 注意：已使用全局 baseURL '/api'，这里不要再重复 '/api'
     const res = await request.get('/culture/homestays/page', { params: { page: 1, size: 4 } })
     const list = res?.data?.records || res?.data?.list || []
+    console.log('首页民宿列表数据:', list)
     if (Array.isArray(list) && list.length) {
-      services.value.homestay = list.map((item, idx) => ({
-        id: item.id || idx,
-        title: item.title || item.name || `民宿 ${idx + 1}`,
-        location: item.location || '待定',
-        price: item.price || 0,
-        rating: item.rating || 4.7,
-        views: item.views || 0,
-        roomType: item.roomType,
-        capacity: item.capacity,
-        features: normalizeArray(item.features) || normalizeArray(item.amenities),
-        highlights: normalizeArray(item.highlightTags) || normalizeArray(item.amenities),
-        summary: item.description || item.summary || '',
-        contactPhone: item.contactPhone || '',
-        amenities: normalizeArray(item.amenities),
-        cover: normalizeImages(item.cover || item.images)?.[0] || ''
-      }))
+      services.value.homestay = list.map((item, idx) => {
+        console.log(`民宿${idx}原始数据:`, item)
+        console.log(`民宿${idx} cover:`, item.cover)
+        console.log(`民宿${idx} images:`, item.images)
+        
+        // 先解析图片数组
+        let imagesArray: string[] = [];
+        if (item.images) {
+          if (Array.isArray(item.images)) {
+            imagesArray = item.images;
+          } else if (typeof item.images === 'string') {
+            try {
+              const parsed = JSON.parse(item.images);
+              imagesArray = Array.isArray(parsed) ? parsed : [item.images];
+            } catch {
+              imagesArray = item.images.split(',').map((url: string) => url.trim()).filter(Boolean);
+            }
+          }
+        } else if (item.cover) {
+          imagesArray = [item.cover];
+        }
+        
+        const coverUrl = imagesArray.length > 0 ? processImageUrl(imagesArray[0]) : '';
+        console.log(`民宿${idx}处理后的cover:`, coverUrl);
+        
+        return {
+          id: item.id || idx,
+          title: item.title || item.name || `民宿 ${idx + 1}`,
+          location: item.location || '待定',
+          price: item.price || 0,
+          rating: item.rating || 4.7,
+          views: item.views || 0,
+          roomType: item.roomType,
+          capacity: item.capacity,
+          features: normalizeArray(item.features) || normalizeArray(item.amenities),
+          highlights: normalizeArray(item.highlightTags) || normalizeArray(item.amenities),
+          summary: item.description || item.summary || '',
+          contactPhone: item.contactPhone || '',
+          amenities: normalizeArray(item.amenities),
+          cover: coverUrl
+        }
+      })
     } else {
       services.value.homestay = []
     }
@@ -869,6 +963,27 @@ const loadAttractions = async () => {
               ? item.tags.split(/[,，、\s]+/).filter(Boolean)
               : [])
 
+        // 处理图片：优先使用 images，其次使用 coverImage
+        let imagesArray: string[] = [];
+        if (item.images) {
+          if (Array.isArray(item.images)) {
+            imagesArray = item.images;
+          } else if (typeof item.images === 'string') {
+            try {
+              const parsed = JSON.parse(item.images);
+              imagesArray = Array.isArray(parsed) ? parsed : [item.images];
+            } catch {
+              imagesArray = item.images.split(',').map((url: string) => url.trim()).filter(Boolean);
+            }
+          }
+        } else if (item.coverImage) {
+          imagesArray = [item.coverImage];
+        } else if (item.image) {
+          imagesArray = [item.image];
+        }
+        
+        const coverUrl = imagesArray.length > 0 ? processImageUrl(imagesArray[0]) : '';
+
         return {
           id: item.id || idx,
           title: item.name || `特色周边 ${idx + 1}`,
@@ -881,7 +996,8 @@ const loadAttractions = async () => {
           sales: item.viewCount || 0,
           rating,
           unit: '/件',
-          viewCount: item.viewCount || 0
+          viewCount: item.viewCount || 0,
+          cover: coverUrl // 添加封面图片
         }
       })
       console.log('特色周边加载成功，数量:', attractions.value.length)
@@ -999,19 +1115,6 @@ const successCases = ref([
     jobs: 180,
     visitors: 30
   }
-])
-
-// 合作伙伴
-const partners = ref([
-  { id: 1, emoji: '🏛️', name: '重庆市文化和旅游发展委员会' },
-  { id: 2, emoji: '🏢', name: '重庆市农业农村委员会' },
-  { id: 3, emoji: '🏦', name: '中国农业银行重庆分行' },
-  { id: 4, emoji: '🏭', name: '重庆旅游投资集团' },
-  { id: 5, emoji: '🎓', name: '重庆大学旅游学院' },
-  { id: 6, emoji: '📱', name: '携程旅游' },
-  { id: 7, emoji: '🌐', name: '美团点评' },
-  { id: 8, emoji: '🚗', name: '滴滴出行' },
-  { id: 9, emoji: '🤝', name: '本地文旅合作联盟' }
 ])
 
 // 交互函数
@@ -1246,9 +1349,9 @@ onUnmounted(() => {
 })
 
 const handleProductClick = (product) => {
-  console.log('跳转到产品详情:', product.name)
-  // TODO: 跳转到产品详情页
-  router.push(`/home/user/culture/product/${product.id}`)
+  console.log('跳转到特色周边详情:', product.name, product.id)
+  // 特色周边是从attractions接口获取的，应该跳转到景点详情页
+  router.push(`/home/user/attractions/detail/${product.id}`)
 }
 
 const handleCaseClick = (caseItem) => {
@@ -2143,6 +2246,40 @@ console.log('中等版本文旅页面数据初始化完成')
   gap: 10px;
 }
 
+.service-image {
+  width: 100%;
+  height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background: #f5f7fa;
+}
+
+.service-cover-img {
+  width: 100%;
+  height: 100%;
+}
+
+.image-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  background: #f5f7fa;
+  
+  .el-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  
+  span {
+    font-size: 12px;
+  }
+}
+
 .service-card > * + * {
   padding-top: 8px;
   margin-top: 8px;
@@ -2606,6 +2743,20 @@ console.log('中等版本文旅页面数据初始化完成')
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
 }
 
+.product-image {
+  width: 100%;
+  height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background: #f5f7fa;
+}
+
+.product-cover-img {
+  width: 100%;
+  height: 100%;
+}
+
 .product-badge {
   position: absolute;
   top: 16px;
@@ -2666,6 +2817,15 @@ console.log('中等版本文旅页面数据初始化完成')
   font-size: 18px;
   font-weight: 700;
   color: #f56c6c;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.product-price-unit {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 /* 成功案例 */

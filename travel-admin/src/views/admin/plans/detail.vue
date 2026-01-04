@@ -997,6 +997,13 @@ onMounted(() => {
 .content-card {
   margin-bottom: 24px;
   border-radius: 12px;
+  transition: box-shadow 0.3s ease;
+  box-shadow: none !important; // 覆盖 shadow="never" 的默认样式
+  
+  // 添加 hover 效果 - 仅阴影
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
 }
 
 // 行程列表 - 平衡设计

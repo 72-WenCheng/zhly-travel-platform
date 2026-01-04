@@ -40,6 +40,12 @@ request.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // 对于DELETE请求，如果有data参数，确保Content-Type正确设置
+    if (config.method?.toLowerCase() === 'delete' && config.data) {
+      config.headers = config.headers || {}
+      config.headers['Content-Type'] = 'application/json'
+    }
+    
     return config
   },
   (error) => {

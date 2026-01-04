@@ -82,6 +82,7 @@
             :on-preview="handlePictureCardPreview"
             :on-remove="handleRemove"
             :on-success="handleImageSuccess"
+            :on-error="handleImageError"
             :before-upload="beforeImageUpload"
             :headers="uploadHeaders"
             :limit="9"
@@ -198,6 +199,13 @@
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
+                    <el-form-item label="单位" :prop="`packages.${index}.unit`">
+                      <el-input v-model="pkg.unit" placeholder="如：人、天、次" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-row :gutter="20">
+                  <el-col :span="12">
                     <el-form-item label="价格" :prop="`packages.${index}.price`">
                       <el-input-number
                         v-model="pkg.price"
@@ -206,13 +214,6 @@
                         placeholder="价格"
                         style="width: 100%"
                       />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="单位" :prop="`packages.${index}.unit`">
-                      <el-input v-model="pkg.unit" placeholder="如：人、天、次" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
@@ -482,6 +483,19 @@ const handleImageSuccess = (response: any, file: UploadFile) => {
       imageList.value.splice(index, 1)
     }
   }
+}
+
+// 图片上传失败
+const handleImageError = (error: Error, file: UploadFile) => {
+  console.error('图片上传失败:', error, file)
+  ElMessage.error('图片上传失败: ' + (error.message || '未知错误'))
+  const index = imageList.value.findIndex(item => item.uid === file.uid)
+  if (index > -1) {
+    imageList.value.splice(index, 1)
+  }
+  setTimeout(() => {
+    formRef.value?.validateField('images')
+  }, 100)
 }
 
 // 移除图片
@@ -844,6 +858,20 @@ const handleSubmit = async () => {
         font-weight: 600;
         color: #303133;
       }
+    }
+    
+    // 增加行之间的间距
+    :deep(.el-row) {
+      margin-bottom: 8px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    // 增加表单项之间的间距
+    :deep(.el-form-item) {
+      margin-bottom: 12px;
     }
   }
 }
